@@ -1,0 +1,11 @@
+pluginManagement {
+    repositories {
+        // 腾讯云 Gradle 插件镜像
+        maven {
+            url 'https://mirrors.cloud.tencent.com/nexus/repository/gradle-plugins/'
+        }
+        gradlePluginPortal()
+    }
+}
+rootProject.name = 'plugin-ai-assistant'
+include 'ui'

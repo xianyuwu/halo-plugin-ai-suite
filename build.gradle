@@ -1,0 +1,80 @@
+plugins {
+    id 'java'
+    id "io.freefair.lombok" version "9.2.0"
+    id "run.halo.plugin.devtools" version "0.6.3"
+}
+
+group 'run.halo.ai.assistant'
+
+repositories {
+    // 腾讯云 Maven 镜像（国内加速）
+    maven {
+        url 'https://mirrors.cloud.tencent.com/nexus/repository/maven-public/'
+    }
+    maven {
+        name = 'Central Portal Snapshots'
+        url = 'https://central.sonatype.com/repository/maven-snapshots/'
+        content {
+            includeGroupAndSubgroups('run.halo')
+        }
+    }
+    mavenCentral()
+}
+
+dependencies {
+    implementation platform('run.halo.tools.platform:plugin:2.24.0')
+    compileOnly 'run.halo.app:api'
+
+    // Lucene 10.3.2 — 跟 Halo 自带版本严格对齐（Halo 主 jar 里就是 10.3.2 + backward-codecs）
+    // 关键：core / analysis-common / queryparser 用 compileOnly，
+    // 运行时复用 Halo 主 ClassLoader 里的 Lucene，避免 Codec SPI 加载时
+    // 跨 ClassLoader 触发 "Lucene80Codec not a subtype" 这种类不一致错误。
+    compileOnly 'org.apache.lucene:lucene-core:10.3.2'
+    compileOnly 'org.apache.lucene:lucene-analysis-common:10.3.2'
+    compileOnly 'org.apache.lucene:lucene-queryparser:10.3.2'
+
+    // smartcn 中文分词 Halo 主 jar 没自带，必须打包到插件。
+    // transitive=false 阻止它拖 lucene-core 进来（否则会双重打包，再次触发版本冲突）。
+    implementation('org.apache.lucene:lucene-analysis-smartcn:10.3.2') {
+        transitive = false
+    }
+
+    testImplementation 'run.halo.app:api'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.release = 21
+}
+
+// 前端子项目构建产物复制到插件资源目录
+tasks.register('processUiResources', Copy) {
+    from project(':ui').layout.buildDirectory.dir('dist')
+    into layout.buildDirectory.dir('resources/main/console')
+    dependsOn project(':ui').tasks.named('assemble')
+    shouldRunAfter tasks.named('processResources')
+}
+
+tasks.named('classes') {
+    dependsOn tasks.named('processUiResources')
+}
+
+tasks.named('generatePluginComponentsIdx') {
+    notCompatibleWithConfigurationCache('This task invokes "Task.project" at execution time.')
+}
+
+halo {
+    version = '2.24.0'
+}

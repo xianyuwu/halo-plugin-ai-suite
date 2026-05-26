@@ -1,0 +1,28 @@
+# Gradle
+.gradle/
+build/
+
+# Frontend
+ui/node_modules/
+ui/dist/
+
+# Build artifacts
+*.jar
+
+# Local dev
+dev/
+
+# Data (DB, keys, logs)
+data/
+
+# Cache
+.cache/
+
+# Claude
+.claude/
+.claude/settings.local.json
+.DS_Store
+
+# IDE
+.idea/
+*.iml

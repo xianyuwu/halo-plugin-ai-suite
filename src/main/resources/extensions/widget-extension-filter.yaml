@@ -1,0 +1,11 @@
+# AI 聊天浮窗 — 全局 WebFilter 注入
+# 不依赖主题模板标签，拦截所有 HTML 响应
+apiVersion: plugin.halo.run/v1alpha1
+kind: ExtensionDefinition
+metadata:
+  name: ai-chat-widget-filter
+spec:
+  extensionPointName: additional-webfilter
+  className: run.halo.ai.assistant.widget.ChatWidgetFilter
+  displayName: "AI 聊天浮窗（全局注入）"
+  description: "通过全局 WebFilter 在所有 HTML 页面注入 AI 聊天浮窗"

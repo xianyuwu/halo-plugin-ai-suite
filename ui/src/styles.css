@@ -1,0 +1,527 @@
+/* ===== AI Assistant Console Styles ===== */
+/* 主题色与 Halo 管理后台保持一致：主色 #4CCBA0，边框 #eaecf0，圆角 4px */
+
+/* VPageHeader 白色背景覆盖 */
+.v-page-header {
+  background: transparent !important;
+}
+
+/* --- Page Commons --- */
+.ai-page {
+  padding: 24px;
+  max-width: 960px;
+}
+
+.ai-page h2 {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.ai-desc {
+  color: #6b7280;
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+
+.ai-page-actions {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ai-save-msg { font-size: 13px; }
+.ai-save-msg.success { color: #059669; }
+.ai-save-msg.error { color: #dc2626; }
+
+/* --- Fieldset --- */
+.ai-fieldset {
+  border: 1px solid #eaecf0;
+  border-radius: 4px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.ai-fieldset legend {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  padding: 0 8px;
+}
+
+.ai-fieldset legend label {
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.ai-fieldset-actions {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ai-test-result { font-size: 13px; }
+.ai-test-result.success { color: #059669; }
+.ai-test-result.error { color: #dc2626; }
+
+/* --- Form Grid --- */
+.ai-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.ai-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.ai-field input[type="text"],
+.ai-field input[type="password"],
+.ai-field input[type="number"],
+.ai-field input[type="color"],
+.ai-field select,
+.ai-field textarea {
+  padding: 6px 10px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.ai-field input:focus,
+.ai-field select:focus,
+.ai-field textarea:focus {
+  border-color: #4CCBA0;
+}
+
+.ai-field textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.ai-field input[type="range"] {
+  accent-color: #4CCBA0;
+}
+
+.ai-help {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* --- Cards (Dashboard) --- */
+.ai-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.ai-card {
+  border: 1px solid #eaecf0;
+  border-radius: 4px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ai-card.active { border-color: #4CCBA0; }
+
+.ai-card-icon { font-size: 24px; }
+
+.ai-card-info { flex: 1; }
+.ai-card-info h3 { margin: 0; font-size: 14px; }
+.ai-card-info p { margin: 2px 0 0; font-size: 12px; color: #6b7280; }
+
+.ai-card-link {
+  font-size: 13px;
+  color: #4CCBA0;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* --- Buttons --- */
+.ai-btn {
+  padding: 6px 18px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.ai-btn:hover:not(:disabled) { background: #f9fafb; }
+.ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ai-btn-primary {
+  background: #4CCBA0;
+  color: white;
+  border-color: #4CCBA0;
+}
+
+.ai-btn-primary:hover:not(:disabled) { background: #3db892; }
+
+/* --- Knowledge Page --- */
+.knowledge-page { max-width: 960px; }
+
+/* 选项卡 */
+.tab-nav {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid #eaecf0;
+}
+.tab-btn {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  transition: color 0.2s, border-color 0.2s;
+}
+.tab-btn:hover { color: #374151; }
+.tab-btn.active {
+  color: #4CCBA0;
+  border-bottom-color: #4CCBA0;
+}
+
+.tab-content { animation: fadeIn 0.2s ease; display: flex; flex-direction: column; gap: 16px; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* --- Dashboard Page --- */
+.dashboard-page .header-icon { font-size: 20px; }
+.page-body {
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 配置引导 */
+.guide-desc { font-size: 13px; color: #6b7280; margin: 0 0 16px; }
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.step-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border: 1px solid #eaecf0;
+  border-radius: 4px;
+  background: white;
+  transition: border-color 0.2s;
+}
+.step-card.step-current {
+  border-color: #4CCBA0;
+  background: #f0fdf9;
+}
+.step-card.step-done { opacity: 0.7; }
+.step-num {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+.step-card.step-done .step-num { background: #dcfce7; color: #166534; }
+.step-card.step-current .step-num { background: #4CCBA0; color: white; }
+.step-body { flex: 1; }
+.step-body h3 { margin: 0 0 2px; font-size: 14px; }
+.step-body p { margin: 0; font-size: 12px; color: #6b7280; }
+
+/* 状态看板 */
+.overview-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+@media (max-width: 700px) {
+  .overview-stats { grid-template-columns: repeat(2, 1fr); }
+}
+.stat-item { text-align: center; }
+.stat-item .stat-value { font-size: 24px; font-weight: 700; color: #111827; }
+.stat-item .stat-label { font-size: 12px; color: #6b7280; margin-top: 2px; }
+.stat-warn .stat-value { color: #d97706; }
+
+/* 快速操作 */
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.action-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid #eaecf0;
+  border-radius: 4px;
+  text-decoration: none;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  transition: border-color 0.2s, background 0.2s;
+}
+.action-item:hover { border-color: #4CCBA0; background: #f0fdf9; }
+.action-icon { font-size: 20px; }
+.action-desc { font-size: 12px; font-weight: 400; color: #6b7280; }
+
+/* 配置概览 */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px 24px;
+}
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+  border-bottom: 1px solid #f3f4f6;
+}
+.summary-label { color: #6b7280; }
+.summary-value { color: #374151; font-weight: 500; }
+
+/* 索引操作行（VCard 内） */
+.action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.action-row .action-info p { margin: 0 0 4px; font-size: 13px; color: #6b7280; }
+.action-row .action-note { font-size: 12px; color: #d97706; }
+
+/* 信息提示框 */
+.info-box {
+  background: #f0fdf9;
+  border: 1px solid #bbf7d4;
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #065f46;
+  line-height: 1.6;
+}
+.info-box strong { color: #064e3b; }
+
+/* 工具栏 */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.search-input {
+  flex: 1;
+  max-width: 320px;
+  padding: 7px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.search-input:focus { border-color: #4CCBA0; }
+.filter-stats { font-size: 13px; color: #6b7280; white-space: nowrap; }
+
+/* 表格 */
+.table-section { margin-top: 24px; }
+.section-title { font-size: 15px; margin: 0 0 12px; }
+
+.ai-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.ai-table th {
+  text-align: left;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border-bottom: 1px solid #eaecf0;
+  font-weight: 600;
+  color: #374151;
+  font-size: 12px;
+}
+.ai-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: top;
+}
+.ai-table tr:hover td { background: #f9fafb; }
+.ai-table .preview-row td { background: #f9fafb; padding: 0; }
+.ai-table .preview-row:hover td { background: #f9fafb; }
+.article-title-cell { font-weight: 500; max-width: 300px; }
+.actions-cell { white-space: nowrap; }
+.text-center { text-align: center; }
+
+/* 状态标签 */
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.status-indexed { background: #dcfce7; color: #166534; }
+.status-failed { background: #fee2e2; color: #991b1b; }
+.status-not-indexed { background: #f3f4f6; color: #6b7280; }
+
+/* 切片预览 */
+.chunk-preview {
+  padding: 16px 20px;
+}
+.chunk-count-info {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+.chunk-item {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.chunk-item:last-child { border-bottom: none; }
+.chunk-index {
+  flex-shrink: 0;
+  display: inline-block;
+  min-width: 28px;
+  padding: 2px 6px;
+  background: #ecfdf5;
+  color: #065f46;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+.chunk-content {
+  color: #374151;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 摘要预览 */
+.summary-preview {
+  padding: 16px 20px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #374151;
+}
+.summary-preview p { margin: 0; }
+.summary-text { color: #374151; font-size: 13px; }
+
+/* 小按钮 */
+.ai-btn-sm {
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+.ai-btn-primary-outline {
+  color: #4CCBA0;
+  border-color: #4CCBA0;
+  background: white;
+}
+.ai-btn-primary-outline:hover:not(:disabled) { background: #ecfdf5; }
+
+/* 辅助类 */
+.text-blue { color: #2563eb; }
+.text-green { color: #059669; }
+.text-red { color: #dc2626; }
+.text-muted { color: #9ca3af; }
+.loading-text { padding: 24px; text-align: center; color: #6b7280; font-size: 13px; }
+.empty-text { color: #9ca3af; font-size: 13px; }
+.empty-state {
+  padding: 40px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* --- Writing Page --- */
+.writing-page { padding: 24px; max-width: 1200px; }
+.writing-page .page-header h1 { font-size: 24px; margin-bottom: 4px; }
+.writing-page .description { color: #6b7280; margin-bottom: 24px; }
+
+.writing-page .editor-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px 1fr;
+  gap: 20px; align-items: start;
+}
+
+.writing-page .panel { border: 1px solid #eaecf0; border-radius: 4px; overflow: hidden; }
+.writing-page .panel-header {
+  padding: 12px 16px; background: #f9fafb;
+  border-bottom: 1px solid #eaecf0;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.writing-page .panel-header h3 { margin: 0; font-size: 14px; }
+.writing-page .char-count { font-size: 12px; color: #9ca3af; }
+
+.writing-page .text-input {
+  width: 100%; min-height: 360px; border: none; padding: 16px;
+  font-size: 14px; line-height: 1.8; resize: vertical; outline: none; font-family: inherit;
+}
+.writing-page .text-output { min-height: 360px; padding: 16px; font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
+.writing-page .text-output.empty { color: #9ca3af; }
+.writing-page .output-actions { display: flex; gap: 8px; }
+
+.writing-page .actions-panel {
+  display: flex; flex-direction: column; gap: 16px; padding-top: 42px;
+}
+.writing-page .action-buttons { display: flex; flex-direction: column; gap: 6px; }
+.writing-page .action-btn {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 10px 14px; border: 1px solid #eaecf0; border-radius: 4px;
+  background: white; cursor: pointer; text-align: left;
+  transition: border-color 0.2s, background 0.2s;
+}
+.writing-page .action-btn:hover { border-color: #4CCBA0; background: #ecfdf5; }
+.writing-page .action-btn.active { border-color: #4CCBA0; background: #ecfdf5; box-shadow: 0 0 0 1px #4CCBA0; }
+.writing-page .act-icon { font-size: 16px; }
+.writing-page .act-label { font-size: 13px; font-weight: 500; }
+.writing-page .act-desc { font-size: 11px; color: #9ca3af; width: 100%; }
+
+.writing-page .instruction-input {
+  width: 100%; padding: 8px 12px; border: 1px solid #d9d9d9;
+  border-radius: 4px; font-size: 13px; outline: none; box-sizing: border-box;
+}
+.writing-page .instruction-input:focus { border-color: #4CCBA0; }
+
+.writing-page .processing-indicator {
+  padding: 12px 16px; font-size: 13px; color: #4CCBA0;
+  display: flex; align-items: center; gap: 8px; border-top: 1px solid #eaecf0;
+}
+
+@keyframes ai-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
