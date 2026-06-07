@@ -59,16 +59,9 @@ tasks.withType(JavaCompile).configureEach {
     options.release = 21
 }
 
-// 前端子项目构建产物复制到插件资源目录
-tasks.register('processUiResources', Copy) {
-    from project(':ui').layout.buildDirectory.dir('dist')
-    into layout.buildDirectory.dir('resources/main/console')
+// Vite 直接输出到 src/main/resources/console/，所以只需确保 processResources 在 Vite 之后运行
+tasks.named('processResources') {
     dependsOn project(':ui').tasks.named('assemble')
-    shouldRunAfter tasks.named('processResources')
-}
-
-tasks.named('classes') {
-    dependsOn tasks.named('processUiResources')
 }
 
 tasks.named('generatePluginComponentsIdx') {

@@ -7,7 +7,9 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import run.halo.ai.assistant.config.AIProperties;
 import run.halo.ai.assistant.llm.LlmClient;
+import run.halo.ai.assistant.rag.PipelineTrace;
 import run.halo.ai.assistant.rag.RAGPipeline;
+import run.halo.ai.assistant.rag.RAGPipeline.DebugRAGResult;
 import run.halo.ai.assistant.rag.RAGPipeline.RAGContext;
 import run.halo.ai.assistant.rag.RetrievedDocument;
 import run.halo.app.core.extension.Counter;
@@ -72,6 +74,17 @@ public class ChatService {
      */
     public Mono<ChatResponse> chatStreamWithCitations(String userMessage,
                                                        List<Map<String, String>> history) {
+        return chatStreamWithCitations(userMessage, history, null);
+    }
+
+    /**
+     * 流式对话 — 带访客 IP(用于 LLM 调用前的访客限流).
+     * clientIp 通过方法参数一路透传到 llmClient.chatStream, 不走 reactor context —
+     * 因为 SSE body 的订阅链不在入口 .contextWrite 的下游, context 注入不进去.
+     */
+    public Mono<ChatResponse> chatStreamWithCitations(String userMessage,
+                                                       List<Map<String, String>> history,
+                                                       String clientIp) {
         ChatIntent intent = ChatIntent.detect(userMessage);
 
         // 热门文章意图 → 跳过 RAG，直接查 Counter 浏览量
@@ -90,7 +103,9 @@ public class ChatService {
                                     modelConfig.getChatModel(),
                                     messages,
                                     chatConfig.getTemperature(),
-                                    chatConfig.getMaxTokens()
+                                    chatConfig.getMaxTokens(),
+                                    null,
+                                    clientIp
                                 );
                             })
                     );
@@ -133,7 +148,9 @@ public class ChatService {
                                         modelConfig.getChatModel(),
                                         messages,
                                         chatConfig.getTemperature(),
-                                        chatConfig.getMaxTokens()
+                                        chatConfig.getMaxTokens(),
+                                        null,
+                                        clientIp
                                     );
                                 })
                         );
@@ -184,6 +201,14 @@ public class ChatService {
      * 非流式对话
      */
     public Mono<String> chat(String userMessage, List<Map<String, String>> history) {
+        return chat(userMessage, history, null);
+    }
+
+    /**
+     * 非流式对话 — 带访客 IP(用于访客限流). clientIp 透传到 llmClient.chat.
+     */
+    public Mono<String> chat(String userMessage, List<Map<String, String>> history,
+                             String clientIp) {
         return ragPipeline.retrieve(userMessage, history)
             .timeout(RAG_OVERALL_TIMEOUT)
             .onErrorResume(e -> {
@@ -210,7 +235,9 @@ public class ChatService {
                                     modelConfig.getChatModel(),
                                     messages,
                                     chatConfig.getTemperature(),
-                                    chatConfig.getMaxTokens()
+                                    chatConfig.getMaxTokens(),
+                                    null,
+                                    clientIp
                                 );
                             })
                     );
@@ -424,4 +451,122 @@ public class ChatService {
      * 对话响应 — 包含 token 流和引用来源
      */
     public record ChatResponse(Flux<String> stream, List<Map<String, String>> citations) {}
+
+    /**
+     * 调试对话响应 — 在 ChatResponse 基础上增加管线追踪数据
+     */
+    public record DebugChatResponse(
+        Flux<String> stream,
+        List<Map<String, String>> citations,
+        PipelineTrace trace
+    ) {}
+
+    /**
+     * 调试模式流式对话 — 带管线追踪
+     *
+     * 流程与 chatStreamWithCitations 相同，但用 retrieveWithTrace 收集各阶段追踪数据
+     */
+    public Mono<DebugChatResponse> chatStreamWithDebug(String userMessage,
+                                                         List<Map<String, String>> history,
+                                                         String clientIp) {
+        long intentStart = System.currentTimeMillis();
+        ChatIntent intent = ChatIntent.detect(userMessage);
+        PipelineTrace trace = new PipelineTrace(userMessage, intent.name());
+        trace.addStage("chat_intent", "意图识别", intentStart, System.currentTimeMillis(),
+            "ok", "完成", intent.name(), null);
+
+        // 热门文章意图 → 跳过 RAG
+        if (intent == ChatIntent.HOT_ARTICLES) {
+            return fetchHotArticles(10).map(articles -> {
+                String hotPrompt = buildHotArticlesPrompt(articles);
+                Flux<String> stream = aiProperties.getModelConfig()
+                    .flatMapMany(modelConfig ->
+                        aiProperties.getChatConfig()
+                            .flatMapMany(chatConfig -> {
+                                List<Map<String, String>> messages = buildMessages(
+                                    hotPrompt, 0, List.of(), userMessage);
+                                return llmClient.chatStream(
+                                    modelConfig.getChatBaseUrl(),
+                                    modelConfig.getChatApiKey(),
+                                    modelConfig.getChatModel(),
+                                    messages,
+                                    chatConfig.getTemperature(),
+                                    chatConfig.getMaxTokens(),
+                                    null,
+                                    clientIp
+                                );
+                            })
+                    );
+                return new DebugChatResponse(stream, List.of(), trace);
+            });
+        }
+
+        // 普通对话 → 走带追踪的 RAG 流程
+        return ragPipeline.retrieveWithTrace(userMessage, history)
+            .timeout(RAG_OVERALL_TIMEOUT)
+            .onErrorResume(e -> {
+                log.warn("[ChatService] RAG 检索超时或失败，跳过: {}", e.getMessage());
+                PipelineTrace fallbackTrace = new PipelineTrace(userMessage, intent.name());
+                fallbackTrace.addStage("rag_error", "RAG 检索", 0, System.currentTimeMillis(),
+                    "error", "异常", e.getMessage(), null);
+                return Mono.just(new DebugRAGResult(RAGContext.empty(), fallbackTrace));
+            })
+            .flatMap(debugResult -> {
+                RAGContext ragContext = debugResult.context();
+                // 合并 RAG 管线追踪阶段
+                trace.stages().addAll(debugResult.trace().stages());
+
+                // 追踪：RAG 结果注入 LLM 的情况
+                long injectStart = System.currentTimeMillis();
+                int ragDocCount = (ragContext.documents() != null) ? ragContext.documents().size() : 0;
+                boolean hasContext = ragDocCount > 0
+                    && ragContext.contextText() != null && !ragContext.contextText().isBlank();
+
+                return extractCitations(ragContext).map(citations -> {
+                    if (ragContext.noMatch() && ragContext.fixedReply() != null) {
+                        trace.addStage("inject_context", "注入上下文", injectStart, System.currentTimeMillis(),
+                            "skipped", "跳过", "无匹配，使用固定回复", null);
+                        return new DebugChatResponse(
+                            Flux.just(ragContext.fixedReply()), citations, trace);
+                    }
+
+                    if (!hasContext) {
+                        trace.addStage("inject_context", "注入上下文", injectStart, System.currentTimeMillis(),
+                            "fallback", "无上下文", "检索到 " + ragDocCount + " 篇但 contextText 为空，LLM 将不使用知识库",
+                            Map.of("ragDocCount", ragDocCount));
+                    } else {
+                        Map<String, Object> injectData = new java.util.LinkedHashMap<>();
+                        injectData.put("ragDocCount", ragDocCount);
+                        injectData.put("contextLength", ragContext.contextText().length());
+                        trace.addStage("inject_context", "注入上下文", injectStart, System.currentTimeMillis(),
+                            "ok", "完成", ragDocCount + " 篇文档注入系统提示词，" + ragContext.contextText().length() + " 字符",
+                            injectData);
+                    }
+
+                    Flux<String> stream = aiProperties.getModelConfig()
+                        .flatMapMany(modelConfig ->
+                            aiProperties.getChatConfig()
+                                .flatMapMany(chatConfig -> {
+                                    String systemPrompt = buildSystemPrompt(
+                                        chatConfig.getSystemPrompt(), ragContext);
+                                    List<Map<String, String>> messages = buildMessages(
+                                        systemPrompt, chatConfig.getHistoryTurns(),
+                                        history, userMessage);
+                                    return llmClient.chatStream(
+                                        modelConfig.getChatBaseUrl(),
+                                        modelConfig.getChatApiKey(),
+                                        modelConfig.getChatModel(),
+                                        messages,
+                                        chatConfig.getTemperature(),
+                                        chatConfig.getMaxTokens(),
+                                        null,
+                                        clientIp
+                                    );
+                                })
+                        );
+
+                    return new DebugChatResponse(stream, citations, trace);
+                });
+            });
+    }
 }

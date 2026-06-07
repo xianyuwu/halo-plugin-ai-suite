@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Schedulers;
 import run.halo.ai.assistant.config.AIProperties;
 import run.halo.ai.assistant.llm.LlmClient;
@@ -14,10 +15,16 @@ import run.halo.app.extension.ReactiveExtensionClient;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * 索引服务 — 负责全量重建索引和增量更新
@@ -51,11 +58,18 @@ public class ReindexService {
 
     // 跨文章并发上限 — 同时最多 4 篇文章在调 embedding。
     // Reactor flatMap 默认并发是 256，对几乎所有 embedding 厂商都会触发限流，
-    // 调到 4 在国内厂商（智谱/通义/百度等 60~300 RPM）下也基本安全。
+    // 调到 4 在主流 OpenAI 兼容厂商（智谱/通义等 60~300 RPM）下也基本安全。
     private static final int POST_CONCURRENCY = 4;
+
+    // 失败重试延迟 — 主轮完成后等 2 秒再重试，给 LLM 限流恢复的时间
+    private static final Duration RETRY_DELAY = Duration.ofSeconds(2);
 
     // 失败追踪：postName → title
     private final Map<String, String> failedPosts = new ConcurrentHashMap<>();
+    // 关键词提取状态：postName → "ok" | "truncated" | "failed"
+    private final Map<String, String> keywordStatus = new ConcurrentHashMap<>();
+    // 每篇文章被截断的关键词数：postName → count
+    private final Map<String, Integer> keywordTruncated = new ConcurrentHashMap<>();
     private volatile boolean indexing = false;
 
     /**
@@ -87,7 +101,8 @@ public class ReindexService {
                     .flatMap(post -> {
                         String title = post.getSpec().getTitle();
                         String postName = post.getMetadata().getName();
-                        return processPost(post, modelConfig, chunkConfig)
+                        return processPost(post, modelConfig, chunkConfig,
+                            new AtomicInteger(0), new AtomicInteger(0))
                             .doOnNext(chunks -> {
                                 if (chunks > 0) successCount.incrementAndGet();
                             })
@@ -125,8 +140,256 @@ public class ReindexService {
         List<String> failedTitles
     ) {}
 
+    // ===== 异步重建进度 =====
+
+    public record ReindexProgress(
+        String phase,               // idle | clearing | listing | processing | completed | error
+        int totalArticles,
+        int processedArticles,
+        int successArticles,
+        int failedArticles,
+        String currentArticleTitle,
+        int totalChunks,
+        String errorMessage,
+        int percentage,
+        String detail,              // 子步骤：提取关键词 / 生成向量 / 写入索引 等
+        int truncatedKeywords,       // 被截断关键词的切片数
+        int keywordsFailed           // 关键词提取完全失败的文章数
+    ) {}
+
+    // 广播进度事件（multicast：多个 SSE 客户端可同时订阅）
+    private final Sinks.Many<ReindexProgress> progressSink =
+        Sinks.many().multicast().onBackpressureBuffer(256, false);
+
+    // 保存当前快照，新 SSE 连接先拿到当前状态
+    private final AtomicReference<ReindexProgress> currentProgress =
+        new AtomicReference<>(new ReindexProgress("idle", 0, 0, 0, 0, "", 0, null, 0, "", 0, 0));
+
+    /**
+     * 获取进度流 — 先发快照，再接实时更新
+     */
+    public Flux<ReindexProgress> progressStream() {
+        ReindexProgress snapshot = currentProgress.get();
+        // 如果已经完成或空闲，只发一次快照就结束
+        if ("idle".equals(snapshot.phase()) || "completed".equals(snapshot.phase()) || "error".equals(snapshot.phase())) {
+            return Flux.just(snapshot);
+        }
+        return Flux.concat(Flux.just(snapshot), progressSink.asFlux());
+    }
+
+    /**
+     * 获取当前进度快照
+     */
+    public ReindexProgress currentProgress() {
+        return currentProgress.get();
+    }
+
+    /**
+     * 异步触发全量重建，通过 progressStream() 推送进度。
+     * 如果已有重建在进行中则返回 error。
+     * pipeline 在 boundedElastic 后台线程执行，本方法立即返回。
+     */
+    public Mono<Void> startReindexAsync() {
+        if (indexing) {
+            return Mono.error(new IllegalStateException("索引正在重建中"));
+        }
+        return aiProperties.getModelConfig().flatMap(modelConfig -> {
+            if (modelConfig.getEmbeddingApiKey() == null
+                || modelConfig.getEmbeddingApiKey().isBlank()) {
+                return Mono.error(new IllegalStateException("Embedding API Key 未配置"));
+            }
+            return aiProperties.getChunkConfig().flatMap(chunkConfig -> {
+                log.info("[ReindexService] 开始全量重建索引（异步）...");
+                indexing = true;
+                failedPosts.clear();
+                keywordStatus.clear();
+                keywordTruncated.clear();
+
+                List<String> failedTitles = Collections.synchronizedList(new ArrayList<>());
+                AtomicInteger successCount = new AtomicInteger(0);
+                AtomicInteger failCount = new AtomicInteger(0);
+                AtomicInteger chunkSum = new AtomicInteger(0);
+                AtomicInteger processed = new AtomicInteger(0);
+                AtomicInteger truncatedTotal = new AtomicInteger(0);
+                AtomicInteger keywordsFailedTotal = new AtomicInteger(0);
+
+                // phase: clearing
+                emitProgress("clearing", 0, 0, 0, 0, "", 0, null, "", 0, 0);
+
+                // 构建完整 pipeline，在后台订阅执行
+                Mono.fromCallable(() -> { luceneIndexService.clearAll(); return true; })
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .thenMany(listPublishedPosts().collectList())
+                    .flatMap(posts -> {
+                        int total = posts.size();
+                        if (total == 0) {
+                            log.info("[ReindexService] 没有已发布的文章，跳过");
+                            emitProgress("completed", 0, 0, 0, 0, "", 0, null, "", 0, 0);
+                            return Flux.empty();
+                        }
+                        emitProgress("listing", total, 0, 0, 0, "", 0, null, "", 0, 0);
+
+                        // 构建 postName → Post 映射，供重试阶段用
+                        Map<String, Post> postMap = new LinkedHashMap<>();
+                        posts.forEach(p -> postMap.put(p.getMetadata().getName(), p));
+
+                        return Flux.fromIterable(posts)
+                            .flatMap(post -> {
+                                String title = post.getSpec().getTitle();
+                                String postName = post.getMetadata().getName();
+                                // 发射子步骤提示
+                                String step = chunkConfig.isAutoKeywords()
+                                    ? "提取关键词" : "生成向量";
+                                emitProgress("processing", total,
+                                    processed.get(), successCount.get(), failCount.get(),
+                                    title, chunkSum.get(), null, step, 0, 0);
+                                return processPost(post, modelConfig, chunkConfig,
+                                    truncatedTotal, keywordsFailedTotal)
+                                    .doOnNext(chunks -> {
+                                        if (chunks > 0) {
+                                            successCount.incrementAndGet();
+                                            chunkSum.addAndGet(chunks);
+                                        } else {
+                                            failCount.incrementAndGet();
+                                        }
+                                        int done = processed.incrementAndGet();
+                                        emitProgress("processing", total, done,
+                                            successCount.get(), failCount.get(),
+                                            title, chunkSum.get(), null, "写入索引", 0, 0);
+                                    })
+                                    .onErrorResume(e -> {
+                                        log.error("[ReindexService] 处理文章 '{}' 失败: {}", title, e.getMessage());
+                                        failedTitles.add(title);
+                                        failedPosts.put(postName, title);
+                                        failCount.incrementAndGet();
+                                        int done = processed.incrementAndGet();
+                                        emitProgress("processing", total, done,
+                                            successCount.get(), failCount.get(),
+                                            title, chunkSum.get(), null, "失败", 0, 0);
+                                        return Mono.just(0);
+                                    });
+                            }, POST_CONCURRENCY)
+                            // 主轮完成后，对失败文章自动重试一轮
+                            .then(Mono.defer(() -> {
+                                if (failedPosts.isEmpty()) return Mono.empty();
+
+                                // 收集失败的 postName，清空失败状态准备重试
+                                List<String> retryNames = new ArrayList<>(failedPosts.keySet());
+                                int retryTotal = retryNames.size();
+                                log.info("[ReindexService] 主轮完成，{} 篇失败，{} 秒后开始重试",
+                                    retryTotal, RETRY_DELAY.getSeconds());
+                                emitProgress("retrying", total, total,
+                                    successCount.get(), failCount.get(),
+                                    "", chunkSum.get(), null,
+                                    "重试失败文章（" + retryTotal + " 篇）",
+                                    truncatedTotal.get(), keywordsFailedTotal.get());
+
+                                AtomicInteger retryDone = new AtomicInteger(0);
+                                AtomicInteger retryRecovered = new AtomicInteger(0);
+
+                                return Mono.delay(RETRY_DELAY)
+                                    .thenMany(Flux.fromIterable(retryNames))
+                                    .concatMap(postName -> {
+                                        Post post = postMap.get(postName);
+                                        if (post == null) return Mono.just(0);
+
+                                        String title = post.getSpec().getTitle();
+                                        emitProgress("retrying", total, total,
+                                            successCount.get(), failCount.get(),
+                                            title, chunkSum.get(), null, "重试中",
+                                            truncatedTotal.get(), keywordsFailedTotal.get());
+
+                                        return processPost(post, modelConfig, chunkConfig,
+                                            truncatedTotal, keywordsFailedTotal)
+                                            .doOnNext(chunks -> {
+                                                int done = retryDone.incrementAndGet();
+                                                if (chunks > 0) {
+                                                    // 重试成功：更新计数
+                                                    retryRecovered.incrementAndGet();
+                                                    failedPosts.remove(postName);
+                                                    failedTitles.remove(title);
+                                                    failCount.decrementAndGet();
+                                                    successCount.incrementAndGet();
+                                                    chunkSum.addAndGet(chunks);
+                                                    log.info("[ReindexService] 重试成功 '{}': {} 个 chunk",
+                                                        title, chunks);
+                                                }
+                                                emitProgress("retrying", total, total,
+                                                    successCount.get(), failCount.get(),
+                                                    title, chunkSum.get(), null,
+                                                    "重试 " + done + "/" + retryTotal,
+                                                    truncatedTotal.get(), keywordsFailedTotal.get());
+                                            })
+                                            .onErrorResume(e -> {
+                                                log.warn("[ReindexService] 重试仍失败 '{}': {}",
+                                                    title, e.getMessage());
+                                                int done = retryDone.incrementAndGet();
+                                                emitProgress("retrying", total, total,
+                                                    successCount.get(), failCount.get(),
+                                                    title, chunkSum.get(), null,
+                                                    "重试 " + done + "/" + retryTotal,
+                                                    truncatedTotal.get(), keywordsFailedTotal.get());
+                                                return Mono.just(0);
+                                            });
+                                    })
+                                    .then(Mono.fromRunnable(() ->
+                                        log.info("[ReindexService] 重试完成，恢复 {} 篇，仍有 {} 篇失败",
+                                            retryRecovered.get(), failedPosts.size())
+                                    ));
+                            }))
+                            .then(Mono.fromRunnable(() -> {
+                                int totalChunks = chunkSum.get();
+                                log.info("[ReindexService] 全量重建完成，共 {} 个 chunk，成功 {} 篇，失败 {} 篇",
+                                    totalChunks, successCount.get(), failCount.get());
+                                emitProgress("completed", total, total,
+                                    successCount.get(), failCount.get(),
+                                    "", totalChunks, null, "",
+                                    truncatedTotal.get(), keywordsFailedTotal.get());
+                            }));
+                    })
+                    .then()
+                    .doFinally(signal -> indexing = false)
+                    // 后台订阅 — 不阻塞 HTTP 响应
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .subscribe(
+                        v -> {},
+                        e -> {
+                            log.error("[ReindexService] 重建异常: {}", e.getMessage());
+                            emitProgress("error", 0, 0, 0, 0, "", 0, e.getMessage(), "", 0, 0);
+                            indexing = false;
+                        }
+                    );
+
+                return Mono.empty(); // 立即返回
+            });
+        });
+    }
+
+    private void emitProgress(String phase, int total, int processed,
+                              int success, int failed, String currentTitle,
+                              int chunks, String error, String detail,
+                              int truncatedKeywords, int keywordsFailed) {
+        int pct = total > 0 ? Math.min(100, processed * 100 / total) : 0;
+        if ("completed".equals(phase) || "error".equals(phase)) pct = 100;
+        if ("clearing".equals(phase) || "listing".equals(phase)) pct = 0;
+        ReindexProgress p = new ReindexProgress(phase, total, processed,
+            success, failed, currentTitle != null ? currentTitle : "",
+            chunks, error, pct, detail != null ? detail : "",
+            truncatedKeywords, keywordsFailed);
+        currentProgress.set(p);
+        progressSink.tryEmitNext(p);
+    }
+
     public Map<String, String> getFailedPosts() {
         return Map.copyOf(failedPosts);
+    }
+
+    public Map<String, String> getKeywordStatus() {
+        return Map.copyOf(keywordStatus);
+    }
+
+    public Map<String, Integer> getKeywordTruncated() {
+        return Map.copyOf(keywordTruncated);
     }
 
     public boolean isIndexing() {
@@ -153,7 +416,8 @@ public class ReindexService {
                             log.debug("[ReindexService] 文章 {} 未发布、已删除或私有，清除索引", postName);
                             return deletePostIndex(postName).thenReturn(0);
                         }
-                        return processPost(post, modelConfig, chunkConfig);
+                        return processPost(post, modelConfig, chunkConfig,
+                            new AtomicInteger(0), new AtomicInteger(0));
                     });
             });
     }
@@ -171,7 +435,138 @@ public class ReindexService {
         }).subscribeOn(Schedulers.boundedElastic()).then();
     }
 
-    // ===== 内部方法 =====
+    // ===== 单篇带进度重建 =====
+
+    private static final ObjectMapper jsonMapper = new ObjectMapper();
+
+    /**
+     * 单篇文章带进度的重建索引 — 在后台线程执行，通过 Sinks 广播进度 JSON
+     * 返回 Sink，调用方通过 sink.asFlux() 订阅进度流
+     */
+    public Sinks.Many<String> reindexPostWithProgress(String postName) {
+        Sinks.Many<String> sink = Sinks.many().replay().latest();
+
+        aiProperties.getModelConfig().flatMap(modelConfig -> {
+            if (modelConfig.getEmbeddingApiKey() == null
+                || modelConfig.getEmbeddingApiKey().isBlank()) {
+                return Mono.error(new IllegalStateException("Embedding API Key 未配置"));
+            }
+            return aiProperties.getChunkConfig().flatMap(chunkConfig ->
+                extensionClient.fetch(Post.class, postName)
+                    .flatMap(post -> {
+                        if (!post.isPublished() || post.isDeleted()
+                            || post.getSpec() == null
+                            || !Boolean.TRUE.equals(post.getSpec().getPublish())
+                            || !Post.isPublic(post.getSpec())) {
+                            try {
+                                luceneIndexService.deleteByPostId(postName);
+                            } catch (Exception ex) {
+                                log.error("[ReindexService] 清除索引失败: {}", ex.getMessage());
+                            }
+                            emitSingle(sink, "done", "", 0, 100);
+                            return Mono.just(0);
+                        }
+                        return processPostWithProgress(post, modelConfig, chunkConfig, sink);
+                    })
+            );
+        })
+        .subscribeOn(Schedulers.boundedElastic())
+        .subscribe(
+            chunks -> {
+                emitSingle(sink, "done", "", chunks, 100);
+                sink.tryEmitComplete();
+            },
+            e -> {
+                log.error("[ReindexService] 单篇重建失败 {}: {}", postName, e.getMessage());
+                emitSingle(sink, "error", e.getMessage(), 0, 0);
+                sink.tryEmitComplete();
+            }
+        );
+
+        return sink;
+    }
+
+    private Mono<Integer> processPostWithProgress(Post post,
+                                                    AIProperties.ModelConfig modelConfig,
+                                                    AIProperties.ChunkConfig chunkConfig,
+                                                    Sinks.Many<String> sink) {
+        String postName = post.getMetadata().getName();
+        String title = post.getSpec().getTitle();
+
+        emitSingle(sink, "fetching_content", "", 0, 5);
+
+        // 短暂延迟，让前端 SSE 连接有时间建立，用户能看到阶段变化
+        return Mono.delay(Duration.ofMillis(300))
+            .then(postContentService.getReleaseContent(postName))
+            .map(contentWrapper -> {
+                String content = contentWrapper.getRaw();
+                if (content == null || content.isBlank()) {
+                    content = contentWrapper.getContent();
+                }
+                return content != null ? content : "";
+            })
+            .defaultIfEmpty("")
+            .flatMap(content -> {
+                if (content.isBlank()) {
+                    return Mono.just(0);
+                }
+
+                emitSingle(sink, "chunking", "", 0, 10);
+                List<TextChunk> chunks = documentChunker.chunk(postName, title, content, chunkConfig);
+                if (chunks.isEmpty()) {
+                    return Mono.just(0);
+                }
+
+                Mono<List<TextChunk>> chunksMono;
+                if (chunkConfig.isAutoKeywords() && chunkConfig.getAutoKeywordsCount() > 0) {
+                    emitSingle(sink, "keywords", "", 0, 20);
+                    int maxTokens = Math.max(256, chunkConfig.getKeywordsMaxTokens());
+                    int batchSize = Math.max(5, chunkConfig.getKeywordsBatchSize());
+                    AtomicInteger truncated = new AtomicInteger(0);
+                    AtomicInteger kwFailed = new AtomicInteger(0);
+                    chunksMono = extractKeywords(chunks, chunkConfig.getAutoKeywordsCount(),
+                        maxTokens, batchSize)
+                        .map(result -> {
+                            truncated.addAndGet(result.truncatedCount());
+                            if (result.failed()) {
+                                kwFailed.incrementAndGet();
+                                keywordStatus.put(postName, "failed");
+                            } else if (result.truncatedCount() > 0) {
+                                keywordStatus.put(postName, "truncated");
+                                keywordTruncated.put(postName, result.truncatedCount());
+                            } else {
+                                keywordStatus.put(postName, "ok");
+                            }
+                            return result.chunks();
+                        });
+                } else {
+                    chunksMono = Mono.just(chunks);
+                }
+
+                return chunksMono.flatMap(enrichedChunks -> {
+                    emitSingle(sink, "embedding", "", 0, 60);
+                    return Mono.fromCallable(() -> {
+                        luceneIndexService.deleteByPostId(postName);
+                        return true;
+                    })
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .then(embedAndIndexChunks(enrichedChunks, modelConfig));
+                });
+            });
+    }
+
+    private void emitSingle(Sinks.Many<String> sink, String stage, String error, int chunks, int percent) {
+        try {
+            ObjectNode node = jsonMapper.createObjectNode();
+            node.put("stage", stage);
+            node.put("error", error != null ? error : "");
+            node.put("chunks", chunks);
+            node.put("percent", percent);
+            sink.tryEmitNext(jsonMapper.writeValueAsString(node));
+        } catch (Exception e) {
+            log.warn("[ReindexService] 进度序列化失败: {}", e.getMessage());
+        }
+    }
 
     /**
      * 列出所有已发布的 Post
@@ -191,7 +586,9 @@ public class ReindexService {
      */
     private Mono<Integer> processPost(Post post,
                                        AIProperties.ModelConfig modelConfig,
-                                       AIProperties.ChunkConfig chunkConfig) {
+                                       AIProperties.ChunkConfig chunkConfig,
+                                       AtomicInteger truncatedKeywords,
+                                       AtomicInteger keywordsFailed) {
         String postName = post.getMetadata().getName();
         String title = post.getSpec().getTitle();
 
@@ -217,14 +614,38 @@ public class ReindexService {
                     return Mono.just(0);
                 }
 
-                // 先删除旧索引，再重建
-                return Mono.fromCallable(() -> {
+                // 自动提取关键词（如果开启）
+                Mono<List<TextChunk>> chunksMono;
+                if (chunkConfig.isAutoKeywords() && chunkConfig.getAutoKeywordsCount() > 0) {
+                    int maxTokens = Math.max(256, chunkConfig.getKeywordsMaxTokens());
+                    int batchSize = Math.max(5, chunkConfig.getKeywordsBatchSize());
+                    chunksMono = extractKeywords(chunks, chunkConfig.getAutoKeywordsCount(),
+                        maxTokens, batchSize)
+                        .map(result -> {
+                            truncatedKeywords.addAndGet(result.truncatedCount());
+                            if (result.failed()) {
+                                keywordsFailed.incrementAndGet();
+                                keywordStatus.put(postName, "failed");
+                            } else if (result.truncatedCount() > 0) {
+                                keywordStatus.put(postName, "truncated");
+                                keywordTruncated.put(postName, result.truncatedCount());
+                            } else {
+                                keywordStatus.put(postName, "ok");
+                            }
+                            return result.chunks();
+                        });
+                } else {
+                    chunksMono = Mono.just(chunks);
+                }
+
+                return chunksMono.flatMap(enrichedChunks ->
+                    Mono.fromCallable(() -> {
                         luceneIndexService.deleteByPostId(postName);
                         return true;
                     })
                     .subscribeOn(Schedulers.boundedElastic())
-                    // 批量 embedding + 索引
-                    .then(embedAndIndexChunks(chunks, modelConfig));
+                    .then(embedAndIndexChunks(enrichedChunks, modelConfig))
+                );
             });
     }
 
@@ -287,4 +708,87 @@ public class ReindexService {
         }
         return batches;
     }
+
+    /**
+     * 调用 LLM 为切片提取关键词，按每批 20 个切片分批以避免 token 溢出。
+     * 返回 KeywordExtractResult 包含富关键词的切片列表和被截断的切片数。
+     */
+    private Mono<KeywordExtractResult> extractKeywords(List<TextChunk> chunks, int count,
+                                                        int maxTokens, int batchSize) {
+        int safeBatchSize = Math.max(1, Math.min(batchSize, 50)); // 钳制 1~50
+        List<List<TextChunk>> batches = splitIntoBatches(chunks, safeBatchSize);
+        AtomicInteger truncatedTotal = new AtomicInteger(0);
+
+        return aiProperties.getModelConfig()
+            .flatMapMany(modelConfig ->
+                Flux.fromIterable(batches)
+                    .index()
+                    .concatMap(indexed -> {
+                        long batchIdx = indexed.getT1();
+                        List<TextChunk> batch = indexed.getT2();
+
+                        StringBuilder sb = new StringBuilder();
+                        sb.append("为以下文本分别提取").append(count)
+                            .append("个最相关的关键词，用逗号分隔。只输出关键词，每行一个文本，不要加序号或任何解释。\n\n");
+                        for (int i = 0; i < batch.size(); i++) {
+                            sb.append("文本").append(i + 1).append(": ")
+                                .append(batch.get(i).content()).append("\n\n");
+                        }
+
+                        return llmClient.chatInternal(
+                            modelConfig.getChatBaseUrl(),
+                            modelConfig.getChatApiKey(),
+                            modelConfig.getChatModel(),
+                            List.of(Map.of("role", "user", "content", sb.toString())),
+                            0.1f,
+                            maxTokens
+                        )
+                        .map(response -> {
+                            String[] lines = response.trim().split("\n");
+                            int truncated = Math.max(0, batch.size() - lines.length);
+                            truncatedTotal.addAndGet(truncated);
+                            if (truncated > 0) {
+                                log.warn("[ReindexService] 关键词响应截断: {}/{} 个切片获取到关键词",
+                                    lines.length, batch.size());
+                            }
+                            List<TextChunk> result = new ArrayList<>();
+                            for (int i = 0; i < batch.size(); i++) {
+                                TextChunk original = batch.get(i);
+                                List<String> keywords;
+                                if (i < lines.length) {
+                                    String line = lines[i].replaceAll("[,，、；;]", ",").trim();
+                                    keywords = java.util.Arrays.stream(line.split(","))
+                                        .map(String::trim)
+                                        .filter(k -> !k.isEmpty())
+                                        .limit(count)
+                                        .toList();
+                                } else {
+                                    keywords = List.of();
+                                }
+                                result.add(new TextChunk(
+                                    original.id(), original.postId(), original.postTitle(),
+                                    original.content(), original.chunkIndex(), keywords
+                                ));
+                            }
+                            return result;
+                        });
+                    })
+            )
+            .collectList()
+            .map(batchResults -> {
+                List<TextChunk> all = new ArrayList<>();
+                for (List<TextChunk> batch : batchResults) {
+                    all.addAll(batch);
+                }
+                all.sort(java.util.Comparator.comparingInt(TextChunk::chunkIndex));
+                return new KeywordExtractResult(all, truncatedTotal.get(), false);
+            })
+            .onErrorResume(e -> {
+                log.warn("[ReindexService] 关键词提取失败，跳过: {}", e.getMessage());
+                return Mono.just(new KeywordExtractResult(chunks, 0, true));
+            });
+    }
+
+    private record KeywordExtractResult(List<TextChunk> chunks, int truncatedCount,
+                                         boolean failed) {}
 }

@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@halo-dev/console-shared": "^2.21.0",
+    "@halo-dev/richtext-editor": "^2.24.0",
+    "marked": "^18.0.4",
     "vue": "^3.5.0"
   },
   "devDependencies": {

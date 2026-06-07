@@ -1,0 +1,9 @@
+apiVersion: plugin.halo.run/v1alpha1
+kind: ExtensionDefinition
+metadata:
+  name: ai-excerpt-generator
+spec:
+  extensionPointName: excerpt-generator
+  className: run.halo.ai.assistant.service.AIExcerptGenerator
+  displayName: "AI 智能摘要生成器"
+  description: "AI 开关开启时调用 LLM 生成摘要，关闭时退回纯文本截取"

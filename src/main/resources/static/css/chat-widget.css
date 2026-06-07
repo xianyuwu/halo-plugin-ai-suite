@@ -74,7 +74,7 @@
   align-items: center;
   justify-content: center;
   /* 优先用博客主题色变量（Dream 主题在 :root 定义 --theme），fallback 到插件配置色 */
-  background-color: var(--theme, var(--ai-chat-color, #7C3BED));
+  background-color: var(--ai-chat-color, var(--theme, #7C3BED));
   color: #fff;
   font-size: 20px;
   line-height: 32px;
@@ -91,6 +91,18 @@
 #ai-chat-trigger i { font-size: 20px; line-height: 1; }
 /* SVG fallback（博客没装 Remix Icon 时用）*/
 #ai-chat-trigger svg { width: 20px; height: 20px; stroke: currentColor; }
+#ai-chat-trigger .ai-trigger-label {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.ai-chat-header-avatar .ai-avatar-label,
+.ai-chat-row-avatar .ai-avatar-label {
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1;
+}
 
 /* ===== 聊天窗口容器 ===== */
 #ai-chat-window {
@@ -113,6 +125,21 @@
 #ai-chat-window.open { display: flex; }
 #ai-chat-window.position-right { right: 24px; }
 #ai-chat-window.position-left  { left: 24px; }
+
+#ai-chat-window.ai-embed {
+  position: relative !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex !important;
+  flex-direction: column;
+}
+
 @keyframes ai-chat-pop {
   from { opacity: 0; transform: translateY(8px) scale(0.98); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -170,6 +197,36 @@
 .ai-chat-close:hover { background: rgba(255, 255, 255, 0.28); }
 .ai-chat-close svg { width: 16px; height: 16px; }
 
+.ai-chat-clear-area {
+  text-align: center;
+  padding: 6px 0;
+}
+
+.ai-chat-clear-btn {
+  background: none;
+  border: none;
+  color: var(--ai-chat-text-muted, #8a94a6);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+  transition: color 0.2s, background 0.2s;
+}
+
+.ai-chat-clear-btn:hover {
+  color: var(--ai-chat-text, #111827);
+  background: var(--ai-chat-bg-bubble-ai, #f3f4f6);
+}
+
+.ai-chat-clear-icon {
+  width: 13px;
+  height: 13px;
+}
+
 /* ===== 消息区 ===== */
 .ai-chat-messages {
   flex: 1;
@@ -192,10 +249,17 @@
 .ai-chat-row {
   display: flex;
   gap: 8px;
-  align-items: flex-end;
+  align-items: flex-start;  /* 头像对齐气泡顶部，与消息主体建立视觉连接 */
   max-width: 100%;
 }
 .ai-chat-row.user { justify-content: flex-end; }
+.ai-chat-row.user .ai-chat-content { max-width: 100%; }
+/* 气泡 + 操作区的纵向包装层，让 actions 按钮垂直排列在气泡下方 */
+.ai-chat-content {
+  display: flex;
+  flex-direction: column;
+  max-width: calc(100% - 36px);
+}
 .ai-chat-row-avatar {
   width: 28px;
   height: 28px;
@@ -206,12 +270,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-top: 6px;  /* 让头像视觉中心对齐气泡首行文字 */
 }
 .ai-chat-row-avatar svg { width: 14px; height: 14px; }
 
 /* 单条消息 */
 .ai-chat-msg {
-  max-width: calc(100% - 36px);
+  max-width: 100%;
   padding: 10px 14px;
   border-radius: 14px;
   line-height: 1.6;
@@ -236,32 +301,47 @@
   gap: 6px;
   padding-left: 36px; /* 与 AI 气泡对齐（让出头像位） */
 }
-.ai-chat-shortcuts-label {
-  font-size: 11px;
-  color: var(--ai-chat-text-muted);
-}
-.ai-chat-shortcuts-row {
+
+.ai-shortcut-card {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.ai-chat-shortcut {
-  background: var(--ai-chat-bg-bubble-ai);
-  color: var(--ai-chat-text-accent);
-  border: none;
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 280px;
+  padding: 10px 14px;
+  background: var(--ai-chat-bg-bubble-ai, #F5F2FF);
+  border: 1px solid var(--ai-chat-border, #DED6FF);
+  border-radius: 10px;
   font-family: inherit;
-  transition: transform 0.15s, background 0.2s;
+  font-size: 13px;
+  color: var(--ai-chat-text, #1E1C4A);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.15s, background 0.2s, border-color 0.2s;
 }
-.ai-chat-shortcut:hover {
+
+.ai-shortcut-card:hover {
   transform: translateY(-1px);
-  background: var(--ai-chat-border);
+  border-color: var(--ai-chat-color, #7C3BED);
+  background: var(--ai-chat-color, #7C3BED);
+  color: #fff;
 }
-.ai-chat-shortcut:active { transform: translateY(0); }
+
+.ai-shortcut-card:hover .ai-shortcut-card-icon {
+  /* emoji 本身即显示，不额外处理 */;
+}
+
+.ai-shortcut-card:active { transform: translateY(0); }
+
+.ai-shortcut-card-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.ai-shortcut-card-text {
+  flex: 1;
+  min-width: 0;
+}
 
 /* ===== Markdown 渲染样式（assistant 气泡内） ===== */
 .ai-chat-msg.assistant p { margin: 4px 0; }
@@ -497,6 +577,20 @@
 }
 .ai-chat-typing span:nth-child(2) { animation-delay: 0.2s; }
 .ai-chat-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+.ai-chat-typing.ai-typing-text {
+  font-size: 13px;
+  color: var(--ai-chat-text-secondary, #6b7280);
+  padding: 10px 16px;
+  gap: 0;
+  animation: ai-status-fade-in 0.3s ease;
+}
+
+@keyframes ai-status-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes ai-bounce {
   0%, 80%, 100% { transform: translateY(0); opacity: 0.3; }
   40%           { transform: translateY(-4px); opacity: 1; }
@@ -550,45 +644,120 @@
 .ai-chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
 .ai-chat-send svg { width: 18px; height: 18px; }
 
-/* ===== 引用来源 chip ===== */
-.ai-chat-citations {
-  align-self: flex-start;
-  max-width: calc(100% - 36px);
-  margin-left: 36px;
-  margin-top: -4px;
-  padding: 2px 0;
-  font-size: 11px;
-  line-height: 1.6;
+/* ===== 引用来源：气泡内可折叠 section ===== */
+.ai-chat-msg-divider {
+  border: none;
+  border-top: 1px solid var(--ai-chat-border);
+  /* 负 margin 让分隔线延伸到气泡 padding 边界 */
+  margin: 12px -14px 8px;
 }
-.ai-cite-label {
+
+.ai-chat-msg-cites {
+  margin: 0;
+}
+
+.ai-chat-msg-cites-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 4px 0;
   color: var(--ai-chat-text-muted);
-  margin-right: 4px;
+  font-size: 12px;
+  user-select: none;
+  border-radius: 4px;
+  transition: color 0.15s;
 }
-.ai-cite-link {
-  display: inline-block;
+.ai-chat-msg-cites-header:hover { color: var(--ai-chat-text); }
+.ai-chat-msg-cites-header:focus { outline: none; }
+.ai-chat-msg-cites-header:focus-visible {
+  outline: 2px solid var(--ai-chat-color);
+  outline-offset: 2px;
+}
+
+.ai-chat-msg-cites-label { flex: 1; min-width: 0; }
+.ai-chat-msg-cites-count {
   color: var(--ai-chat-text-accent);
-  text-decoration: none;
-  background: var(--ai-chat-bg-bubble-ai);
-  padding: 2px 8px;
-  border-radius: 6px;
-  margin: 2px 4px 2px 0;
-  transition: background 0.2s;
+  font-weight: 600;
+  margin: 0 1px;
 }
-.ai-cite-link:hover {
-  background: var(--ai-chat-border);
+
+.ai-chat-msg-cites-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-left: 4px;
+  transition: transform 0.2s ease;
+}
+.ai-chat-msg-cites-toggle svg { width: 14px; height: 14px; }
+.ai-chat-msg-cites.expanded .ai-chat-msg-cites-toggle {
+  transform: rotate(180deg);
+}
+
+.ai-chat-msg-cites-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+.ai-chat-msg-cites:not(.expanded) .ai-chat-msg-cites-body {
+  display: none;
+}
+
+/* 引用链接（气泡内版本）：编号徽章 + 文件图标 + 文字 */
+.ai-chat-msg-cites-body .ai-cite-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  color: var(--ai-chat-text);
+  text-decoration: none;
+  background: transparent;
+  font-size: 12px;
+  line-height: 1.4;
+  word-break: break-all;
+  transition: color 0.15s;
+}
+.ai-chat-msg-cites-body .ai-cite-link:hover {
+  color: var(--ai-chat-text-accent);
   text-decoration: underline;
+  background: transparent;
 }
-.ai-cite-link.ai-cite-disabled {
-  color: var(--ai-chat-text-muted);
-  background: var(--ai-chat-bg-bubble-ai);
-  cursor: default;
+.ai-chat-msg-cites-body .ai-cite-link-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--ai-chat-color);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.ai-chat-msg-cites-body .ai-cite-link-text { flex: 1; min-width: 0; }
+
+.ai-chat-msg-cites-body .ai-cite-link.ai-cite-disabled {
   opacity: 0.6;
+  cursor: default;
 }
-.ai-cite-link.ai-cite-disabled:hover {
-  background: var(--ai-chat-bg-bubble-ai);
+.ai-chat-msg-cites-body .ai-cite-link.ai-cite-disabled .ai-cite-link-num {
+  background: var(--ai-chat-text-muted);
+}
+.ai-chat-msg-cites-body .ai-cite-link.ai-cite-disabled:hover {
+  color: var(--ai-chat-text);
   text-decoration: none;
 }
-/* 点击 inline 角标后的目标 chip 高亮闪烁 */
+/* 气泡内的链接不需要 ::before 数字小圆 — 已有 .ai-cite-link-num 元素 */
+.ai-chat-msg-cites-body .ai-cite-link::before { content: none; }
+
+/* 点击 inline 角标后的目标高亮闪烁 */
 .ai-cite-link.ai-cite-highlight {
   animation: ai-cite-flash 1.2s ease-out;
 }
@@ -623,6 +792,31 @@
 .ai-cite-inline:active { transform: translateY(0); }
 
 /* ===== 输入区下的 AI 免责声明 ===== */
+.ai-chat-privacy-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--ai-chat-bg-bubble-ai, #F5F2FF);
+  border-bottom: 1px solid var(--ai-chat-border, #DED6FF);
+  font-size: 11px;
+  color: var(--ai-chat-text-muted, #63738C);
+  line-height: 1.5;
+}
+
+.ai-chat-privacy-close {
+  background: none;
+  border: none;
+  color: var(--ai-chat-text-muted, #8a94a6);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.ai-chat-privacy-close:hover { color: var(--ai-chat-text, #111827); }
+
 .ai-chat-disclaimer {
   text-align: center;
   padding: 0 12px 8px;
@@ -632,7 +826,7 @@
   flex-shrink: 0;
 }
 
-/* citations chip 前缀编号（小圆徽章）*/
+/* citations chip 前缀编号（小圆徽章）— 给搜索结果页卡片用 */
 .ai-cite-link {
   padding-left: 4px;            /* 给编号让点空间 */
 }
@@ -693,6 +887,421 @@
 /* 左下角浮窗位置时隐藏 handle —— handle 在左/上边缘会跨过屏幕边界，意义不大 */
 #ai-chat-window.position-left .ai-chat-resize-handle {
   display: none;
+}
+
+/* ===== AI 消息操作工具条（点赞/点踩/重生成/复制）===== */
+.ai-chat-msg-actions {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  justify-content: flex-end;  /* 右对齐 */
+  margin-top: 8px;
+  height: 24px;
+  font-size: 11px;
+}
+
+.ai-chat-msg-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ai-chat-text-muted, #63738C);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+  font-family: inherit;
+  line-height: 1;
+}
+
+.ai-chat-msg-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.ai-chat-msg-btn:hover:not(:disabled) {
+  color: var(--ai-chat-text-accent, #7C3BED);
+  background: var(--ai-chat-bg-bubble-ai, #F5F2FF);
+}
+
+.ai-chat-msg-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.ai-chat-msg-btn.liked {
+  color: #10b981;
+}
+.ai-chat-msg-btn.liked:hover { color: #059669; }
+.ai-chat-msg-btn.disliked {
+  color: #ef4444;
+}
+.ai-chat-msg-btn.disliked:hover { color: #dc2626; }
+
+/* 深色主题下按钮 hover 背景 */
+#ai-chat-window[data-theme="dark"] .ai-chat-msg-btn:hover:not(:disabled) {
+  color: var(--ai-chat-text-accent, #C4B5FD);
+  background: rgba(255, 255, 255, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  #ai-chat-window[data-theme="auto"] .ai-chat-msg-btn:hover:not(:disabled) {
+    color: var(--ai-chat-text-accent, #C4B5FD);
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* ===== 简易 toast ===== */
+.ai-chat-toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 14px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 12px;
+  border-radius: 6px;
+  z-index: 999999;
+  pointer-events: none;
+  animation: ai-toast-fade 1.5s ease-out;
+}
+@keyframes ai-toast-fade {
+  0%   { opacity: 0; transform: translate(-50%, 10px); }
+  10%  { opacity: 1; transform: translate(-50%, 0); }
+  90%  { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, 0); }
+}
+
+/* ===== 点踩评论弹窗（替换 window.prompt）===== */
+.ai-feedback-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: ai-feedback-modal-in 0.18s ease;
+}
+.ai-feedback-modal[hidden] { display: none; }
+
+@keyframes ai-feedback-modal-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.ai-feedback-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.ai-feedback-modal-card {
+  position: relative;
+  width: calc(100% - 32px);
+  max-width: 320px;
+  background: var(--ai-chat-bg-window, #fff);
+  color: var(--ai-chat-text, #1E1C4A);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  padding: 16px 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: ai-feedback-modal-pop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes ai-feedback-modal-pop {
+  from { transform: scale(0.96) translateY(4px); opacity: 0; }
+  to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.ai-feedback-modal-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ai-chat-text, #1E1C4A);
+}
+
+.ai-feedback-modal-hint {
+  font-size: 11px;
+  color: var(--ai-chat-text-muted, #63738C);
+  line-height: 1.4;
+  margin-top: -4px;
+}
+
+.ai-feedback-modal-input {
+  width: 100%;
+  min-height: 80px;
+  max-height: 160px;
+  padding: 8px 10px;
+  border: 1px solid var(--ai-chat-border, #DED6FF);
+  border-radius: 8px;
+  background: var(--ai-chat-bg-input, #F5F2FF);
+  color: var(--ai-chat-text, #1E1C4A);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ai-feedback-modal-input:focus {
+  border-color: var(--ai-chat-color, #7C3BED);
+  box-shadow: 0 0 0 3px rgba(124, 59, 237, 0.15);
+}
+.ai-feedback-modal-input::placeholder {
+  color: var(--ai-chat-text-placeholder, #A68CFA);
+}
+
+.ai-feedback-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+.ai-feedback-modal-count {
+  font-size: 11px;
+  color: var(--ai-chat-text-muted, #63738C);
+  font-variant-numeric: tabular-nums;
+}
+.ai-feedback-modal-count-num {
+  color: var(--ai-chat-text, #1E1C4A);
+  font-weight: 600;
+}
+.ai-feedback-modal-actions {
+  display: flex;
+  gap: 8px;
+}
+.ai-feedback-modal-btn {
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--ai-chat-border, #DED6FF);
+  background: var(--ai-chat-bg-window, #fff);
+  color: var(--ai-chat-text, #1E1C4A);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.ai-feedback-modal-btn:hover {
+  background: var(--ai-chat-bg-bubble-ai, #F5F2FF);
+}
+.ai-feedback-modal-submit {
+  background: var(--ai-chat-color, #7C3BED);
+  border-color: var(--ai-chat-color, #7C3BED);
+  color: #fff;
+}
+.ai-feedback-modal-submit:hover {
+  filter: brightness(1.08);
+  background: var(--ai-chat-color, #7C3BED);
+}
+
+/* 深色主题：弹窗内容自动跟随（CSS 变量切换） */
+#ai-chat-window[data-theme="dark"] .ai-feedback-modal-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+#ai-chat-window[data-theme="dark"] .ai-feedback-modal-input:focus {
+  box-shadow: 0 0 0 3px rgba(196, 181, 253, 0.2);
+}
+@media (prefers-color-scheme: dark) {
+  #ai-chat-window[data-theme="auto"] .ai-feedback-modal-backdrop {
+    background: rgba(0, 0, 0, 0.6);
+  }
+  #ai-chat-window[data-theme="auto"] .ai-feedback-modal-input:focus {
+    box-shadow: 0 0 0 3px rgba(196, 181, 253, 0.2);
+  }
+}
+
+/* ===== AI 搜索结果页综合回答卡片（挂在博客正文顶部）=====
+ * 与浮窗 (#ai-chat-window) 独立 — 卡片不在浮窗容器内, 必须自带 data-theme
+ * 透传 + 自己的 token 副本覆盖深色模式.
+ */
+
+/* 浅色 token（默认） */
+.ai-search-answer-card {
+  --ai-chat-color: #7C3BED;
+  --ai-chat-text-accent: var(--ai-chat-color);
+  --ai-chat-bg-window: #FFFFFF;
+  --ai-chat-bg-bubble-ai: #F5F2FF;
+  --ai-chat-text: #1E1C4A;
+  --ai-chat-text-muted: #63738C;
+  --ai-chat-border: #DED6FF;
+  --ai-chat-shadow-window: 0 8px 32px rgba(0,0,0,0.08), 0 2px 12px rgba(0,0,0,0.04);
+
+  max-width: 920px;
+  margin: 16px auto;
+  padding: 16px 20px;
+  background: var(--ai-chat-bg-window);
+  border: 1px solid var(--ai-chat-border);
+  border-left: 4px solid var(--ai-chat-color);
+  border-radius: 12px;
+  box-shadow: var(--ai-chat-shadow-window);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ai-chat-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+               "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+/* 深色 token — 由 JS 根据 detectPageTheme 设 data-theme="dark" 切换 */
+.ai-search-answer-card[data-theme="dark"] {
+  --ai-chat-color: #C4B5FD;
+  --ai-chat-text-accent: #C4B5FD;
+  --ai-chat-bg-window: #2A2A38;
+  --ai-chat-bg-bubble-ai: #45455E;
+  --ai-chat-text: #F0F0F5;
+  --ai-chat-text-muted: #B8B8CE;
+  --ai-chat-border: #555570;
+  --ai-chat-shadow-window: 0 8px 40px rgba(0,0,0,0.45), 0 2px 12px rgba(0,0,0,0.25);
+}
+
+.ai-search-answer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.ai-search-answer-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ai-chat-text);
+}
+.ai-search-answer-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--ai-chat-color);
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+.ai-search-answer-body {
+  font-size: 13.5px;
+  color: var(--ai-chat-text);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+.ai-search-answer-loading {
+  color: var(--ai-chat-text-muted);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ai-search-answer-loading::before {
+  content: "💭";
+  font-size: 14px;
+}
+
+/* 卡片内 Markdown 渲染（与浮窗气泡一致）*/
+.ai-search-answer-body p { margin: 6px 0; }
+.ai-search-answer-body p:first-child { margin-top: 0; }
+.ai-search-answer-body p:last-child { margin-bottom: 0; }
+.ai-search-answer-body h1,
+.ai-search-answer-body h2,
+.ai-search-answer-body h3 { margin: 10px 0 6px; font-weight: 600; color: var(--ai-chat-text); }
+.ai-search-answer-body h1 { font-size: 16px; }
+.ai-search-answer-body h2 { font-size: 15px; }
+.ai-search-answer-body h3 { font-size: 14px; }
+.ai-search-answer-body ul,
+.ai-search-answer-body ol { margin: 6px 0; padding-left: 22px; }
+.ai-search-answer-body li { margin: 2px 0; }
+.ai-search-answer-body code {
+  background: var(--ai-chat-bg-bubble-ai);
+  color: var(--ai-chat-text-accent);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace;
+}
+.ai-search-answer-body pre {
+  background: #1E1C4A; color: #F4F4F8;
+  padding: 10px 12px; border-radius: 8px;
+  overflow-x: auto; margin: 8px 0;
+  font-size: 12px;
+}
+.ai-search-answer-body blockquote {
+  margin: 6px 0; padding: 2px 0 2px 10px;
+  border-left: 3px solid var(--ai-chat-border);
+  color: var(--ai-chat-text-muted);
+}
+.ai-search-answer-body a {
+  color: var(--ai-chat-text-accent);
+  text-decoration: underline;
+}
+.ai-search-answer-body table {
+  border-collapse: collapse; margin: 8px 0; font-size: 12px;
+}
+.ai-search-answer-body th,
+.ai-search-answer-body td {
+  border: 1px solid var(--ai-chat-border);
+  padding: 4px 8px; text-align: left;
+}
+.ai-search-answer-body hr {
+  border: none; border-top: 1px solid var(--ai-chat-border);
+  margin: 10px 0;
+}
+.ai-search-answer-body strong { color: var(--ai-chat-text); font-weight: 600; }
+
+/* 引用来源 chip — 复用浮窗的 .ai-cite-link 风格（搜索结果页卡片用） */
+.ai-search-answer-citations .ai-cite-link {
+  display: inline-block;
+  color: var(--ai-chat-text-accent);
+  text-decoration: none;
+  background: var(--ai-chat-bg-bubble-ai);
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin: 2px 4px 2px 0;
+  transition: background 0.2s;
+}
+.ai-search-answer-citations .ai-cite-link:hover {
+  background: var(--ai-chat-border);
+  text-decoration: underline;
+}
+.ai-search-answer-citations .ai-cite-link.ai-cite-disabled {
+  color: var(--ai-chat-text-muted);
+  background: var(--ai-chat-bg-bubble-ai);
+  cursor: default;
+  opacity: 0.6;
+}
+.ai-search-answer-citations .ai-cite-link.ai-cite-disabled:hover {
+  background: var(--ai-chat-bg-bubble-ai);
+  text-decoration: none;
+}
+.ai-search-answer-citations {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--ai-chat-border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.ai-search-answer-citations .ai-cite-label {
+  font-size: 11px;
+  color: var(--ai-chat-text-muted);
+  margin-right: 4px;
+}
+
+/* 搜索卡片响应式 */
+@media (max-width: 480px) {
+  .ai-search-answer-card {
+    max-width: 100%;
+    margin: 8px 12px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    font-size: 13.5px;
+  }
+  .ai-search-answer-body { font-size: 13px; }
 }
 
 /* ===== 响应式：手机全屏 ===== */

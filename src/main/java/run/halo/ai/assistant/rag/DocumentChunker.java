@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import run.halo.ai.assistant.config.AIProperties.ChunkConfig;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -69,21 +70,35 @@ public class DocumentChunker {
             log.warn("[DocumentChunker] chunkOverlap({}) >= chunkSize({})，已钳制为 {} 防止死循环",
                 config.getChunkOverlap(), config.getChunkSize(), safeOverlap);
         }
-        List<String> chunks = splitBySize(segments, config.getChunkSize(), safeOverlap);
+        List<String> chunks = splitBySize(segments, config.getChunkSize(), safeOverlap,
+            config.isSentenceAware());
 
-        // 组装 TextChunk 列表
+        // 合并过短的切片：小于 minChunkSize 的片段合并到前一个切片
+        int minSize = Math.max(0, config.getMinChunkSize());
+        if (minSize > 0) {
+            chunks = mergeShortChunks(chunks, minSize);
+        }
+
+        // 组装 TextChunk 列表，过滤掉无有效文字的分片（如只有空 HTML 标签）
         List<TextChunk> result = new ArrayList<>();
+        int filtered = 0;
         for (int i = 0; i < chunks.size(); i++) {
             String chunkContent = chunks.get(i).trim();
-            if (!chunkContent.isEmpty()) {
-                result.add(new TextChunk(
-                    postId + "_" + i,
-                    postId,
-                    title,
-                    chunkContent,
-                    i
-                ));
+            if (chunkContent.isEmpty() || !hasMeaningfulText(chunkContent)) {
+                filtered++;
+                continue;
             }
+            result.add(new TextChunk(
+                postId + "_" + i,
+                postId,
+                title,
+                chunkContent,
+                i,
+                List.of()  // keywords extracted later in ReindexService
+            ));
+        }
+        if (filtered > 0) {
+            log.debug("[DocumentChunker] 文章 '{}' 过滤掉 {} 个无有效文字的分片", title, filtered);
         }
 
         log.debug("[DocumentChunker] 文章 '{}' 切成 {} 个 chunk", title, result.size());
@@ -151,7 +166,8 @@ public class DocumentChunker {
      *
      * 类比：像翻书时手指压住上一页最后几行，确保不会漏看
      */
-    private List<String> splitBySize(List<String> segments, int chunkSize, int overlap) {
+    private List<String> splitBySize(List<String> segments, int chunkSize, int overlap,
+                                      boolean sentenceAware) {
         List<String> result = new ArrayList<>();
 
         for (String segment : segments) {
@@ -160,23 +176,15 @@ public class DocumentChunker {
                 continue;
             }
 
-            // 超长 segment：滑动窗口切割
             int start = 0;
             while (start < segment.length()) {
                 int end = Math.min(start + chunkSize, segment.length());
 
-                // 尝试在句子/段落边界切（不要把句子从中间切断）
-                if (end < segment.length()) {
-                    int lastNewline = segment.lastIndexOf('\n', end);
-                    int lastPeriod = Math.max(
-                        segment.lastIndexOf('。', end),
-                        segment.lastIndexOf('.', end)
-                    );
-                    int boundary = Math.max(lastNewline, lastPeriod);
-
-                    // 只在边界不太远时使用（不超过 chunkSize 的 20%）
-                    if (boundary > start && (end - boundary) < chunkSize * 0.2) {
-                        end = boundary + 1;
+                // 句子感知：在 chunkSize 附近找句子边界，避免从句子中间切断
+                if (sentenceAware && end < segment.length()) {
+                    int boundary = findBestBoundary(segment, start, end, chunkSize);
+                    if (boundary > start) {
+                        end = boundary;
                     }
                 }
 
@@ -185,18 +193,81 @@ public class DocumentChunker {
                     result.add(chunk);
                 }
 
-                // 下一块的起点 = 当前终点 - overlap
-                // 硬保证 start 严格递增：哪怕 overlap 配置极端，也不允许停滞或倒退。
-                // 否则会原地切同一段 → 死循环 → OOM（已经踩过坑）。
                 int nextStart = end - overlap;
                 if (nextStart <= start) {
-                    nextStart = end;  // 退化为无重叠，但绝不死循环
+                    nextStart = end;
                 }
                 start = nextStart;
             }
         }
 
         return result;
+    }
+
+    /**
+     * 在 chunkSize 附近找最佳句子边界：优先换行、其次中文标点、再次英文标点
+     */
+    private int findBestBoundary(String segment, int start, int end, int chunkSize) {
+        int lastNewline = segment.lastIndexOf('\n', end);
+        // 中文标点优先级最高
+        int[] from = new int[]{
+            segment.lastIndexOf('。', end),
+            segment.lastIndexOf('！', end),
+            segment.lastIndexOf('？', end),
+            segment.lastIndexOf('；', end),
+            segment.lastIndexOf('，', end),
+            segment.lastIndexOf('：', end),
+        };
+        // 英文标点
+        int[] fromEn = new int[]{
+            segment.lastIndexOf('.', end),
+            segment.lastIndexOf('!', end),
+            segment.lastIndexOf('?', end),
+            segment.lastIndexOf(';', end),
+        };
+
+        int bestPunct = -1;
+        for (int p : from) { bestPunct = Math.max(bestPunct, p); }
+        for (int p : fromEn) { bestPunct = Math.max(bestPunct, p); }
+
+        int boundary = Math.max(lastNewline, bestPunct);
+
+        // 只在边界不太远时使用（不超过 chunkSize 的 30%）
+        if (boundary > start && (end - boundary) < chunkSize * 0.3) {
+            return boundary + 1;
+        }
+        return -1;
+    }
+
+    /**
+     * 合并过短的切片到前一个切片
+     */
+    private List<String> mergeShortChunks(List<String> chunks, int minSize) {
+        List<String> result = new ArrayList<>();
+        for (String chunk : chunks) {
+            if (chunk.length() < minSize && !result.isEmpty()) {
+                // 合并到前一个切片，用两个换行分隔
+                int lastIdx = result.size() - 1;
+                result.set(lastIdx, result.get(lastIdx) + "\n\n" + chunk);
+            } else {
+                result.add(chunk);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 判断分片是否包含有意义的文字内容
+     * 去掉 HTML 标签、属性残留、实体、空白后，剩余可读文字至少 10 个字符才算有效
+     */
+    private boolean hasMeaningfulText(String text) {
+        String plain = text
+            .replaceAll("<[^>]+>", "")           // 去掉 HTML 标签
+            .replaceAll("[a-z-]+=\"[^\"]*\"", "") // 去掉残留属性（style="..." 等）
+            .replaceAll("&[a-zA-Z]+;", " ")      // 去掉 HTML 实体（&nbsp; 等）
+            .replaceAll("&#\\d+;", " ")           // 去掉数字实体
+            .replaceAll("[\\s ​‌‍﻿]+", ""); // 去掉所有空白（含 Unicode）
+        return plain.length() >= 10;
     }
 
     /**

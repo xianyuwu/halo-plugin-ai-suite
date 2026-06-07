@@ -1,0 +1,8 @@
+/* ===== AI Assistant Console Styles =====
+ * 按主题拆分为 4 份：tokens / layout / components / pages
+ * 入口只需在 ui/src/index.ts 引入本文件
+ */
+@import "./tokens.css";
+@import "./layout.css";
+@import "./components.css";
+@import "./pages.css";

@@ -47,6 +47,7 @@ public class LuceneIndexService {
     private static final String FIELD_CONTENT = "content";
     private static final String FIELD_VECTOR = "vector";
     private static final String FIELD_CHUNK_INDEX = "chunkIndex";
+    private static final String FIELD_KEYWORDS = "keywords";
 
     private final AIProperties aiProperties;
 
@@ -112,6 +113,12 @@ public class LuceneIndexService {
         doc.add(new TextField(FIELD_CONTENT, chunk.content(), Field.Store.YES));
         doc.add(new IntPoint(FIELD_CHUNK_INDEX, chunk.chunkIndex()));
         doc.add(new StoredField(FIELD_CHUNK_INDEX, chunk.chunkIndex()));
+
+        // 关键词：用 TextField 分词后可被检索命中
+        if (chunk.keywords() != null && !chunk.keywords().isEmpty()) {
+            doc.add(new TextField(FIELD_KEYWORDS,
+                String.join(" ", chunk.keywords()), Field.Store.YES));
+        }
 
         // 向量字段：用 COSINE 相似度（语义搜索最常用）
         if (embedding != null && embedding.length > 0) {
@@ -281,6 +288,29 @@ public class LuceneIndexService {
     }
 
     /**
+     * 统计每篇文章已提取关键词的切片数
+     */
+    public Map<String, Integer> getPostKeywordChunkCounts() throws IOException {
+        ensureInitialized();
+        IndexSearcher searcher = searcherManager.acquire();
+        try {
+            TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), Integer.MAX_VALUE);
+            Map<String, Integer> counts = new HashMap<>();
+            for (ScoreDoc scoreDoc : topDocs.scoreDocs) {
+                Document doc = searcher.storedFields().document(scoreDoc.doc);
+                String kw = doc.get(FIELD_KEYWORDS);
+                if (kw != null && !kw.isBlank()) {
+                    String postId = doc.get(FIELD_POST_ID);
+                    if (postId != null) counts.merge(postId, 1, Integer::sum);
+                }
+            }
+            return counts;
+        } finally {
+            searcherManager.release(searcher);
+        }
+    }
+
+    /**
      * 获取指定文章的切片列表（按 chunkIndex 排序，用于预览）
      */
     public List<ChunkPreview> getChunksByPostId(String postId) throws IOException {
@@ -297,7 +327,8 @@ public class LuceneIndexService {
                     doc.get(FIELD_ID),
                     doc.get(FIELD_POST_ID),
                     doc.get(FIELD_CONTENT),
-                    chunkIndexStr != null ? Integer.parseInt(chunkIndexStr) : 0
+                    chunkIndexStr != null ? Integer.parseInt(chunkIndexStr) : 0,
+                    doc.get(FIELD_KEYWORDS) != null ? doc.get(FIELD_KEYWORDS) : ""
                 ));
             }
             chunks.sort(Comparator.comparingInt(ChunkPreview::chunkIndex));
@@ -309,6 +340,34 @@ public class LuceneIndexService {
 
     public int getDocumentCount() {
         return totalChunks;
+    }
+
+    /**
+     * 统计已提取关键词的切片数
+     */
+    public int countKeywordChunks() {
+        try {
+            ensureInitialized();
+            IndexSearcher searcher = searcherManager.acquire();
+            try {
+                // 搜索 keywords 字段非空的所有文档
+                Query query = new TermQuery(new Term(FIELD_KEYWORDS, ""));
+                // WildcardQuery 匹配非空：搜索所有文档再过滤
+                TopDocs allDocs = searcher.search(new MatchAllDocsQuery(), Integer.MAX_VALUE);
+                int count = 0;
+                for (ScoreDoc sd : allDocs.scoreDocs) {
+                    Document doc = searcher.storedFields().document(sd.doc);
+                    String kw = doc.get(FIELD_KEYWORDS);
+                    if (kw != null && !kw.isBlank()) count++;
+                }
+                return count;
+            } finally {
+                searcherManager.release(searcher);
+            }
+        } catch (IOException e) {
+            log.error("[LuceneIndexService] 统计关键词切片失败: {}", e.getMessage());
+            return 0;
+        }
     }
 
     @PreDestroy
@@ -340,6 +399,7 @@ public class LuceneIndexService {
         String id,
         String postId,
         String content,
-        int chunkIndex
+        int chunkIndex,
+        String keywords
     ) {}
 }

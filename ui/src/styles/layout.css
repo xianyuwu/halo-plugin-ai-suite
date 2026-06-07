@@ -1,0 +1,179 @@
+/* --- Layout: 浅色侧边栏 + 右侧内容 --- */
+.ai-layout {
+  display: flex;
+  align-items: flex-start;
+  min-height: calc(100vh - 64px);
+  background: var(--ai-color-bg-page);
+  padding: 24px 24px 0 24px;
+  gap: 24px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* ===== 侧栏 — 280px 直角（无圆角）===== */
+.ai-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--ai-color-bg-card);
+  border: 1px solid #e5e7eb;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 24px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+/* ===== 顶部品牌区 ===== */
+.ai-sidebar-header {
+  padding: 18px 18px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.ai-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #111827, #374151);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
+}
+
+.ai-brand-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ai-color-fg);
+  line-height: 1.2;
+}
+.ai-brand-subtitle {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--ai-color-fg-muted);
+  letter-spacing: 0.1px;
+}
+
+/* ===== 导航列表 ===== */
+.ai-nav {
+  padding: 10px 8px 14px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ===== 顶层 nav 项 — 统一规范 ===== */
+.ai-nav-item {
+  padding: 9px 10px 9px 12px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #374151;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  position: relative;
+  user-select: none;
+  margin-bottom: 1px;
+}
+
+.ai-nav-item:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+/* ===== active 态 — 参考 Halo Console 主系统配色 ===== */
+.ai-nav-item.active {
+  background: #f3f4f6;     /* gray-100, 同 hover */
+  color: #111827;            /* 文字色保持深色（不变蓝） */
+  font-weight: 500;          /* 仅比 normal 重一点点 */
+}
+/* active 左侧色条 — halo 主系统 #242e41（深蓝近黑）+ 26px 高 + 6px 圆头 */
+.ai-nav-item.active::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 26px;
+  background: #242e41;
+  border-radius: 0 6px 6px 0;
+}
+
+/* ===== 图标 / 文字 ===== */
+.ai-nav-icon {
+  width: 18px;
+  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #6b7280;
+  transition: color 0.15s ease;
+}
+/* 调 SVG stroke-width（halo 1.8 线宽）*/
+.ai-nav-icon :deep(svg) {
+  stroke-width: 1.8;
+}
+
+.ai-nav-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== 分组标题 — RAG 流水线（不可折叠）===== */
+.ai-nav-group-label {
+  padding: 9px 10px 9px 12px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ai-color-fg-muted);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  user-select: none;
+  cursor: default;
+}
+.ai-nav-group-text {
+  margin-left: 0;
+}
+
+/* ===== 分割线 ===== */
+.ai-nav-divider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 8px 4px;
+  opacity: 0.8;
+}
+
+/* ===== 子项 — RAG 流水线下的 4 个 ===== */
+.ai-nav-item-child {
+  padding-left: 34px;
+}
+.ai-nav-item-child .ai-nav-icon {
+  width: 15px;
+  font-size: 15px;
+}
+
+.ai-layout-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--ai-color-bg-page);
+}

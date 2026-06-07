@@ -11,15 +11,14 @@ import run.halo.app.content.PostContentService;
 import run.halo.app.core.extension.content.Post;
 import run.halo.app.extension.ReactiveExtensionClient;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 /**
- * AI 摘要生成服务
- *
- * 读取文章内容，调用 LLM 生成简洁摘要。
- * 可用于文章列表页的自动描述、SEO meta description 等。
+ * AI 摘要生成服务 —— 手动触发场景（控制台 API）。
+ * <p>
+ * 编辑器内「自动生成摘要」走 Halo 的 {@code ExcerptGenerator} 扩展点
+ * （参见 {@code service.AIExcerptGenerator}），不在此服务范围内。
  */
 @Slf4j
 @Service
@@ -38,9 +37,8 @@ public class SummaryService {
 
     /**
      * 为单篇文章生成摘要
-     *
-     * @param postName 文章 name
-     * @return 摘要文本
+     * <p>
+     * LLM 失败时直接抛错（不返回占位文本），避免上层误把错误信息当作 excerpt 写入。
      */
     public Mono<String> generateSummary(String postName) {
         return extensionClient.fetch(Post.class, postName)
@@ -52,11 +50,10 @@ public class SummaryService {
                         if (content == null || content.isBlank()) {
                             content = contentWrapper.getContent();
                             if (content == null || content.isBlank()) {
-                                return Mono.just("文章内容为空");
+                                return Mono.error(new IllegalStateException("文章内容为空"));
                             }
                         }
 
-                        // 截取前 3000 字（太长浪费 token）
                         String truncated = content.length() > 3000
                             ? content.substring(0, 3000) + "\n...[内容已截断]"
                             : content;
@@ -70,12 +67,12 @@ public class SummaryService {
                                         List<Map<String, String>> messages = List.of(
                                             Map.of("role", "user", "content", prompt)
                                         );
-                                        return llmClient.chat(
+                                        return llmClient.chatInternal(
                                             modelConfig.getChatBaseUrl(),
                                             modelConfig.getChatApiKey(),
                                             modelConfig.getChatModel(),
                                             messages,
-                                            0.3f, // 低温度，摘要需要稳定
+                                            0.3f,
                                             512
                                         );
                                     })
@@ -83,31 +80,68 @@ public class SummaryService {
                     });
             })
             .map(String::trim)
-            .onErrorResume(e -> {
+            .onErrorMap(e -> {
                 log.error("[SummaryService] 生成摘要失败: {} - {}", postName, e.getMessage());
-                return Mono.just("生成失败: " + e.getMessage());
+                return new RuntimeException("摘要生成失败: " + e.getMessage(), e);
             });
     }
 
     /**
-     * 为所有已发布文章批量生成摘要
-     *
-     * @return 每个文章的结果流 {postName, title, summary}
+     * 为单篇文章生成摘要并自动保存到 excerpt。
+     * <p>
+     * LLM 失败时不会写入脏数据（生成失败前的 excerpt 保持不变）。
      */
-    public Flux<Map<String, String>> generateAllSummaries() {
+    public Mono<String> generateAndSave(String postName) {
+        return extensionClient.fetch(Post.class, postName)
+            .flatMap(post -> generateSummary(postName)
+                .flatMap(summary -> {
+                    var excerpt = new Post.Excerpt();
+                    excerpt.setRaw(summary);
+                    excerpt.setAutoGenerate(false);
+                    post.getSpec().setExcerpt(excerpt);
+                    return extensionClient.update(post).thenReturn(summary);
+                })
+            );
+    }
+
+    /**
+     * 批量生成摘要并自动保存到文章 excerpt 字段
+     */
+    public Flux<Map<String, Object>> generateAndSaveAllSummaries() {
         return extensionClient.list(Post.class,
                 post -> post.isPublished() && !post.isDeleted()
                     && post.getSpec() != null
                     && Boolean.TRUE.equals(post.getSpec().getPublish()),
                 null)
-            .flatMap(post -> {
+            .concatMap(post -> {
                 String postName = post.getMetadata().getName();
+                String title = post.getSpec().getTitle() != null
+                    ? post.getSpec().getTitle() : "";
                 return generateSummary(postName)
-                    .map(summary -> Map.of(
-                        "postName", postName,
-                        "title", post.getSpec().getTitle() != null ? post.getSpec().getTitle() : "",
-                        "summary", summary
-                    ));
+                    .flatMap(summary -> {
+                        var excerpt = new Post.Excerpt();
+                        excerpt.setRaw(summary);
+                        excerpt.setAutoGenerate(false);
+                        post.getSpec().setExcerpt(excerpt);
+                        return extensionClient.update(post)
+                            .<Map<String, Object>>map(updated -> Map.of(
+                                "postName", postName,
+                                "title", title,
+                                "summary", summary,
+                                "saved", true
+                            ))
+                            .onErrorResume(e -> {
+                                log.error("[SummaryService] 保存摘要失败: {} - {}",
+                                    postName, e.getMessage());
+                                return Mono.just(Map.<String, Object>of(
+                                    "postName", postName,
+                                    "title", title,
+                                    "summary", summary,
+                                    "saved", false,
+                                    "error", e.getMessage()
+                                ));
+                            });
+                    });
             });
     }
 }

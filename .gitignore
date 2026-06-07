@@ -18,10 +18,17 @@ data/
 # Cache
 .cache/
 
-# Claude
+# Claude / AI 开发文件
+CLAUDE.md
+AGENTS.md
 .claude/
-.claude/settings.local.json
 .DS_Store
+
+# 开发文档
+docs/
+
+# 根目录临时测试文件
+TestSchema.java
 
 # IDE
 .idea/

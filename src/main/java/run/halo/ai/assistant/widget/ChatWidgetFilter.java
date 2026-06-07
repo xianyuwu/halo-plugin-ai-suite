@@ -11,9 +11,11 @@ import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import run.halo.ai.assistant.config.AIProperties;
 import run.halo.app.security.AdditionalWebFilter;
 
 import java.nio.charset.StandardCharsets;
+import java.security.Principal;
 
 /**
  * 全局注入过滤器 — 在所有 HTML 页面的 </body> 前注入 AI 聊天浮窗
@@ -24,6 +26,15 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class ChatWidgetFilter implements AdditionalWebFilter {
 
+    private final AIProperties aiProperties;
+
+    /** 插件启动时的时间戳，用作静态资源版本号，每次重启自动刷新浏览器缓存 */
+    private final String assetVersion = String.valueOf(System.currentTimeMillis());
+
+    public ChatWidgetFilter(AIProperties aiProperties) {
+        this.aiProperties = aiProperties;
+    }
+
     @Override
     public int getOrder() {
         return Ordered.LOWEST_PRECEDENCE;
@@ -33,11 +44,24 @@ public class ChatWidgetFilter implements AdditionalWebFilter {
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         String path = exchange.getRequest().getPath().value();
 
-        // 跳过管理后台和 API 请求（这些在 filter 入口就能判断）
-        if (path.startsWith("/console") || path.startsWith("/apis/")
-                || path.startsWith("/api/") || path.startsWith("/actuator")) {
+        if (path.startsWith("/console") || path.startsWith("/login")
+                || path.startsWith("/apis/") || path.startsWith("/api/") || path.startsWith("/actuator")) {
             return chain.filter(exchange);
         }
+
+        // 读取配置，若不允许游客则鉴权
+        return aiProperties.getChatConfig()
+            .flatMap(chatConfig -> {
+                if (!chatConfig.isAllowGuest()) {
+                    return exchange.getPrincipal()
+                        .flatMap(principal -> injectWidget(exchange, chain))
+                        .switchIfEmpty(chain.filter(exchange)); // 未登录，不注入
+                }
+                return injectWidget(exchange, chain);
+            });
+    }
+
+    private Mono<Void> injectWidget(ServerWebExchange exchange, WebFilterChain chain) {
 
         ServerHttpResponse originalResponse = exchange.getResponse();
 
@@ -89,10 +113,11 @@ public class ChatWidgetFilter implements AdditionalWebFilter {
 
     private String buildWidgetHtml() {
         String base = "/plugins/ai-assistant/assets/res";
+        String v = "?v=" + assetVersion;
         // marked + DOMPurify 用 defer 异步加载，不阻塞页面渲染；chat-widget.js 启动时若它们已就绪即用 Markdown，否则降级为纯文本
-        return "<link rel=\"stylesheet\" href=\"" + base + "/css/chat-widget.css\">\n"
-             + "<script src=\"" + base + "/js/marked.min.js\" defer></script>\n"
-             + "<script src=\"" + base + "/js/purify.min.js\" defer></script>\n"
-             + "<script src=\"" + base + "/js/chat-widget.js\" defer></script>\n";
+        return "<link rel=\"stylesheet\" href=\"" + base + "/css/chat-widget.css" + v + "\">\n"
+             + "<script src=\"" + base + "/js/marked.min.js" + v + "\" defer></script>\n"
+             + "<script src=\"" + base + "/js/purify.min.js" + v + "\" defer></script>\n"
+             + "<script src=\"" + base + "/js/chat-widget.js" + v + "\" defer></script>\n";
     }
 }

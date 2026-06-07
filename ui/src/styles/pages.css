@@ -1,0 +1,595 @@
+/* --- Form Grid --- */
+.ai-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+/* --- Save Message ---
+ * UsageView 通过 :class 动态叠加 ai-save-ok / ai-save-fail，
+ * 这里用并列选择器确保只在跟 ai-save-msg 一起用时才生效。
+ */
+.ai-save-msg { font-size: 13px; }
+.ai-save-msg.ai-save-ok { color: var(--ai-color-success-deep); }
+.ai-save-msg.ai-save-fail { color: var(--ai-color-danger-strong); }
+
+/* --- Writing Page 旧样式已移除，新样式在 WritingView.vue scoped 中 --- */
+
+/* --- Dashboard Page --- */
+.ai-dashboard {
+  background: var(--ai-color-bg-page);
+  min-height: 100%;
+}
+
+.ai-topbar {
+  height: 88px;
+  background: rgba(255, 255, 255, 0.86);
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  backdrop-filter: blur(14px);
+}
+
+.ai-page-title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ai-color-fg);
+}
+
+.ai-page-desc {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--ai-color-fg-subtle);
+}
+
+.ai-content {
+  padding: 28px 32px 48px;
+  max-width: 1520px;
+}
+
+/* Section 卡片 */
+.ai-section {
+  background: var(--ai-color-bg-card);
+  border: 1px solid #e5e7eb;
+  border-radius: var(--ai-radius-xl);
+  box-shadow: var(--ai-shadow-card);
+  margin-bottom: 22px;
+  overflow: hidden;
+}
+
+.ai-section-header {
+  padding: 14px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.ai-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ai-color-fg);
+}
+
+.ai-section-desc {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ai-color-fg-subtle);
+}
+
+.ai-section-body {
+  padding: 24px 26px;
+}
+
+/* 统计卡片 */
+.ai-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.ai-stat-card {
+  padding: 22px;
+  border-radius: var(--ai-radius-lg);
+  background: linear-gradient(180deg, #ffffff, #fbfcfe);
+  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 112px;
+}
+
+.ai-stat-label {
+  font-size: 14px;
+  color: var(--ai-color-fg-subtle);
+  font-weight: 500;
+}
+
+.ai-stat-value {
+  margin-top: 10px;
+  font-size: 30px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--ai-color-fg);
+}
+
+.ai-stat-fail {
+  color: var(--ai-color-danger) !important;
+}
+
+.ai-stat-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: var(--ai-radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  background: var(--ai-color-bg-subtle);
+}
+
+/* 快速操作卡片 */
+.ai-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.ai-quick-card {
+  border: 1px solid #e5e7eb;
+  border-radius: var(--ai-radius-lg);
+  padding: 22px;
+  min-height: 152px;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  background: var(--ai-color-bg-card);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-decoration: none;
+  color: inherit;
+}
+
+.ai-quick-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--ai-color-border-strong);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+/* 今日用量卡片内的统计数字横向排列 */
+.ai-quick-card--usage .ai-quick-desc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.ai-usage-stat {
+  font-size: 12px;
+  color: var(--ai-color-fg-subtle);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.ai-usage-stat--warn {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.ai-quick-card.featured {
+  background: linear-gradient(135deg, #f9fafb, #ffffff);
+  border-color: var(--ai-color-fg);
+  box-shadow: var(--ai-shadow-card-strong);
+}
+
+.ai-quick-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--ai-radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ai-color-bg-subtle);
+  font-size: 24px;
+  margin-bottom: 18px;
+}
+
+.ai-quick-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ai-color-fg);
+}
+
+.ai-quick-desc {
+  margin-top: 9px;
+  font-size: 14px;
+  color: var(--ai-color-fg-subtle);
+  line-height: 1.6;
+}
+
+.ai-quick-arrow {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--ai-color-fg);
+  font-weight: 600;
+}
+
+/* 配置概览 */
+.ai-config-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.ai-config-item {
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--ai-radius-lg);
+  background: var(--ai-color-bg-card);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  /* router-link 默认样式重置 */
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ai-config-item:hover {
+  border-color: var(--ai-color-border-strong);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+.ai-config-item.is-muted {
+  background: var(--ai-color-bg-muted);
+}
+
+.ai-config-item.is-muted .ai-config-value {
+  color: var(--ai-color-fg-disabled);
+}
+
+.ai-config-label {
+  font-size: 14px;
+  color: var(--ai-color-fg-subtle);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.ai-config-value {
+  font-size: 17px;
+  color: var(--ai-color-fg);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.ai-tag-ok {
+  background: var(--ai-color-success-bg);
+  color: var(--ai-color-success-darker);
+}
+
+/* 底部洞察区 */
+
+.ai-tips-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+
+.ai-tips-list li {
+  display: flex;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--ai-color-fg-secondary);
+  line-height: 1.55;
+}
+
+.ai-tips-list li::before {
+  content: "✓";
+  color: var(--ai-color-fg);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Dashboard 响应式 */
+@media (max-width: 1200px) {
+  .ai-quick-grid,
+  .ai-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .ai-config-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .ai-stats-grid,
+  .ai-quick-grid,
+  .ai-config-grid { grid-template-columns: 1fr; }
+  .ai-content { padding: 18px; }
+  .ai-page-title { font-size: 22px; }
+}
+
+/* 索引操作行（VCard 内） */
+.action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.action-row .action-info p { margin: 0 0 4px; font-size: 13px; color: var(--ai-color-fg-muted); }
+.action-row .action-note { font-size: 12px; color: var(--ai-color-warning-strong); }
+
+/* 信息提示框 */
+.info-box {
+  background: var(--ai-color-bg-tip);
+  border: 1px solid #bbf7d4;
+  border-radius: var(--ai-radius-sm);
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--ai-color-success-darker);
+  line-height: 1.6;
+}
+.info-box strong { color: var(--ai-color-success-darker); }
+
+/* 工具栏 */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.search-input {
+  flex: 1;
+  max-width: 320px;
+  padding: 7px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: var(--ai-radius-sm);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.search-input:focus { border-color: var(--ai-color-success-deep); }
+.filter-stats { font-size: 13px; color: var(--ai-color-fg-muted); white-space: nowrap; }
+
+/* 表格 */
+.table-section { margin-top: 24px; }
+.section-title { font-size: 15px; margin: 0 0 12px; }
+
+.ai-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.ai-table th {
+  text-align: left;
+  padding: 10px 12px;
+  background: var(--ai-color-bg-muted);
+  border-bottom: 1px solid #eaecf0;
+  font-weight: 600;
+  color: var(--ai-color-fg-strong);
+  font-size: 12px;
+}
+.ai-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+}
+.ai-table tr:hover td { background: var(--ai-color-bg-muted); }
+.ai-table .preview-row td { background: var(--ai-color-bg-muted); padding: 0; }
+.ai-table .preview-row:hover td { background: var(--ai-color-bg-muted); }
+.article-title-cell { font-weight: 500; max-width: 300px; }
+.actions-cell { white-space: nowrap; }
+.ai-table th.th-actions { text-align: center; }
+.text-center { text-align: center; }
+
+/* ===== AI 按钮 — Plugin 旧视觉（恢复，VSpace / VButton 替代品之前）===== */
+.ai-btn {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--ai-radius-md);
+  border: 1px solid var(--ai-color-border);
+  background: #fff;
+  color: var(--ai-color-fg);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.ai-btn:hover:not(:disabled) {
+  border-color: var(--ai-color-fg);
+  box-shadow: var(--ai-shadow-hover);
+}
+.ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ai-btn-primary {
+  background: var(--ai-color-fg);
+  border-color: var(--ai-color-fg);
+  color: var(--ai-color-fg-inverse);
+}
+.ai-btn-primary:hover:not(:disabled) {
+  background: var(--ai-color-fg-deep);
+  border-color: var(--ai-color-fg-deep);
+  color: var(--ai-color-fg-inverse);
+}
+
+.ai-btn-ghost {
+  background: var(--ai-color-bg-muted);
+  border-color: var(--ai-color-border);
+  color: var(--ai-color-fg-secondary);
+}
+.ai-btn-ghost:hover:not(:disabled) {
+  background: var(--ai-color-bg-subtle);
+  border-color: var(--ai-color-border-strong);
+}
+
+.ai-btn-xs {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+  border-radius: var(--ai-radius-md);
+}
+
+.ai-btn-primary-outline {
+  color: var(--ai-color-success);
+  border-color: var(--ai-color-success);
+  background: #fff;
+}
+.ai-btn-primary-outline:hover:not(:disabled) { background: var(--ai-color-success-bg); }
+
+/* 表格底部 — 跟表头对齐布局 */
+.ai-table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0 0;
+  font-size: 13px;
+  color: var(--ai-color-fg-muted);
+  border-top: 1px solid var(--ai-color-divider);
+  margin-top: 12px;
+}
+
+.ai-filter-stat { flex: 1; }
+.ai-selected-stat { color: var(--ai-color-fg); font-weight: 600; }
+
+.ai-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ai-pagination-select {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--ai-color-border);
+  border-radius: var(--ai-radius-sm);
+  font-size: 12px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--ai-color-fg);
+  cursor: pointer;
+  outline: none;
+}
+.ai-pagination-select:focus { border-color: var(--ai-color-fg); }
+
+.ai-pagination-info {
+  font-size: 12px;
+  color: var(--ai-color-fg-muted);
+  min-width: 56px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 批量操作工具栏 — 表格上方 */
+.ai-batch-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--ai-color-bg-muted);
+  border: 1px solid var(--ai-color-border);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+}
+
+.ai-checkbox-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ai-color-fg);
+  cursor: pointer;
+  user-select: none;
+}
+.ai-checkbox-all input[type="checkbox"] {
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+  accent-color: var(--ai-color-fg);
+}
+
+.ai-batch-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 状态标签 */
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--ai-radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+}
+.status-indexed { background: var(--ai-color-success-bg); color: var(--ai-color-success-deep); }
+.status-failed { background: var(--ai-color-danger-bg); color: var(--ai-color-danger-darker); }
+.status-not-indexed { background: var(--ai-color-bg-subtle); color: var(--ai-color-fg-muted); }
+
+/* 切片预览 */
+.chunk-preview {
+  padding: 16px 20px;
+}
+.chunk-count-info {
+  font-size: 12px;
+  color: var(--ai-color-fg-muted);
+  margin-bottom: 12px;
+}
+.chunk-item {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.chunk-item:last-child { border-bottom: none; }
+.chunk-index {
+  flex-shrink: 0;
+  display: inline-block;
+  min-width: 28px;
+  padding: 2px 6px;
+  background: var(--ai-color-success-bg);
+  color: var(--ai-color-success-darker);
+  border-radius: var(--ai-radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+.chunk-content {
+  color: var(--ai-color-fg-strong);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 摘要预览 */
+.summary-preview {
+  padding: 16px 20px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ai-color-fg-strong);
+}
+.summary-preview p { margin: 0; }
+.summary-text { color: var(--ai-color-fg-strong); font-size: 13px; }
+
+/* 小按钮 */
+.ai-btn-primary-outline:hover:not(:disabled) { background: var(--ai-color-success-bg); }
+
+/* 辅助类 */
+.text-blue { color: var(--ai-color-info); }
+.text-green { color: var(--ai-color-success-deep); }
+.text-red { color: var(--ai-color-danger-strong); }
+.text-muted { color: var(--ai-color-fg-disabled); }
+/* --- Writing Page 旧样式已移除，新样式在 WritingView.vue scoped 中 --- */
+

@@ -1,260 +1,299 @@
 <template>
-  <div class="model-config-page">
-    <VPageHeader title="模型配置" />
-
-    <div class="page-body">
+  <div class="ai-model-page">
+    <div class="ai-content">
       <!-- ===== 核心模型区 ===== -->
-      <section class="config-section">
-        <div class="section-header">
-          <h3 class="section-title">核心模型</h3>
-          <span class="badge badge-required">必配</span>
+      <div class="ai-section-block">
+        <div class="ai-section-heading">
+          <h2>核心模型</h2>
+          <span class="ai-section-tag ai-tag-required">必配</span>
         </div>
-        <div class="model-grid">
+
+        <div class="ai-model-grid">
           <!-- 对话模型卡片 -->
-          <VCard>
-            <template #header>
-              <div class="card-header">
-                <div class="card-header-left">
-                  <span class="header-icon">💬</span>
-                  <span class="header-title">对话模型</span>
-                  <span class="status-dot" :class="statusClass('chat')"></span>
-                  <span class="status-text">{{ statusLabel('chat') }}</span>
+          <article class="ai-model-card">
+            <div class="ai-model-card-header">
+              <div class="ai-model-title-wrap">
+                <div class="ai-model-icon"><RiChatSmileLine /></div>
+                <div>
+                  <div class="ai-model-title">对话模型</div>
+                  <div class="ai-model-subtitle">负责回答生成、上下文理解与指令执行</div>
                 </div>
               </div>
-            </template>
-            <div class="card-form">
-              <div class="ai-field">
-                <label>厂商预设</label>
-                <select v-model="vendorPreset.chat" @change="applyVendor('chat', $event)">
-                  <option value="">选择厂商快速填充...</option>
-                  <option v-for="v in CHAT_VENDORS" :key="v.name" :value="v.name">{{ v.name }}</option>
-                </select>
+              <div class="ai-model-status">
+                <span class="ai-status-chip required">必填</span>
+                <span class="ai-status-chip">
+                  <span class="ai-dot" :class="statusDotClass('chat')"></span>
+                  {{ statusLabel('chat') }}
+                </span>
               </div>
-              <div class="ai-field">
-                <label>Base URL</label>
-                <input v-model="form.chatBaseUrl" placeholder="https://api.deepseek.com/v1" />
-              </div>
-              <div class="ai-field">
-                <label>API Key</label>
-                <div class="input-with-toggle">
-                  <input v-model="form.chatApiKey" :type="showKey.chat ? 'text' : 'password'" placeholder="sk-..." />
-                  <button class="toggle-vis" @click="showKey.chat = !showKey.chat" tabindex="-1">
-                    {{ showKey.chat ? '隐藏' : '显示' }}
-                  </button>
+            </div>
+            <div class="ai-model-card-body">
+              <div class="ai-form-grid">
+                <div class="ai-form-field">
+                  <label class="ai-field-label">厂商预设</label>
+                  <select class="ai-input ai-select" v-model="vendorPreset.chat">
+                    <option value="">选择厂商快速填充...</option>
+                    <option v-for="v in CHAT_VENDORS" :key="v.name" :value="v.name">{{ v.name }}</option>
+                  </select>
+                </div>
+                <div class="ai-form-field">
+                  <label class="ai-field-label">Base URL</label>
+                  <input class="ai-input" v-model="form.chatBaseUrl" placeholder="https://api.deepseek.com/v1" />
+                </div>
+                <div class="ai-form-field">
+                  <label class="ai-field-label">
+                    API Key
+                    <span class="ai-field-hint">{{ form.chatApiKey ? '已加密保存' : '' }}</span>
+                  </label>
+                  <div class="ai-input-group">
+                    <input class="ai-input" v-model="form.chatApiKey" :type="showKey.chat ? 'text' : 'password'" placeholder="sk-..." />
+                    <button class="ai-input-addon" @click="showKey.chat = !showKey.chat" tabindex="-1">
+                      {{ showKey.chat ? '隐藏' : '显示' }}
+                    </button>
+                  </div>
+                </div>
+                <div class="ai-form-field">
+                  <label class="ai-field-label">模型名称</label>
+                  <input class="ai-input" v-model="form.chatModel" placeholder="deepseek-chat" />
                 </div>
               </div>
-              <div class="ai-field">
-                <label>模型名称</label>
-                <input v-model="form.chatModel" placeholder="deepseek-chat" />
+              <div v-if="testResult.chat" class="ai-test-feedback" :class="testResult.chat.ok ? 'success' : 'error'">
+                <template v-if="testResult.chat.ok"><RiCheckLine /> 连接成功 ({{ testResult.chat.reply }})</template>
+                <template v-else><RiCloseLine /> {{ testResult.chat.error }}</template>
+              </div>
+              <div style="justify-content: flex-end;" class="ai-card-actions">
+                <VButton @click="testChat" :disabled="testing.chat">{{ testing.chat ? '测试中...' : '测试连通性' }}</VButton>
+                <VButton type="primary" @click="saveModel('chat')" :disabled="saving.chat">{{ saving.chat ? '保存中...' : '保存配置' }}</VButton>
               </div>
             </div>
-            <div class="card-actions">
-              <VButton size="sm" :loading="testing.chat" @click="testChat">
-                测试连通性
-              </VButton>
-              <VButton type="primary" size="sm" :loading="saving.chat" @click="saveModel('chat')">
-                保存配置
-              </VButton>
-            </div>
-            <div v-if="testResult.chat" class="test-feedback" :class="testResult.chat.ok ? 'success' : 'error'">
-              {{ testResult.chat.ok ? '✓ 连接成功 (' + testResult.chat.reply + ')' : '✗ ' + testResult.chat.error }}
-            </div>
-          </VCard>
+          </article>
 
           <!-- Embedding 模型卡片 -->
-          <VCard>
-            <template #header>
-              <div class="card-header">
-                <div class="card-header-left">
-                  <span class="header-icon">🧩</span>
-                  <span class="header-title">Embedding 模型</span>
-                  <span class="status-dot" :class="statusClass('embedding')"></span>
-                  <span class="status-text">{{ statusLabel('embedding') }}</span>
+          <article class="ai-model-card">
+            <div class="ai-model-card-header">
+              <div class="ai-model-title-wrap">
+                <div class="ai-model-icon"><RiStackLine /></div>
+                <div>
+                  <div class="ai-model-title">Embedding 模型</div>
+                  <div class="ai-model-subtitle">负责文档向量化、语义召回与相似度计算</div>
                 </div>
               </div>
-            </template>
-            <div class="card-form">
-              <div class="ai-field">
-                <label>厂商预设</label>
-                <select v-model="vendorPreset.embedding" @change="applyVendor('embedding', $event)">
-                  <option value="">选择厂商快速填充...</option>
-                  <option v-for="v in EMBEDDING_VENDORS" :key="v.name" :value="v.name">{{ v.name }}</option>
-                </select>
+              <div class="ai-model-status">
+                <span class="ai-status-chip required">必填</span>
+                <span class="ai-status-chip">
+                  <span class="ai-dot" :class="statusDotClass('embedding')"></span>
+                  {{ statusLabel('embedding') }}
+                </span>
               </div>
-              <div class="ai-field">
-                <label>Base URL</label>
-                <input v-model="form.embeddingBaseUrl" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1" />
-              </div>
-              <div class="ai-field">
-                <label>API Key</label>
-                <div class="input-with-toggle">
-                  <input v-model="form.embeddingApiKey" :type="showKey.embedding ? 'text' : 'password'" />
-                  <button class="toggle-vis" @click="showKey.embedding = !showKey.embedding" tabindex="-1">
-                    {{ showKey.embedding ? '隐藏' : '显示' }}
-                  </button>
+            </div>
+            <div class="ai-model-card-body">
+              <div class="ai-form-grid">
+                <div class="ai-form-field">
+                  <label class="ai-field-label">厂商预设</label>
+                  <select class="ai-input ai-select" v-model="vendorPreset.embedding">
+                    <option value="">选择厂商快速填充...</option>
+                    <option v-for="v in EMBEDDING_VENDORS" :key="v.name" :value="v.name">{{ v.name }}</option>
+                  </select>
+                </div>
+                <div class="ai-form-field">
+                  <label class="ai-field-label">Base URL</label>
+                  <input class="ai-input" v-model="form.embeddingBaseUrl" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1" />
+                </div>
+                <div class="ai-form-field">
+                  <label class="ai-field-label">
+                    API Key
+                    <span class="ai-field-hint">{{ form.embeddingApiKey ? '已加密保存' : '' }}</span>
+                  </label>
+                  <div class="ai-input-group">
+                    <input class="ai-input" v-model="form.embeddingApiKey" :type="showKey.embedding ? 'text' : 'password'" />
+                    <button class="ai-input-addon" @click="showKey.embedding = !showKey.embedding" tabindex="-1">
+                      {{ showKey.embedding ? '隐藏' : '显示' }}
+                    </button>
+                  </div>
+                </div>
+                <div class="ai-two-col">
+                  <div class="ai-form-field">
+                    <label class="ai-field-label">模型名称</label>
+                    <input class="ai-input" v-model="form.embeddingModel" placeholder="text-embedding-v3" />
+                  </div>
+                  <div class="ai-form-field">
+                    <label class="ai-field-label">向量维度</label>
+                    <input class="ai-input" v-model.number="form.embeddingDimensions" type="number" min="256" max="4096" step="128" />
+                  </div>
                 </div>
               </div>
-              <div class="ai-field">
-                <label>模型名称</label>
-                <input v-model="form.embeddingModel" placeholder="text-embedding-v3" />
+              <div v-if="testResult.embedding" class="ai-test-feedback" :class="testResult.embedding.ok ? 'success' : 'error'">
+                <template v-if="testResult.embedding.ok"><RiCheckLine /> 连接成功 — 模型: {{ testResult.embedding.model }}，维度: {{ testResult.embedding.dimensions }}</template>
+                <template v-else><RiCloseLine /> {{ testResult.embedding.error }}</template>
               </div>
-              <div class="ai-field">
-                <label>向量维度</label>
-                <input v-model.number="form.embeddingDimensions" type="number" min="256" max="4096" />
+              <div style="justify-content: flex-end;" class="ai-card-actions">
+                <VButton @click="testEmbedding" :disabled="testing.embedding">{{ testing.embedding ? '测试中...' : '测试连通性' }}</VButton>
+                <VButton type="primary" @click="saveModel('embedding')" :disabled="saving.embedding">{{ saving.embedding ? '保存中...' : '保存配置' }}</VButton>
               </div>
             </div>
-            <div class="card-actions">
-              <VButton size="sm" :loading="testing.embedding" @click="testEmbedding">
-                测试连通性
-              </VButton>
-              <VButton type="primary" size="sm" :loading="saving.embedding" @click="saveModel('embedding')">
-                保存配置
-              </VButton>
-            </div>
-            <div v-if="testResult.embedding" class="test-feedback" :class="testResult.embedding.ok ? 'success' : 'error'">
-              {{ testResult.embedding.ok
-                ? '✓ 连接成功 — 模型: ' + testResult.embedding.model + '，维度: ' + testResult.embedding.dimensions
-                : '✗ ' + testResult.embedding.error }}
-            </div>
-          </VCard>
+          </article>
         </div>
-      </section>
+      </div>
 
       <!-- ===== 高级模型区 ===== -->
-      <section class="config-section">
-        <div class="section-header">
-          <h3 class="section-title">高级模型</h3>
-          <span class="badge badge-optional">可选</span>
+      <div class="ai-section-block">
+        <div class="ai-section-heading">
+          <h2>高级模型</h2>
+          <span class="ai-section-tag ai-tag-optional">可选</span>
         </div>
-        <div class="model-grid">
+
+        <div class="ai-advanced-note">
+          <div class="ai-note-icon">i</div>
+          <div>
+            高级模型用于进一步提升检索质量和问答准确率。Rerank 可优化召回结果排序；查询改写可将用户问题改写为更适合检索的表达。
+          </div>
+        </div>
+
+        <div class="ai-model-grid">
           <!-- Rerank 模型卡片 -->
-          <VCard>
-            <template #header>
-              <div class="card-header">
-                <div class="card-header-left">
-                  <span class="header-icon">🎯</span>
-                  <span class="header-title">Rerank 重排序</span>
-                  <label class="enable-toggle">
-                    <input type="checkbox" v-model="form.rerankEnabled" />
-                    <span>{{ form.rerankEnabled ? '已启用' : '未启用' }}</span>
-                  </label>
+          <article class="ai-model-card">
+            <div class="ai-model-card-header">
+              <div class="ai-model-title-wrap">
+                <div class="ai-model-icon"><RiSortDesc /></div>
+                <div>
+                  <div class="ai-model-title">Rerank 重排序</div>
+                  <div class="ai-model-subtitle">对召回片段进行二次排序，提高答案相关性</div>
                 </div>
-                <span v-if="form.rerankEnabled" class="status-dot" :class="statusClass('rerank')"></span>
-                <span v-if="form.rerankEnabled" class="status-text">{{ statusLabel('rerank') }}</span>
               </div>
-            </template>
-            <template v-if="form.rerankEnabled">
-              <div class="card-form">
-                <div class="ai-field">
-                  <label>厂商预设</label>
-                  <select v-model="vendorPreset.rerank" @change="applyVendor('rerank', $event)">
+              <div class="ai-model-status">
+                <span class="ai-status-chip" :class="form.rerankEnabled ? 'enabled' : 'optional'" @click="form.rerankEnabled = !form.rerankEnabled" style="cursor: pointer;" :title="form.rerankEnabled ? '点击停用' : '点击启用'">
+                  <RiCheckLine v-if="form.rerankEnabled" class="ai-check-mark" />
+                  {{ form.rerankEnabled ? '已启用' : '未启用 · 点击启用' }}
+                </span>
+                <span v-if="form.rerankEnabled" class="ai-status-chip">
+                  <span class="ai-dot" :class="statusDotClass('rerank')"></span>
+                  {{ statusLabel('rerank') }}
+                </span>
+              </div>
+            </div>
+            <div class="ai-model-card-body" v-if="form.rerankEnabled">
+              <div class="ai-form-grid">
+                <div class="ai-form-field">
+                  <label class="ai-field-label">厂商预设</label>
+                  <select class="ai-input ai-select" v-model="vendorPreset.rerank">
                     <option value="">选择厂商快速填充...</option>
                     <option v-for="v in RERANK_VENDORS" :key="v.name" :value="v.name">{{ v.name }}</option>
                   </select>
                 </div>
-                <div class="ai-field">
-                  <label>Base URL</label>
-                  <input v-model="form.rerankBaseUrl" placeholder="https://api.siliconflow.cn/v1" />
+                <div class="ai-form-field">
+                  <label class="ai-field-label">Base URL</label>
+                  <input class="ai-input" v-model="form.rerankBaseUrl" placeholder="https://api.siliconflow.cn/v1" />
                 </div>
-                <div class="ai-field">
-                  <label>API Key</label>
-                  <div class="input-with-toggle">
-                    <input v-model="form.rerankApiKey" :type="showKey.rerank ? 'text' : 'password'" />
-                    <button class="toggle-vis" @click="showKey.rerank = !showKey.rerank" tabindex="-1">
+                <div class="ai-form-field">
+                  <label class="ai-field-label">
+                    API Key
+                    <span class="ai-field-hint">{{ form.rerankApiKey ? '已加密保存' : '' }}</span>
+                  </label>
+                  <div class="ai-input-group">
+                    <input class="ai-input" v-model="form.rerankApiKey" :type="showKey.rerank ? 'text' : 'password'" />
+                    <button class="ai-input-addon" @click="showKey.rerank = !showKey.rerank" tabindex="-1">
                       {{ showKey.rerank ? '隐藏' : '显示' }}
                     </button>
                   </div>
                 </div>
-                <div class="ai-field">
-                  <label>模型名称</label>
-                  <input v-model="form.rerankModel" placeholder="BAAI/bge-reranker-v2-m3" />
+                <div class="ai-form-field">
+                  <label class="ai-field-label">模型名称</label>
+                  <input class="ai-input" v-model="form.rerankModel" placeholder="BAAI/bge-reranker-v2-m3" />
                 </div>
               </div>
-              <div class="card-actions">
-                <VButton size="sm" :loading="testing.rerank" @click="testRerank">
-                  测试连通性
-                </VButton>
-                <VButton type="primary" size="sm" :loading="saving.rerank" @click="saveModel('rerank')">
-                  保存配置
-                </VButton>
+              <div v-if="testResult.rerank" class="ai-test-feedback" :class="testResult.rerank.ok ? 'success' : 'error'">
+                <template v-if="testResult.rerank.ok"><RiCheckLine /> 连接成功 — 相关度: {{ testResult.rerank.relevanceScore }}</template>
+                <template v-else><RiCloseLine /> {{ testResult.rerank.error }}</template>
               </div>
-              <div v-if="testResult.rerank" class="test-feedback" :class="testResult.rerank.ok ? 'success' : 'error'">
-                {{ testResult.rerank.ok
-                  ? '✓ 连接成功 — 相关度: ' + testResult.rerank.relevanceScore
-                  : '✗ ' + testResult.rerank.error }}
+              <div style="justify-content: flex-end;" class="ai-card-actions">
+                <VButton @click="testRerank" :disabled="testing.rerank">{{ testing.rerank ? '测试中...' : '测试连通性' }}</VButton>
+                <VButton type="primary" @click="saveModel('rerank')" :disabled="saving.rerank">{{ saving.rerank ? '保存中...' : '保存配置' }}</VButton>
               </div>
-            </template>
-          </VCard>
+            </div>
+            <div class="ai-model-card-body" v-else style="padding: 28px 22px; text-align: center; color: #9ca3af; font-size: 14px;">
+              点击右上角「未启用」标签即可开启重排序
+            </div>
+          </article>
 
           <!-- 查询改写模型卡片 -->
-          <VCard>
-            <template #header>
-              <div class="card-header">
-                <div class="card-header-left">
-                  <span class="header-icon">🔍</span>
-                  <span class="header-title">查询改写</span>
-                  <label class="enable-toggle">
-                    <input type="checkbox" v-model="form.queryRewriteEnabled" />
-                    <span>{{ form.queryRewriteEnabled ? '已启用' : '未启用' }}</span>
-                  </label>
+          <article class="ai-model-card">
+            <div class="ai-model-card-header">
+              <div class="ai-model-title-wrap">
+                <div class="ai-model-icon"><RiSearchAiLine /></div>
+                <div>
+                  <div class="ai-model-title">查询改写</div>
+                  <div class="ai-model-subtitle">改写用户问题，提升检索召回与语义匹配</div>
                 </div>
-                <span v-if="form.queryRewriteEnabled" class="status-dot" :class="statusClass('queryRewrite')"></span>
-                <span v-if="form.queryRewriteEnabled" class="status-text">{{ statusLabel('queryRewrite') }}</span>
               </div>
-            </template>
-            <template v-if="form.queryRewriteEnabled">
-              <div class="card-form">
-                <div class="ai-field">
-                  <label>厂商预设</label>
-                  <select v-model="vendorPreset.queryRewrite" @change="applyVendor('queryRewrite', $event)">
+              <div class="ai-model-status">
+                <span class="ai-status-chip" :class="form.queryRewriteEnabled ? 'enabled' : 'optional'" @click="form.queryRewriteEnabled = !form.queryRewriteEnabled" style="cursor: pointer;" :title="form.queryRewriteEnabled ? '点击停用' : '点击启用'">
+                  <RiCheckLine v-if="form.queryRewriteEnabled" class="ai-check-mark" />
+                  {{ form.queryRewriteEnabled ? '已启用' : '未启用 · 点击启用' }}
+                </span>
+                <span v-if="form.queryRewriteEnabled" class="ai-status-chip">
+                  <span class="ai-dot" :class="statusDotClass('queryRewrite')"></span>
+                  {{ statusLabel('queryRewrite') }}
+                </span>
+              </div>
+            </div>
+            <div class="ai-model-card-body" v-if="form.queryRewriteEnabled">
+              <div class="ai-form-grid">
+                <div class="ai-form-field">
+                  <label class="ai-field-label">厂商预设</label>
+                  <select class="ai-input ai-select" v-model="vendorPreset.queryRewrite">
                     <option value="">选择厂商快速填充...</option>
                     <option v-for="v in QUERY_REWRITE_VENDORS" :key="v.name" :value="v.name">{{ v.name }}</option>
                   </select>
                 </div>
-                <div class="ai-field">
-                  <label>Base URL</label>
-                  <input v-model="form.queryRewriteBaseUrl" placeholder="https://open.bigmodel.cn/api/paas/v4/" />
-                  <span class="ai-help">留空则复用对话模型配置</span>
+                <div class="ai-form-field">
+                  <label class="ai-field-label">Base URL <span class="ai-label-hint">留空则复用对话模型</span></label>
+                  <input class="ai-input" v-model="form.queryRewriteBaseUrl" placeholder="https://open.bigmodel.cn/api/paas/v4/" />
                 </div>
-                <div class="ai-field">
-                  <label>API Key</label>
-                  <div class="input-with-toggle">
-                    <input v-model="form.queryRewriteApiKey" :type="showKey.queryRewrite ? 'text' : 'password'" />
-                    <button class="toggle-vis" @click="showKey.queryRewrite = !showKey.queryRewrite" tabindex="-1">
+                <div class="ai-form-field">
+                  <label class="ai-field-label">
+                    API Key <span class="ai-label-hint">留空则复用对话模型 Key</span>
+                    <span class="ai-field-hint">{{ form.queryRewriteApiKey ? '已加密保存' : '' }}</span>
+                  </label>
+                  <div class="ai-input-group">
+                    <input class="ai-input" v-model="form.queryRewriteApiKey" :type="showKey.queryRewrite ? 'text' : 'password'" />
+                    <button class="ai-input-addon" @click="showKey.queryRewrite = !showKey.queryRewrite" tabindex="-1">
                       {{ showKey.queryRewrite ? '隐藏' : '显示' }}
                     </button>
                   </div>
-                  <span class="ai-help">留空则复用对话模型 Key</span>
                 </div>
-                <div class="ai-field">
-                  <label>模型名称</label>
-                  <input v-model="form.queryRewriteModel" placeholder="glm-4-flash" />
+                <div class="ai-form-field">
+                  <label class="ai-field-label">模型名称</label>
+                  <input class="ai-input" v-model="form.queryRewriteModel" placeholder="glm-4-flash" />
                 </div>
               </div>
-              <div class="card-actions">
-                <VButton size="sm" :loading="testing.queryRewrite" @click="testQueryRewrite">
-                  测试连通性
-                </VButton>
-                <VButton type="primary" size="sm" :loading="saving.queryRewrite" @click="saveModel('queryRewrite')">
-                  保存配置
-                </VButton>
+              <div v-if="testResult.queryRewrite" class="ai-test-feedback" :class="testResult.queryRewrite.ok ? 'success' : 'error'">
+                <template v-if="testResult.queryRewrite.ok"><RiCheckLine /> 连接成功 — {{ testResult.queryRewrite.reply }}</template>
+                <template v-else><RiCloseLine /> {{ testResult.queryRewrite.error }}</template>
               </div>
-              <div v-if="testResult.queryRewrite" class="test-feedback" :class="testResult.queryRewrite.ok ? 'success' : 'error'">
-                {{ testResult.queryRewrite.ok
-                  ? '✓ 连接成功 — ' + testResult.queryRewrite.reply
-                  : '✗ ' + testResult.queryRewrite.error }}
+              <div style="justify-content: flex-end;" class="ai-card-actions">
+                <VButton @click="testQueryRewrite" :disabled="testing.queryRewrite">{{ testing.queryRewrite ? '测试中...' : '测试连通性' }}</VButton>
+                <VButton type="primary" @click="saveModel('queryRewrite')" :disabled="saving.queryRewrite">{{ saving.queryRewrite ? '保存中...' : '保存配置' }}</VButton>
               </div>
-            </template>
-          </VCard>
+            </div>
+            <div class="ai-model-card-body" v-else style="padding: 28px 22px; text-align: center; color: #9ca3af; font-size: 14px;">
+              点击右上角「未启用」标签即可开启查询改写
+            </div>
+          </article>
         </div>
-      </section>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from "vue";
-import { VPageHeader, VButton, VCard, Toast } from "@halo-dev/components";
+import { reactive, ref, watch, onMounted } from "vue";
+import { Toast , VButton, VSpace} from "@halo-dev/components";
+import RiChatSmileLine from "~icons/ri/chat-smile-line";
+import RiStackLine from "~icons/ri/stack-line";
+import RiSortDesc from "~icons/ri/sort-desc";
+import RiSearchAiLine from "~icons/ri/search-ai-line";
+import RiCheckLine from "~icons/ri/check-line";
+import RiCloseLine from "~icons/ri/close-line";
 
 // ===== 常量 =====
 const CONFIG_API = "/apis/console.api.ai-assistant.halo.run/v1alpha1/config";
@@ -331,31 +370,30 @@ const testResult = reactive<Record<string, { ok: boolean; reply?: string; model?
   queryRewrite: null,
 });
 
-// 厂商预设下拉的当前选中值（纯 UI 状态，不持久化）
+// 厂商预设下拉的当前选中值
 const vendorPreset = reactive({ chat: "", embedding: "", rerank: "", queryRewrite: "" });
 
-// ===== 状态指示器逻辑 =====
+// ===== 状态指示器 =====
 function getConnectionStatus(model: string): "connected" | "error" | "testing" | "configured" | "empty" {
   const tr = testResult[model];
   if (testing[model]) return "testing";
   if (tr?.ok) return "connected";
   if (tr && !tr.ok) return "error";
-
-  // 未测试过，检查是否有填写
   const prefix = model === "queryRewrite" ? "queryRewrite" : model;
   const keyField = (form as any)[prefix + "BaseUrl"] || (form as any)[prefix + "ApiKey"];
   if (keyField) return "configured";
   return "empty";
 }
 
-function statusClass(model: string) {
+// 状态圆点颜色
+function statusDotClass(model: string) {
   const s = getConnectionStatus(model);
   return {
-    connected: "dot-green",
-    error: "dot-red",
-    testing: "dot-blue",
-    configured: "dot-yellow",
-    empty: "dot-gray",
+    connected: "ai-dot-green",
+    error: "ai-dot-red",
+    testing: "ai-dot-blue",
+    configured: "ai-dot-green",
+    empty: "ai-dot-gray",
   }[s];
 }
 
@@ -370,47 +408,42 @@ function statusLabel(model: string) {
   }[s];
 }
 
-// ===== 厂商预设填充 =====
-function applyVendor(model: string, event: Event) {
-  const name = (event.target as HTMLSelectElement).value;
+// ===== 厂商预设：监听下拉变化，自动填充对应字段 =====
+watch(() => vendorPreset.chat, (name) => {
   if (!name) return;
-
-  let vendors: VendorPreset[];
-  if (model === "chat") vendors = CHAT_VENDORS;
-  else if (model === "embedding") vendors = EMBEDDING_VENDORS;
-  else if (model === "rerank") vendors = RERANK_VENDORS;
-  else vendors = QUERY_REWRITE_VENDORS;
-
-  const vendor = vendors.find((v) => v.name === name);
-  if (!vendor) return;
-
-  const prefix = model === "queryRewrite" ? "queryRewrite" : model;
-  (form as any)[prefix + "BaseUrl"] = vendor.baseUrl;
-  (form as any)[prefix + "Model"] = vendor.model;
-  if (vendor.dimensions !== undefined && model === "embedding") {
-    (form as any).embeddingDimensions = vendor.dimensions;
-  }
-}
+  const v = CHAT_VENDORS.find(x => x.name === name);
+  if (v) { form.chatBaseUrl = v.baseUrl; form.chatModel = v.model; }
+});
+watch(() => vendorPreset.embedding, (name) => {
+  if (!name) return;
+  const v = EMBEDDING_VENDORS.find(x => x.name === name);
+  if (v) { form.embeddingBaseUrl = v.baseUrl; form.embeddingModel = v.model; if (v.dimensions) form.embeddingDimensions = v.dimensions; }
+});
+watch(() => vendorPreset.rerank, (name) => {
+  if (!name) return;
+  const v = RERANK_VENDORS.find(x => x.name === name);
+  if (v) { form.rerankBaseUrl = v.baseUrl; form.rerankModel = v.model; }
+});
+watch(() => vendorPreset.queryRewrite, (name) => {
+  if (!name) return;
+  const v = QUERY_REWRITE_VENDORS.find(x => x.name === name);
+  if (v) { form.queryRewriteBaseUrl = v.baseUrl; form.queryRewriteModel = v.model; }
+});
 
 // ===== 独立保存 =====
 async function saveModel(model: string) {
   saving[model] = true;
   try {
-    // 收集当前模型的字段
     const fields: Record<string, any> = {};
     for (const key of MODEL_FIELDS[model]) {
       fields[key] = (form as any)[key];
     }
-
-    // 读取全量配置，保证其他模型 / group 不丢失
     let allConfig: Record<string, any> = {};
     try {
       const resp = await fetch(CONFIG_API);
       if (resp.ok) allConfig = await resp.json();
     } catch {}
-
     allConfig.models = { ...allConfig.models, ...fields };
-
     const resp = await fetch(CONFIG_API + "/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -429,7 +462,7 @@ async function saveModel(model: string) {
   }
 }
 
-// ===== 连通性测试（与原逻辑一致） =====
+// ===== 连通性测试 =====
 async function testChat() {
   testing.chat = true;
   testResult.chat = null;
@@ -518,217 +551,312 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.model-config-page {
-  max-width: 960px;
-}
+/* ===== 双栏卡片网格 ===== */
 
-/* ===== 分区标题 ===== */
-.config-section {
-  margin-bottom: 24px;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.section-title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #374151;
-}
-
-.badge {
-  font-size: 11px;
-  padding: 1px 8px;
-  border-radius: 10px;
-  font-weight: 500;
-}
-
-.badge-required {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.badge-optional {
-  background: #f3f4f6;
-  color: #6b7280;
-}
-
-/* ===== 双栏网格 ===== */
-.model-grid {
+/* ===== 双栏卡片网格 ===== */
+.ai-model-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
 }
 
-@media (max-width: 800px) {
-  .model-grid {
-    grid-template-columns: 1fr;
-  }
+/* ===== 模型卡片 ===== */
+.ai-model-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+  min-width: 0;
 }
 
-/* ===== 卡片头部 ===== */
-.card-header {
+.ai-model-card-header {
+  padding: 20px 22px;
+  border-bottom: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 16px;
+  background: linear-gradient(180deg, #ffffff, #fbfcfe);
 }
 
-.card-header-left {
+.ai-model-title-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  min-width: 0;
 }
 
-.header-icon {
-  font-size: 16px;
-}
-
-.header-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #374151;
-}
-
-/* ===== 状态指示 ===== */
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+.ai-model-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
   flex-shrink: 0;
 }
 
-.dot-green  { background: #22c55e; }
-.dot-red    { background: #ef4444; }
-.dot-blue   { background: #3b82f6; }
-.dot-yellow { background: #eab308; }
-.dot-gray   { background: #d1d5db; }
-
-.status-text {
-  font-size: 12px;
-  color: #6b7280;
+.ai-model-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
 }
 
-/* ===== 启用开关（高级模型卡片） ===== */
-.enable-toggle {
+.ai-model-subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #8a94a6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-model-status {
   display: flex;
   align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
-  color: #6b7280;
-  user-select: none;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-.enable-toggle input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: #4CCBA0;
-  cursor: pointer;
-}
-
-/* ===== 表单 ===== */
-.card-form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.ai-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.ai-field label {
-  font-size: 13px;
-  font-weight: 500;
-  color: #374151;
-}
-
-.ai-field input,
-.ai-field select {
-  padding: 7px 10px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  font-size: 13px;
-  outline: none;
-  transition: border-color 0.2s;
-  font-family: inherit;
-}
-
-.ai-field input:focus,
-.ai-field select:focus {
-  border-color: #4CCBA0;
-}
-
-.ai-help {
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-/* ===== 密码输入 + 显示/隐藏 ===== */
-.input-with-toggle {
-  display: flex;
-  gap: 0;
-}
-
-.input-with-toggle input {
-  flex: 1;
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-  border-right: none;
-}
-
-.toggle-vis {
+/* ===== 状态芯片 ===== */
+.ai-status-chip {
+  height: 28px;
   padding: 0 10px;
-  border: 1px solid #d9d9d9;
-  border-left: none;
-  border-radius: 0 4px 4px 0;
-  background: #f9fafb;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #111827;
   font-size: 12px;
-  color: #6b7280;
+  font-weight: 600;
+  border: 1px solid #e5e7eb;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.ai-status-chip.required {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+
+.ai-status-chip.enabled {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.ai-check-mark {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  background: #111827;
+  color: #fff;
+  font-size: 11px;
+  line-height: 15px;
+  text-align: center;
+  font-weight: 700;
+}
+
+/* 状态圆点颜色 */
+.ai-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #111827;
+}
+
+.ai-dot-green  { background: #22c55e; }
+.ai-dot-red    { background: #ef4444; }
+.ai-dot-blue   { background: #3b82f6; }
+.ai-dot-yellow { background: #eab308; }
+.ai-dot-gray   { background: #d1d5db; }
+
+/* ===== 卡片内容区 ===== */
+.ai-model-card-body {
+  padding: 22px;
+}
+
+.ai-form-grid {
+  display: grid;
+  gap: 18px;
+}
+
+/* ===== 表单字段（仅 Model 页特有组件） ===== */
+.ai-input-group {
+  display: flex;
+  width: 100%;
+}
+
+.ai-input-group .ai-input {
+  border: 1px solid #cbd5e1;
+  border-right: none;
+  border-radius: 10px 0 0 10px;
+  background: #fff;
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-input-addon {
+  height: 46px;
+  padding: 0 16px;
+  border: 1px solid #cbd5e1;
+  border-left: none;
+  border-radius: 0 10px 10px 0;
+  background: #f9fafb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s;
+  transition: all 0.2s ease;
 }
 
-.toggle-vis:hover {
+.ai-input-addon:hover {
+  color: #111827;
   background: #f3f4f6;
 }
 
-/* ===== 卡片底部操作行 ===== */
-.card-actions {
-  margin-top: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-/* ===== 测试反馈 ===== */
-.test-feedback {
-  margin-top: 8px;
-  padding: 6px 10px;
-  border-radius: 4px;
+.ai-helper-text {
+  margin-top: 7px;
   font-size: 12px;
+  color: #8a94a6;
   line-height: 1.5;
 }
 
-.test-feedback.success {
-  background: #ecfdf5;
-  color: #065f46;
+/* 两列子布局（Embedding 的 模型+维度） */
+.ai-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
 }
 
-.test-feedback.error {
+/* 向量维度步进器 */
+.ai-input[type="number"] {
+  border: 1px solid #cbd5e1 !important;
+  background: #fff !important;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+  appearance: none;
+}
+
+.ai-input[type="number"]:focus {
+  border-color: #111827 !important;
+}
+
+/* ===== Switch 开关（Model 页特有） ===== */
+.ai-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #4b5563;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+
+.ai-switch-track {
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: #111827;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.ai-switch-track::after {
+  content: "";
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.ai-switch-track.off {
+  background: #d1d5db;
+}
+
+.ai-switch-track.off::after {
+  right: auto;
+  left: 3px;
+}
+
+/* ===== 测试反馈 ===== */
+.ai-test-feedback {
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+.ai-test-feedback.success {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.ai-test-feedback.error {
   background: #fef2f2;
   color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* ===== 高级模型说明 ===== */
+.ai-advanced-note {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  padding: 18px 22px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.ai-note-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 1200px) {
+  .ai-model-grid { grid-template-columns: 1fr; }
+  .ai-intro-card { align-items: flex-start; flex-direction: column; }
+  .ai-intro-meta { justify-content: flex-start; }
+}
+
+@media (max-width: 768px) {
+  .ai-model-card-header { align-items: flex-start; flex-direction: column; }
+  .ai-model-status { justify-content: flex-start; }
+  .ai-two-col { grid-template-columns: 1fr; }
+
 }
 </style>

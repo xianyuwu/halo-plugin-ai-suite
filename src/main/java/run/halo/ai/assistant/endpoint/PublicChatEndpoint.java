@@ -12,16 +12,27 @@ import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import run.halo.ai.assistant.config.AIProperties;
+import run.halo.ai.assistant.endpoint.UsageLimit.LimitExceededException;
 import run.halo.app.core.extension.endpoint.CustomEndpoint;
 import run.halo.app.extension.GroupVersion;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import run.halo.ai.assistant.service.ChatLogger;
+import run.halo.ai.assistant.service.ChatLogger.ChatLogEntry;
 import run.halo.ai.assistant.service.ChatService;
 import run.halo.ai.assistant.service.ChatService.ChatResponse;
+import run.halo.ai.assistant.service.ChatService.DebugChatResponse;
+import run.halo.ai.assistant.service.TraceCache;
 
+import java.net.InetSocketAddress;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 访客聊天 API — 公开接口，无需认证
@@ -39,6 +50,8 @@ public class PublicChatEndpoint implements CustomEndpoint {
 
     private final ChatService chatService;
     private final AIProperties aiProperties;
+    private final ChatLogger chatLogger;
+    private final TraceCache traceCache = new TraceCache();
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -52,6 +65,8 @@ public class PublicChatEndpoint implements CustomEndpoint {
             .POST("/chat/stream", this::handleStreamChatPost)
             .GET("/chat", this::handleChat)
             .POST("/chat", this::handleChatPost)
+            .POST("/chat/feedback", this::handleFeedback)
+            .GET("/chat/feedback", this::handleFeedback)
             .GET("/widget-config", this::handleWidgetConfig)
             .build();
     }
@@ -76,17 +91,31 @@ public class PublicChatEndpoint implements CustomEndpoint {
      */
     private Mono<ServerResponse> handleStreamChat(ServerRequest request) {
         ChatRequest chatReq = parseQueryRequest(request);
-        return doStreamChat(chatReq.message, chatReq.history);
+        return doStreamChat(request, chatReq.message, chatReq.history);
     }
 
     /** 流式对话核心逻辑 — GET 和 POST 路由共用 */
-    private Mono<ServerResponse> doStreamChat(String message, List<Map<String, String>> history) {
-        return chatService.chatStreamWithCitations(message, history)
+    private Mono<ServerResponse> doStreamChat(ServerRequest request, String message, List<Map<String, String>> history) {
+        final String logId = UUID.randomUUID().toString();
+        final StringBuilder answerBuf = new StringBuilder();
+        final AtomicBoolean logWritten = new AtomicBoolean(false);
+        final String clientIp = extractIp(request);
+        final String userAgent = request.headers().firstHeader("User-Agent");
+
+        // clientIp 通过方法参数透传到 ChatService → LlmClient.enforceLimit.
+        // 不走 reactor context: SSE body 的订阅链不在入口 .contextWrite 的下游,
+        // context 注入不进去, 实测 enforceLimit 永远读到 null (访客限流形同虚设).
+        return chatService.chatStreamWithDebug(message, history, clientIp)
             .flatMap(chatResp -> {
+                // 缓存 trace 到内存，点踩时取出写入 ChatLog
+                traceCache.put(logId, chatResp.trace());
+
                 // 1) citations 首帧（如果有引用来源）
+                final List<Map<String, String>> citationsFinal = chatResp.citations() != null
+                    ? chatResp.citations() : List.of();
                 Flux<ServerSentEvent<String>> citationFrame = Flux.empty();
-                if (chatResp.citations() != null && !chatResp.citations().isEmpty()) {
-                    String citationJson = toJsonSafe(chatResp.citations());
+                if (!citationsFinal.isEmpty()) {
+                    String citationJson = toJsonSafe(citationsFinal);
                     citationFrame = Flux.just(
                         ServerSentEvent.<String>builder()
                             .event("citations")
@@ -95,26 +124,46 @@ public class PublicChatEndpoint implements CustomEndpoint {
                     );
                 }
 
-                // 2) 真流式 token 帧：用 JSON 包一层避免 trim 吃空格、换行被拆多行 data
+                // 2) 真流式 token 帧: 在流式过程中累积 answerBuf, 流结束异步写日志
                 Flux<ServerSentEvent<String>> tokenFrames = chatResp.stream()
                     .filter(token -> token != null && !token.isEmpty())
+                    .doOnNext(answerBuf::append)
                     .map(token -> ServerSentEvent.<String>builder()
                         .data(wrapToken(token))
                         .build());
 
-                // 3) [DONE] 终止帧
+                // 3) logId 帧(在 [DONE] 之前) — 新协议,旧前端 EventSource 忽略未知 event
+                Flux<ServerSentEvent<String>> logIdFrame = Flux.just(
+                    ServerSentEvent.<String>builder().event("logId").data(logId).build()
+                );
+
+                // 4) [DONE] 终止帧
                 Flux<ServerSentEvent<String>> doneFrame = Flux.just(
                     ServerSentEvent.<String>builder().data("[DONE]").build()
                 );
 
                 Flux<ServerSentEvent<String>> sseStream = citationFrame
                     .concatWith(tokenFrames)
+                    .concatWith(logIdFrame)
                     .concatWith(doneFrame)
+                    .doFinally(sig -> {
+                        // 流结束 (complete/error/cancel) — 异步写日志,只写一次.
+                        // doFinally 跑在 reactor event loop 线程上, 整个写日志逻辑必须丢到
+                        // boundedElastic 上去, 否则里面的 .block() 会抛
+                        // "blocking not supported in thread reactor-http-nio-X" 把 try 块打挂.
+                        if (logWritten.compareAndSet(false, true)) {
+                            Mono.fromRunnable(() -> writeChatLogSafely(
+                                    logId, message, answerBuf, citationsFinal,
+                                    clientIp, userAgent))
+                                .subscribeOn(Schedulers.boundedElastic())
+                                .subscribe();
+                        }
+                    })
                     .onErrorResume(e -> {
                         log.error("[PublicChatEndpoint] 流式输出中断: {}", e.getMessage());
                         return Flux.just(
                             ServerSentEvent.<String>builder()
-                                .data(wrapToken("\n\n[AI 服务异常，已中断]"))
+                                .data(wrapToken(friendlyErrorMessage(e)))
                                 .build(),
                             ServerSentEvent.<String>builder().data("[DONE]").build()
                         );
@@ -128,13 +177,151 @@ public class PublicChatEndpoint implements CustomEndpoint {
                 log.error("[PublicChatEndpoint] 流式对话失败: {}", e.getMessage());
                 Flux<ServerSentEvent<String>> errStream = Flux.just(
                     ServerSentEvent.<String>builder()
-                        .data(wrapToken("抱歉，AI 服务暂时不可用，请稍后重试。"))
+                        .data(wrapToken(friendlyErrorMessage(e)))
                         .build(),
                     ServerSentEvent.<String>builder().data("[DONE]").build()
                 );
                 return ServerResponse.ok()
                     .contentType(MediaType.TEXT_EVENT_STREAM)
                     .body(errStream, ServerSentEvent.class);
+            });
+    }
+
+    private Mono<ServerResponse> doStreamChatInternal(ServerRequest request, String message, List<Map<String, String>> history,
+                                                      String logId, StringBuilder answerBuf,
+                                                      AtomicBoolean logWritten,
+                                                      String clientIp, String userAgent) {
+        return chatService.chatStreamWithDebug(message, history, clientIp)
+            .flatMap(chatResp -> {
+                // 缓存 trace 到内存，点踩时取出写入 ChatLog
+                traceCache.put(logId, chatResp.trace());
+
+                // 1) citations 首帧（如果有引用来源）
+                final List<Map<String, String>> citationsFinal = chatResp.citations() != null
+                    ? chatResp.citations() : List.of();
+                Flux<ServerSentEvent<String>> citationFrame = Flux.empty();
+                if (!citationsFinal.isEmpty()) {
+                    String citationJson = toJsonSafe(citationsFinal);
+                    citationFrame = Flux.just(
+                        ServerSentEvent.<String>builder()
+                            .event("citations")
+                            .data(citationJson)
+                            .build()
+                    );
+                }
+
+                // 2) 真流式 token 帧: 在流式过程中累积 answerBuf, 流结束异步写日志
+                Flux<ServerSentEvent<String>> tokenFrames = chatResp.stream()
+                    .filter(token -> token != null && !token.isEmpty())
+                    .doOnNext(answerBuf::append)
+                    .map(token -> ServerSentEvent.<String>builder()
+                        .data(wrapToken(token))
+                        .build());
+
+                // 3) logId 帧(在 [DONE] 之前) — 新协议,旧前端 EventSource 忽略未知 event
+                Flux<ServerSentEvent<String>> logIdFrame = Flux.just(
+                    ServerSentEvent.<String>builder().event("logId").data(logId).build()
+                );
+
+                // 4) [DONE] 终止帧
+                Flux<ServerSentEvent<String>> doneFrame = Flux.just(
+                    ServerSentEvent.<String>builder().data("[DONE]").build()
+                );
+
+                Flux<ServerSentEvent<String>> sseStream = citationFrame
+                    .concatWith(tokenFrames)
+                    .concatWith(logIdFrame)
+                    .concatWith(doneFrame)
+                    .doFinally(sig -> {
+                        // 流结束 (complete/error/cancel) — 异步写日志,只写一次.
+                        // doFinally 跑在 reactor event loop 线程上, 整个写日志逻辑必须丢到
+                        // boundedElastic 上去, 否则里面的 .block() 会抛
+                        // "blocking not supported in thread reactor-http-nio-X" 把 try 块打挂.
+                        if (logWritten.compareAndSet(false, true)) {
+                            Mono.fromRunnable(() -> writeChatLogSafely(
+                                    logId, message, answerBuf, citationsFinal,
+                                    clientIp, userAgent))
+                                .subscribeOn(Schedulers.boundedElastic())
+                                .subscribe();
+                        }
+                    })
+                    .onErrorResume(e -> {
+                        log.error("[PublicChatEndpoint] 流式输出中断: {}", e.getMessage());
+                        return Flux.just(
+                            ServerSentEvent.<String>builder()
+                                .data(wrapToken(friendlyErrorMessage(e)))
+                                .build(),
+                            ServerSentEvent.<String>builder().data("[DONE]").build()
+                        );
+                    });
+
+                return ServerResponse.ok()
+                    .contentType(MediaType.TEXT_EVENT_STREAM)
+                    .body(sseStream, ServerSentEvent.class);
+            })
+            .onErrorResume(e -> {
+                log.error("[PublicChatEndpoint] 流式对话失败: {}", e.getMessage());
+                Flux<ServerSentEvent<String>> errStream = Flux.just(
+                    ServerSentEvent.<String>builder()
+                        .data(wrapToken(friendlyErrorMessage(e)))
+                        .build(),
+                    ServerSentEvent.<String>builder().data("[DONE]").build()
+                );
+                return ServerResponse.ok()
+                    .contentType(MediaType.TEXT_EVENT_STREAM)
+                    .body(errStream, ServerSentEvent.class);
+            });
+    }
+
+    /**
+     * 提取客户端 IP — 优先 X-Forwarded-For(反代), 否则 remoteAddress.
+     */
+    private String extractIp(ServerRequest request) {
+        try {
+            String xff = request.headers().firstHeader("X-Forwarded-For");
+            if (xff != null && !xff.isBlank()) {
+                int comma = xff.indexOf(',');
+                return (comma > 0 ? xff.substring(0, comma) : xff).trim();
+            }
+            InetSocketAddress remote = request.remoteAddress().orElse(null);
+            if (remote != null && remote.getAddress() != null) {
+                return remote.getAddress().getHostAddress();
+            }
+        } catch (Exception ignored) {}
+        return "unknown";
+    }
+
+    /**
+     * 反馈提交:GET /chat/feedback?logId=...&type=...&comment=...
+     *
+     * <p>走 GET 是为了绕开 Halo 对 api.halo.run 组的 POST RBAC 拦截（实测 302 → /login）。
+     * 跟 /chat/stream 的设计保持一致。前端用 URLSearchParams 拼 query。
+     */
+    private Mono<ServerResponse> handleFeedback(ServerRequest request) {
+        String logId = request.queryParam("logId").orElse("");
+        String type = request.queryParam("type").orElse("like");
+        String rawComment = request.queryParam("comment").orElse("");
+        String comment = rawComment.length() > 200 ? rawComment.substring(0, 200) : rawComment;
+
+        if (logId.isEmpty()) {
+            return ServerResponse.ok()
+                .bodyValue(Map.of("success", false, "error", "logId 必填"));
+        }
+        if (!"like".equals(type) && !"dislike".equals(type)) {
+            return ServerResponse.ok()
+                .bodyValue(Map.of("success", false, "error", "type 必须是 like 或 dislike"));
+        }
+        // 点踩时从内存缓存取出 trace，一并写入 ChatLog
+        TraceCache.TraceData traceData = "dislike".equals(type) ? traceCache.take(logId) : null;
+        String traceIntent = traceData != null ? traceData.intent() : null;
+        List<Map<String, Object>> traceStages = traceData != null ? traceData.stages() : null;
+
+        return chatLogger.updateFeedbackWithTrace(logId, type, comment, traceIntent, traceStages)
+            .then(ServerResponse.ok().bodyValue(Map.of("success", true)))
+            .onErrorResume(e -> {
+                log.error("[Feedback] 更新反馈失败, logId={}", logId, e);
+                return ServerResponse.ok()
+                    .bodyValue(Map.of("success", false, "error", e.getMessage()));
             });
     }
 
@@ -145,6 +332,74 @@ public class PublicChatEndpoint implements CustomEndpoint {
         } catch (Exception e) {
             // 序列化失败的兜底（理论上不会发生）
             return "{\"content\":\"\"}";
+        }
+    }
+
+    /**
+     * 把后端异常映射成"用户能看懂 + 知道下一步怎么做"的友好文案.
+     *
+     * <p>使用场景: 流中断 (line 151) / 整个流失败 (line 165) 兜底转成 SSE token
+     * 发给前端, 前端通过 onToken 渲染到气泡. 比 "[AI 服务异常，已中断]" 这种技术词
+     * 更具体、更可操作.
+     */
+    static String friendlyErrorMessage(Throwable e) {
+        // 1) 限流触发 (LimitGuard 抛) — 区分模型/访客两种来源
+        if (e instanceof LimitExceededException) {
+            String reason = e.getMessage() != null ? e.getMessage() : "";
+            if (reason.contains("本 IP") || reason.contains("本IP") || reason.contains("访客")) {
+                return "⚠️ " + reason + " 请稍后再试。";
+            }
+            return "⚠️ **今日对话已达上限**, 请稍后再来,或联系博主调整限额。";
+        }
+        // 2) HTTP 4xx/5xx (上游 LLM 服务返回)
+        if (e instanceof WebClientResponseException wcre) {
+            int code = wcre.getStatusCode().value();
+            if (code == 401 || code == 403) {
+                return "⚠️ AI 服务授权失败 (HTTP " + code + "),请联系博主检查 API Key 配置。";
+            }
+            if (code == 429) {
+                return "⚠️ AI 服务调用过于频繁,请稍后再试。";
+            }
+            if (code >= 500) {
+                return "⚠️ AI 服务暂时不可用 (HTTP " + code + "),请稍后再试。";
+            }
+            return "⚠️ 请求出错 (HTTP " + code + "),请稍后重试。";
+        }
+        // 3) 网络超时 (Spring WebClient 的 Netty 抛)
+        if (e.getCause() instanceof java.net.SocketTimeoutException
+                || e.getMessage() != null && e.getMessage().toLowerCase().contains("timeout")) {
+            return "⚠️ 网络连接超时,请检查网络后重试。";
+        }
+        // 4) 兜底
+        return "⚠️ AI 助手暂时不可用,请稍后再试。";
+    }
+
+    /**
+     * 在 boundedElastic 线程上安全地写一条 chat 日志.
+     *
+     * <p>从 doFinally 拆出来 — 原内联写法在 reactor event loop 线程上跑,
+     * 里面的 {@code .block()} 取 model 值会抛 "blocking not supported".
+     * 整个调用必须包到 {@code Mono.fromRunnable(...).subscribeOn(Schedulers.boundedElastic())}.
+     */
+    private void writeChatLogSafely(String logId, String message, StringBuilder answerBuf,
+                                    List<Map<String, String>> citationsFinal,
+                                    String clientIp, String userAgent) {
+        try {
+            String model = aiProperties.getModelConfig()
+                .map(m -> m.getChatModel() != null ? m.getChatModel() : "unknown")
+                .defaultIfEmpty("unknown")
+                .block();
+            ChatLogEntry entry = new ChatLogEntry(
+                logId, Instant.now(), clientIp,
+                userAgent != null ? userAgent : "",
+                message != null ? message : "",
+                answerBuf.toString(),
+                model != null ? model : "unknown",
+                citationsFinal, null, null, null
+            );
+            chatLogger.appendLogAsync(entry);
+        } catch (Exception e) {
+            log.warn("[PublicChatEndpoint] 写日志失败: {}", e.getMessage());
         }
     }
 
@@ -159,12 +414,14 @@ public class PublicChatEndpoint implements CustomEndpoint {
 
     private Mono<ServerResponse> handleChat(ServerRequest request) {
         ChatRequest chatReq = parseQueryRequest(request);
-        return doChat(chatReq.message, chatReq.history);
+        String clientIp = extractIp(request);
+        return doChat(chatReq.message, chatReq.history, clientIp);
     }
 
-    /** 非流式对话核心逻辑 — GET 和 POST 路由共用 */
-    private Mono<ServerResponse> doChat(String message, List<Map<String, String>> history) {
-        return chatService.chat(message, history)
+    /** 非流式对话核心逻辑 — GET 和 POST 路由共用. clientIp 走方法参数(访客限流用) */
+    private Mono<ServerResponse> doChat(String message, List<Map<String, String>> history,
+                                        String clientIp) {
+        return chatService.chat(message, history, clientIp)
             .onErrorResume(e -> {
                 log.error("[PublicChatEndpoint] 对话失败: {}", e.getMessage());
                 return Mono.just("抱歉，AI 服务暂时不可用，请稍后重试。");
@@ -184,17 +441,20 @@ public class PublicChatEndpoint implements CustomEndpoint {
         return request.bodyToMono(ChatRequestBody.class)
             .defaultIfEmpty(new ChatRequestBody("", List.of()))
             .flatMap(body -> doStreamChat(
+                request,
                 body.message() != null ? body.message() : "",
                 body.history() != null ? body.history() : List.of()
             ));
     }
 
     private Mono<ServerResponse> handleChatPost(ServerRequest request) {
+        String clientIp = extractIp(request);
         return request.bodyToMono(ChatRequestBody.class)
             .defaultIfEmpty(new ChatRequestBody("", List.of()))
             .flatMap(body -> doChat(
                 body.message() != null ? body.message() : "",
-                body.history() != null ? body.history() : List.of()
+                body.history() != null ? body.history() : List.of(),
+                clientIp
             ));
     }
 
@@ -202,8 +462,10 @@ public class PublicChatEndpoint implements CustomEndpoint {
      * 返回浮窗配置 — 供前端 JS 调用
      */
     private Mono<ServerResponse> handleWidgetConfig(ServerRequest request) {
-        return aiProperties.getChatConfig()
-            .flatMap(chatConfig -> {
+        return Mono.zip(aiProperties.getChatConfig(), aiProperties.getRetrievalConfig())
+            .flatMap(tuple -> {
+                var chatConfig = tuple.getT1();
+                var retrievalConfig = tuple.getT2();
                 // 把多行 shortcutQuestions 文本拆成数组，去重去空，限制最多 6 条
                 List<String> shortcuts = new ArrayList<>();
                 String raw = chatConfig.getShortcutQuestions();
@@ -221,6 +483,12 @@ public class PublicChatEndpoint implements CustomEndpoint {
                     ? chatConfig.getWidgetPosition() : "right-bottom");
                 body.put("color", chatConfig.getWidgetThemeColor() != null
                     ? chatConfig.getWidgetThemeColor() : "#4F46E5");
+                body.put("icon", chatConfig.getWidgetIcon() != null
+                    ? chatConfig.getWidgetIcon() : "ri-sparkling-2-line");
+                body.put("triggerSize", chatConfig.getWidgetTriggerSize() > 0
+                    ? chatConfig.getWidgetTriggerSize() : 35);
+                body.put("triggerLabel", chatConfig.getWidgetTriggerLabel() != null
+                    ? chatConfig.getWidgetTriggerLabel() : "");
                 // 深浅色模式：auto / light / dark；前端写到 data-theme 属性，CSS 据此覆盖 prefers-color-scheme
                 String theme = chatConfig.getWidgetTheme();
                 if (theme == null || (!theme.equals("light") && !theme.equals("dark"))) {
@@ -239,6 +507,9 @@ public class PublicChatEndpoint implements CustomEndpoint {
                     chatConfig.getWidgetTriggerOffsetY() > 0 ? chatConfig.getWidgetTriggerOffsetY() : 24);
                 body.put("stream", chatConfig.isStreamOutput());
                 body.put("allowGuest", chatConfig.isAllowGuest());
+                body.put("showRetrievalStatus", chatConfig.isShowRetrievalStatus());
+                body.put("showPrivacyTip", chatConfig.isShowPrivacyTip());
+                body.put("showReferences", retrievalConfig.isShowReferences());
                 return ServerResponse.ok()
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(body);

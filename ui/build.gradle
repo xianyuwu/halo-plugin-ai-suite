@@ -14,7 +14,7 @@ tasks.register('buildFrontend', PnpmTask) {
     inputs.files(fileTree(
             dir: layout.projectDirectory,
             includes: ['*.cjs', '*.ts', '*.js', '*.json', '*.yaml']))
-    outputs.dir(layout.buildDirectory.dir('dist'))
+    outputs.dir(rootProject.layout.projectDirectory.dir('src/main/resources/console'))
 }
 
 tasks.register('pnpmCheck', PnpmTask) {

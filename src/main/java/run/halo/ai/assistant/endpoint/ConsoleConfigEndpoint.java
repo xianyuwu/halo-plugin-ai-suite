@@ -1,23 +1,33 @@
 package run.halo.ai.assistant.endpoint;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import run.halo.app.core.extension.endpoint.CustomEndpoint;
 import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.GroupVersion;
+import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
+import run.halo.app.extension.Secret;
 import run.halo.ai.assistant.config.AIProperties;
 import run.halo.ai.assistant.llm.LlmClient;
+import run.halo.ai.assistant.rag.PipelineTrace;
+import run.halo.ai.assistant.service.ChatService;
 
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map;
 
 /**
@@ -31,9 +41,16 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ConsoleConfigEndpoint implements CustomEndpoint {
 
+    private static final String SECRET_NAME = "ai-assistant-api-keys";
+    private static final String[] API_KEY_FIELDS = {
+        "chatApiKey", "embeddingApiKey", "rerankApiKey", "queryRewriteApiKey"
+    };
+
     private final AIProperties aiProperties;
     private final LlmClient llmClient;
     private final ReactiveExtensionClient extensionClient;
+    private final ChatService chatService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
@@ -45,6 +62,7 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
             .POST("/config/test-embedding", this::testEmbedding)
             .POST("/config/test-rerank", this::testRerank)
             .POST("/config/test-query-rewrite", this::testQueryRewrite)
+            .POST("/chat/debug/stream", this::handleDebugStreamChat)
             .build();
     }
 
@@ -54,46 +72,97 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
     }
 
     /**
-     * 保存配置 — 前端提交各 group 的 JSON，写入 ConfigMap
-     * 请求体: { "models": "{...json...}", "chunking": "{...}", ... }
+     * 保存配置 — 非敏感数据写入 ConfigMap，API Key 写入 Secret
      */
     @SuppressWarnings("unchecked")
     private Mono<ServerResponse> saveConfig(ServerRequest request) {
         return request.bodyToMono(Map.class)
             .flatMap(body -> {
-                Map<String, String> data = new LinkedHashMap<>();
+                Map<String, String> configData = new LinkedHashMap<>();
+                Map<String, String> secretData = new LinkedHashMap<>();
                 for (Object key : body.keySet()) {
                     Object val = body.get(key);
-                    // 值可能是 String（JSON 字符串）或 Map（自动序列化）
+                    String json;
                     if (val instanceof String s) {
-                        data.put(key.toString(), s);
+                        json = s;
                     } else if (val != null) {
                         try {
-                            data.put(key.toString(),
-                                new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(val));
+                            json = new ObjectMapper().writeValueAsString(val);
                         } catch (Exception e) {
-                            data.put(key.toString(), "{}");
+                            json = "{}";
                         }
+                    } else {
+                        continue;
                     }
+
+                    // 提取 API Key 字段存储到 Secret
+                    try {
+                        JsonNode node = new ObjectMapper().readTree(json);
+                        if (node.isObject()) {
+                            ObjectNode mutable = node.deepCopy();
+                            boolean hasKeys = false;
+                            for (String f : API_KEY_FIELDS) {
+                                JsonNode keyVal = mutable.get(f);
+                                if (keyVal != null && !keyVal.isNull() && !keyVal.asText().isBlank()) {
+                                    secretData.put(f, keyVal.asText());
+                                    mutable.remove(f);
+                                    hasKeys = true;
+                                }
+                            }
+                            json = hasKeys ? new ObjectMapper().writeValueAsString(mutable) : json;
+                        }
+                    } catch (Exception ignored) {}
+
+                    configData.put(key.toString(), json);
                 }
 
                 String configMapName = "ai-assistant-configmap";
-                return extensionClient.fetch(ConfigMap.class, configMapName)
+                Mono<ConfigMap> saveConfig = extensionClient.fetch(ConfigMap.class, configMapName)
                     .flatMap(existing -> {
-                        existing.setData(data);
+                        // 保留 non-sensitive 的旧值（如果前端没传）
+                        if (existing.getData() != null) {
+                            for (var entry : existing.getData().entrySet()) {
+                                configData.putIfAbsent(entry.getKey(), entry.getValue());
+                            }
+                        }
+                        existing.setData(configData);
                         return extensionClient.update(existing);
                     })
-                    .onErrorResume(e -> {
-                        // ConfigMap 不存在，创建新的
+                    .switchIfEmpty(Mono.defer(() -> {
                         ConfigMap newCm = new ConfigMap();
                         newCm.getMetadata().setName(configMapName);
-                        newCm.setData(data);
+                        newCm.setData(configData);
                         return extensionClient.create(newCm);
-                    });
+                    }));
+
+                Mono<Secret> saveSecret = Mono.just(secretData)
+                    .filter(m -> !m.isEmpty())
+                    .flatMap(m -> extensionClient.fetch(Secret.class, SECRET_NAME)
+                        .flatMap(existing -> {
+                            // 保留已有的 key，只更新前端传来的
+                            if (existing.getStringData() != null) {
+                                for (var entry : existing.getStringData().entrySet()) {
+                                    m.putIfAbsent(entry.getKey(), entry.getValue());
+                                }
+                            }
+                            existing.setStringData(m);
+                            return extensionClient.update(existing);
+                        })
+                        .switchIfEmpty(Mono.defer(() -> {
+                            Secret s = new Secret();
+                            s.setMetadata(new Metadata());
+                            s.getMetadata().setName(SECRET_NAME);
+                            s.setStringData(m);
+                            s.setType("Opaque");
+                            return extensionClient.create(s);
+                        }))
+                    );
+
+                return Mono.when(saveConfig, saveSecret)
+                    .then(ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(Map.of("saved", true)));
             })
-            .flatMap(saved -> ServerResponse.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(Map.of("saved", true)))
             .onErrorResume(e -> {
                 log.error("[ConsoleConfigEndpoint] 保存配置失败", e);
                 return ServerResponse.ok()
@@ -108,7 +177,9 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
             aiProperties.getChunkConfig(),
             aiProperties.getRetrievalConfig(),
             aiProperties.getEnhancementConfig(),
-            aiProperties.getChatConfig()
+            aiProperties.getChatConfig(),
+            readExcerptConfig(),
+            aiProperties.getWritingConfig()
         ).flatMap(tuple -> ServerResponse.ok()
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue(Map.of(
@@ -116,9 +187,31 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
                 "chunking", tuple.getT2(),
                 "retrieval", tuple.getT3(),
                 "enhancement", tuple.getT4(),
-                "chat", tuple.getT5()
+                "chat", tuple.getT5(),
+                "excerpt", tuple.getT6(),
+                "writing", tuple.getT7()
             ))
         );
+    }
+
+    private Mono<Map<String, Object>> readExcerptConfig() {
+        return extensionClient.fetch(ConfigMap.class, "ai-assistant-configmap")
+            .mapNotNull(cm -> {
+                var data = cm.getData();
+                if (data == null) return null;
+                String json = data.get("excerpt");
+                if (json == null || json.isBlank()) return Map.<String, Object>of();
+                try {
+                    JsonNode node = new ObjectMapper().readTree(json);
+                    // 把整棵 JSON 节点原样转 Map，前端能拿到所有字段（含 maxLength/maxInputLength/prompt）
+                    return new ObjectMapper().convertValue(
+                        node, new com.fasterxml.jackson.core.type.TypeReference
+                            <Map<String, Object>>() {});
+                } catch (Exception e) {
+                    return Map.<String, Object>of();
+                }
+            })
+            .defaultIfEmpty(Map.of());
     }
 
     /**
@@ -210,9 +303,6 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
             var node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(body);
             // OpenAI 格式: { "error": { "message": "xxx" } }
             var errorMsg = node.path("error").path("message").asText(null);
-            if (errorMsg != null && !errorMsg.isBlank()) return errorMsg;
-            // 百度格式: { "error_msg": "xxx" }
-            errorMsg = node.path("error_msg").asText(null);
             if (errorMsg != null && !errorMsg.isBlank()) return errorMsg;
             // 简单格式: { "message": "xxx" }
             errorMsg = node.path("message").asText(null);
@@ -446,5 +536,135 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
 
     private static boolean isBlank(String s) {
         return s == null || s.isBlank();
+    }
+
+    // ===== 调试流式对话 SSE =====
+
+    /**
+     * 调试模式流式对话 — 推送管线追踪 + token 流
+     *
+     * SSE 事件顺序：
+     * 1. event: trace_stage（每阶段一条）
+     * 2. event: citations
+     * 3. data: {"content":"token"}（LLM token 流）
+     * 4. event: trace_summary
+     * 5. data: [DONE]
+     */
+    @SuppressWarnings("unchecked")
+    private Mono<ServerResponse> handleDebugStreamChat(ServerRequest request) {
+        return request.bodyToMono(Map.class)
+            .flatMap(body -> {
+                String message = (String) body.getOrDefault("message", "");
+                List<Map<String, String>> history = parseHistory(body.get("history"));
+
+                if (message.isBlank()) {
+                    return ServerResponse.badRequest()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(Map.of("error", "message 不能为空"));
+                }
+
+                return chatService.chatStreamWithDebug(message, history, null)
+                    .flatMap(debugResp -> {
+                        PipelineTrace trace = debugResp.trace();
+
+                        // 1. 追踪阶段事件
+                        Flux<ServerSentEvent<String>> traceFrames = Flux.fromIterable(trace.stages())
+                            .map(stage -> ServerSentEvent.<String>builder()
+                                .event("trace_stage")
+                                .data(toJson(stage))
+                                .build());
+
+                        // 2. 引用事件
+                        Flux<ServerSentEvent<String>> citationFrame = Flux.empty();
+                        if (debugResp.citations() != null && !debugResp.citations().isEmpty()) {
+                            citationFrame = Flux.just(
+                                ServerSentEvent.<String>builder()
+                                    .event("citations")
+                                    .data(toJson(debugResp.citations()))
+                                    .build()
+                            );
+                        }
+
+                        // 3. Token 流
+                        Flux<ServerSentEvent<String>> tokenFrames = debugResp.stream()
+                            .filter(token -> token != null && !token.isEmpty())
+                            .map(token -> ServerSentEvent.<String>builder()
+                                .data(wrapToken(token))
+                                .build());
+
+                        // 4. 追踪汇总
+                        Flux<ServerSentEvent<String>> summaryFrame = Flux.just(
+                            ServerSentEvent.<String>builder()
+                                .event("trace_summary")
+                                .data(toJson(Map.of(
+                                    "totalMs", trace.totalDurationMs(),
+                                    "stageCount", trace.stages().size(),
+                                    "intent", trace.intent()
+                                )))
+                                .build()
+                        );
+
+                        // 5. 结束标记
+                        Flux<ServerSentEvent<String>> doneFrame = Flux.just(
+                            ServerSentEvent.<String>builder()
+                                .data("[DONE]")
+                                .build()
+                        );
+
+                        return ServerResponse.ok()
+                            .contentType(MediaType.TEXT_EVENT_STREAM)
+                            .body(
+                                traceFrames
+                                    .concatWith(citationFrame)
+                                    .concatWith(tokenFrames)
+                                    .concatWith(summaryFrame)
+                                    .concatWith(doneFrame),
+                                ServerSentEvent.class
+                            );
+                    });
+            })
+            .onErrorResume(e -> {
+                log.error("[ConsoleConfigEndpoint] 调试对话失败", e);
+                return ServerResponse.ok()
+                    .contentType(MediaType.TEXT_EVENT_STREAM)
+                    .body(
+                        Flux.just(
+                            ServerSentEvent.<String>builder()
+                                .data(wrapToken("[AI 服务异常，已中断]"))
+                                .build(),
+                            ServerSentEvent.<String>builder()
+                                .data("[DONE]")
+                                .build()
+                        ),
+                        ServerSentEvent.class
+                    );
+            });
+    }
+
+    /** JSON 序列化 */
+    private String toJson(Object obj) {
+        try {
+            return objectMapper.writeValueAsString(obj);
+        } catch (Exception e) {
+            return "{}";
+        }
+    }
+
+    /** 包装 token 为 JSON */
+    private String wrapToken(String token) {
+        try {
+            return objectMapper.writeValueAsString(Map.of("content", token));
+        } catch (Exception e) {
+            return "{\"content\":\"\"}";
+        }
+    }
+
+    /** 解析对话历史 */
+    @SuppressWarnings("unchecked")
+    private List<Map<String, String>> parseHistory(Object historyObj) {
+        if (historyObj instanceof List<?> list) {
+            return (List<Map<String, String>>) list;
+        }
+        return List.of();
     }
 }

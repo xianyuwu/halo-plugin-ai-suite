@@ -1,0 +1,87 @@
+/* ===== AI Assistant Console Styles ===== */
+/* 字体与 Halo 控制台对齐：标准系统字体栈 + 中文优化 */
+/* 字重体系：400 正文/描述、500-600 标签/辅助标题、700 主标题 */
+
+:root {
+  --font-sans:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Noto Sans",
+    Helvetica,
+    "PingFang SC",
+    "Microsoft YaHei",
+    Arial,
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji";
+
+  /* ===== Design Tokens =====
+   * 改主题色 / 圆角 / 阴影只改这里
+   * 颜色按语义命名（fg/bg/border/status），不用 brand1/brand2
+   * 圆角 4 档（sm/md/lg/xl + pill），阴影 5 档
+   */
+
+  /* Foreground（文字色，按重要度由高到低） */
+  --ai-color-fg:           #111827;  /* 主标题/主按钮/active */
+  --ai-color-fg-secondary: #4b5563;  /* 副 fg（progress 渐变末/nav 文字） */
+  --ai-color-fg-strong:    #374151;  /* 副标题/标签 */
+  --ai-color-fg-muted:     #6b7280;  /* 正文/描述 */
+  --ai-color-fg-subtle:    #8a94a6;  /* 弱化描述 */
+  --ai-color-fg-disabled:  #9ca3af;  /* 占位/disabled */
+  --ai-color-fg-inverse:   #ffffff;  /* 白色文字（按钮/icon） */
+  --ai-color-fg-deep:      #000000;  /* 深黑（hover 状态） */
+
+  /* Background（背景色，按层级由浅到深） */
+  --ai-color-bg-page:      #f5f7fb;  /* 页面底色 */
+  --ai-color-bg-card:      #ffffff;  /* 卡片背景 */
+  --ai-color-bg-muted:     #f9fafb;  /* 次级卡 */
+  --ai-color-bg-subtle:    #f3f4f6;  /* icon 容器/进度条底/微调 */
+  --ai-color-bg-gradient-end: #fbfcfe; /* 渐变末端 */
+  --ai-color-bg-tip:       #f0fdf9;  /* 信息提示框（淡绿） */
+
+  /* Border（边线/分隔） */
+  --ai-color-border:        #e5e7eb;  /* 主边 */
+  --ai-color-border-strong: #d1d5db;  /* 强调边（input / ghost button hover） */
+  --ai-color-divider:       #f1f5f9;  /* 分隔线 */
+
+  /* Status（成功/失败/警告/信息） */
+  --ai-color-success:        #10b981;
+  --ai-color-success-deep:   #059669;
+  --ai-color-success-darker: #047857;
+  --ai-color-success-bg:     #ecfdf5;
+  --ai-color-success-bg-2:   #d1fae5;
+  --ai-color-success-border: #6ee7b7;
+  --ai-color-danger:         #ef4444;
+  --ai-color-danger-strong:  #dc2626;
+  --ai-color-danger-darker:  #991b1b;  /* failed 文字/红框 */
+  --ai-color-danger-bg:      #fee2e2;  /* failed 浅底 */
+  --ai-color-warning:        #f59e0b;
+  --ai-color-warning-strong: #d97706;
+  --ai-color-info:           #2563eb;
+  --ai-color-info-bg:        #eff6ff;
+
+  /* Radius（圆角，按尺寸由小到大） */
+  --ai-radius-sm:   6px;
+  --ai-radius-md:   10px;
+  --ai-radius-lg:   14px;
+  --ai-radius-xl:   18px;
+  --ai-radius-pill: 999px;
+
+  /* Shadow（阴影，按使用场景） */
+  --ai-shadow-card:        0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
+  --ai-shadow-card-strong: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --ai-shadow-hover:       0 6px 16px rgba(15, 23, 42, 0.10);
+  --ai-shadow-pop:         0 8px 24px rgba(15, 23, 42, 0.12);
+  --ai-shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+
+body {
+  font-family: var(--font-sans);
+}
+
+/* VPageHeader 白色背景覆盖 */
+.v-page-header {
+  background: transparent !important;
+}
