@@ -310,6 +310,7 @@
                   <th>调用次数</th>
                   <th>失败数</th>
                   <th>失败率</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -321,9 +322,12 @@
                   <td :class="{ 'usage-fail': row.failureRate > 5 }">
                     {{ row.failureRate.toFixed(2) }}%
                   </td>
+                  <td>
+                    <VButton size="xs" type="default" @click="openCallDrawer(row.model)">详情</VButton>
+                  </td>
                 </tr>
                 <tr v-if="rows.length === 0">
-                  <td colspan="5" class="ai-empty">所选范围内暂无数据</td>
+                  <td colspan="6" class="ai-empty">所选范围内暂无数据</td>
                 </tr>
               </tbody>
             </table>
@@ -422,6 +426,97 @@
         </div>
       </div>
     </div>
+
+    <div class="usage-drawer-mask" v-if="callDrawerOpen" @click="callDrawerOpen = false"></div>
+    <div class="usage-drawer usage-call-drawer" :class="{ open: callDrawerOpen }">
+      <div class="usage-drawer-header">
+        <div>
+          <h3>{{ callDrawerModel || '模型' }} 调用明细</h3>
+          <p>保留最近 {{ callRetentionDays }} 天，从本版本开始记录，当前范围：{{ rangeLabelText }}</p>
+        </div>
+        <button class="usage-drawer-close" @click="callDrawerOpen = false">×</button>
+      </div>
+      <div class="usage-drawer-body">
+        <div v-if="callLoading" class="ai-empty">加载中...</div>
+        <div v-else-if="callItems.length === 0" class="ai-empty">当前范围内暂无调用明细</div>
+        <div v-else class="usage-call-table-wrap">
+          <table class="ai-table usage-call-table">
+            <thead>
+              <tr>
+                <th>
+                  <button class="usage-sort-button" type="button" @click="toggleCallSort">
+                    时间
+                    <span>{{ callSort === "desc" ? "↓" : "↑" }}</span>
+                  </button>
+                </th>
+                <th>
+                  <select
+                    v-if="showCallScenarioFilter"
+                    class="usage-table-filter"
+                    v-model="callScenario"
+                    @change="loadCallDetails(1)"
+                  >
+                    <option value="all">调用场景</option>
+                    <option v-for="scenario in callAvailableScenarios" :key="scenario" :value="scenario">
+                      {{ scenarioLabel(scenario) }}
+                    </option>
+                  </select>
+                  <span v-else>调用场景</span>
+                </th>
+                <th>接口类型</th>
+                <th class="usage-num">总 Token</th>
+                <th class="usage-num">输入</th>
+                <th class="usage-num">输出</th>
+                <th>
+                  <select class="usage-table-filter" v-model="callStatus" @change="loadCallDetails(1)">
+                    <option value="all">状态</option>
+                    <option value="success">成功</option>
+                    <option value="failed">失败</option>
+                  </select>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="item in callItems" :key="item.id">
+                <tr>
+                  <td class="usage-call-time">{{ formatCallTime(item.time) }}</td>
+                  <td>{{ scenarioLabel(item.scenario) }}</td>
+                  <td>{{ typeLabel(item.type) }}</td>
+                  <td class="usage-num">{{ item.totalTokens.toLocaleString() }}</td>
+                  <td class="usage-num">{{ item.promptTokens.toLocaleString() }}</td>
+                  <td class="usage-num">{{ item.completionTokens.toLocaleString() }}</td>
+                  <td>
+                    <span class="usage-call-status" :class="{ failed: item.failure }">
+                      {{ item.failure ? '失败' : '成功' }}
+                    </span>
+                  </td>
+                </tr>
+                <tr v-if="item.error" class="usage-call-error-row">
+                  <td colspan="7">
+                    <span>错误信息：</span>{{ item.error }}
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="usage-call-footer">
+          <span>共 {{ callTotal }} 条</span>
+          <div class="usage-call-pages">
+            <select class="usage-page-size" v-model.number="callPageSize" @change="loadCallDetails(1)">
+              <option :value="10">10 条/页</option>
+              <option :value="25">25 条/页</option>
+              <option :value="50">50 条/页</option>
+            </select>
+            <VButton size="xs" type="default" :disabled="callLoading" @click="loadCallDetails(callPage)">刷新</VButton>
+            <VButton size="xs" type="default" :disabled="callPage <= 1 || callLoading" @click="loadCallDetails(callPage - 1)">‹</VButton>
+            <span>{{ callPage }} / {{ callTotalPages }}</span>
+            <VButton size="xs" type="default" :disabled="callPage >= callTotalPages || callLoading" @click="loadCallDetails(callPage + 1)">›</VButton>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -432,7 +527,9 @@ import {
   saveUsageLimits,
   loadUsageToday,
   loadUsageStats,
+  loadUsageCalls,
   type DailyStatsEntry,
+  type UsageCallLog,
 } from "../utils/config";
 import MetricCard from "../components/MetricCard.vue";
 import UsageCalendar from "../components/UsageCalendar.vue";
@@ -466,6 +563,19 @@ const startDate = ref<string>(toDateStr(_initSevenDaysAgo));
 const endDate = ref<string>(toDateStr(_initToday));
 // 当前选中的预设 (用于触发按钮显示); 用户在弹层里手选日期后变 null
 const activePreset = ref<"today" | "1d" | "7d" | "14d" | "30d" | null>("7d");
+const callDrawerOpen = ref(false);
+const callDrawerModel = ref("");
+const callType = ref("all");
+const callScenario = ref("all");
+const callStatus = ref("all");
+const callSort = ref<"asc" | "desc">("desc");
+const callLoading = ref(false);
+const callItems = ref<UsageCallLog[]>([]);
+const callTotal = ref(0);
+const callPage = ref(1);
+const callPageSize = ref(10);
+const callRetentionDays = ref(30);
+const callAvailableScenarios = ref<string[]>([]);
 
 // ===== 日期范围 popover 状态 =====
 const pickerOpen = ref(false);
@@ -775,6 +885,8 @@ const rows = computed<Row[]>(() => {
     }))
     .sort((x, y) => y.tokens - x.tokens);
 });
+const callTotalPages = computed(() => Math.max(1, Math.ceil(callTotal.value / callPageSize.value)));
+const showCallScenarioFilter = computed(() => callAvailableScenarios.value.length > 1);
 
 // ===== 多折线图 =====
 
@@ -1163,6 +1275,98 @@ async function loadAll() {
 
   saveMsg.value = "";
   saveOk.value = false;
+}
+
+async function openCallDrawer(model: string) {
+  callDrawerModel.value = model;
+  callType.value = "all";
+  callScenario.value = "all";
+  callStatus.value = "all";
+  callSort.value = "desc";
+  callDrawerOpen.value = true;
+  await loadCallDetails(1);
+}
+
+async function loadCallDetails(page = callPage.value) {
+  if (!callDrawerModel.value) return;
+  callLoading.value = true;
+  callPage.value = Math.max(1, page);
+  try {
+    const data = await loadUsageCalls({
+      model: callDrawerModel.value,
+      start: startDate.value,
+      end: endDate.value,
+      type: callType.value,
+      scenario: callScenario.value,
+      status: callStatus.value,
+      sort: callSort.value,
+      page: callPage.value,
+      size: callPageSize.value,
+    });
+    callItems.value = data.items || [];
+    callTotal.value = data.total || 0;
+    callRetentionDays.value = data.retentionDays || 30;
+    callAvailableScenarios.value = data.scenarios || [];
+    if (!showCallScenarioFilter.value) {
+      callScenario.value = "all";
+    }
+    callPage.value = data.page || callPage.value;
+  } catch (e: any) {
+    Toast.error(e?.message || "调用明细加载失败");
+  } finally {
+    callLoading.value = false;
+  }
+}
+
+function toggleCallSort() {
+  callSort.value = callSort.value === "desc" ? "asc" : "desc";
+  loadCallDetails(1);
+}
+
+function formatCallTime(value: string) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function typeLabel(type: string) {
+  const map: Record<string, string> = {
+    chat: "Chat",
+    embed: "Embedding",
+    rerank: "Rerank",
+  };
+  return map[type] || type || "未知";
+}
+
+function scenarioLabel(scenario: string) {
+  const map: Record<string, string> = {
+    unknown: "未标记",
+    model_test: "模型连通性测试",
+    visitor_qa: "访客问答",
+    hot_articles: "热门文章推荐",
+    search_answer: "搜索综合回答",
+    search_query_rewrite: "搜索查询改写",
+    search_hyde: "HyDE 检索生成",
+    search_cross_language: "跨语言检索翻译",
+    search_embedding: "搜索向量化",
+    search_rerank: "搜索重排序",
+    index_embedding: "文章索引向量化",
+    keyword_extract: "生成关键词",
+    mindmap_generate: "AI 脑图生成",
+    summary_generate: "AI 摘要生成",
+    writing_assist: "写作辅助",
+    evaluation_answer: "效果评测 · 生成回答",
+    evaluation_judge: "效果评测 · AI 评分",
+    agent_content_gap: "运营智能体 · 内容缺口分析",
+  };
+  return map[scenario] || scenario || "未标记";
 }
 
 /** 抽屉里展示的限流模型行: 模型名 + 上限 + 今日已用 (供进度条用) */
@@ -1699,6 +1903,11 @@ onUnmounted(() => {
   font-size: 15px;
   font-weight: 600;
 }
+.usage-drawer-header p {
+  margin: 4px 0 0;
+  color: #8a94a6;
+  font-size: 12px;
+}
 .usage-drawer-close {
   background: none;
   border: 0;
@@ -1710,6 +1919,119 @@ onUnmounted(() => {
 }
 .usage-drawer-body {
   padding: 16px 20px;
+}
+.usage-call-drawer {
+  width: min(860px, 94vw);
+}
+.usage-call-table-wrap {
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+.usage-call-table {
+  min-width: 760px;
+  border: 0;
+}
+.usage-call-table th,
+.usage-call-table td {
+  white-space: nowrap;
+}
+.usage-call-table th {
+  background: #f8fafc;
+}
+.usage-table-filter {
+  max-width: 132px;
+  border: 0;
+  background: transparent;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+.usage-table-filter:focus {
+  color: #2563eb;
+}
+.usage-sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.usage-sort-button:hover {
+  color: #2563eb;
+}
+.usage-call-table tbody tr:hover td {
+  background: #f9fafb;
+}
+.usage-call-table .usage-call-time {
+  color: #111827;
+  font-size: 12px;
+  font-weight: 500;
+}
+.usage-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.usage-call-status {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.usage-call-status.failed {
+  background: #fef2f2;
+  color: #dc2626;
+}
+.usage-call-error-row td {
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: normal;
+}
+.usage-call-error-row span {
+  font-weight: 600;
+}
+.usage-call-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  color: #64748b;
+  font-size: 12px;
+}
+.usage-call-pages {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.usage-page-size {
+  height: 28px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  font-size: 12px;
+  outline: none;
+}
+.usage-page-size:focus {
+  border-color: #2563eb;
 }
 .ai-save-msg {
   font-size: 12px;

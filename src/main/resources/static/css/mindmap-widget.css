@@ -1,0 +1,657 @@
+/* ===== 思维导图沉浸式区块（B 方案 v3 默认折叠 + 3-4 级 + 居中）样式 =====
+ *
+ * 形态：插在「正文容器最上方」的专属 <section class="halo-mindmap-block">
+ *       （v1 是 H1 标题正下方；v2 改到正文容器第一个子元素位置）
+ * - 浅色 / 深色主题通过 :root[data-theme] 或 [data-theme=light|dark] 切换
+ * - 沉浸渲染：markmap 容器宽度撑满（min-width 600px）
+ * - v3 默认折叠：折叠态只显示标题栏（约 48-56px 高），
+ *               展开后 body 固定 60vh（max 560px / min 360px），
+ *               markmap 节点内容经 fit() + viewBox padding + xMidYMid meet 居中
+ * - 节点可点击，命中原文锚点后高亮闪烁
+ * - 所有选择器用 .halo-mindmap- 前缀，不污染博客主题
+ */
+
+/* ---------- 设计令牌（浅色默认） ----------
+ *
+ * 背景/边框/弱化色与 chat-widget.css 的 --ai-chat-* 对齐；
+ * mindmap 区块在博客主题里独立挂载，不会从 #ai-chat-window 继承，
+ * 每个变量用 var(--ai-chat-*, fallback) 兜底保证视觉一致。
+ */
+.halo-mindmap-block {
+  --mm-bg:           var(--ai-chat-bg-window, #FFFFFF);
+  --mm-bg-elev:      #F8FAFC;
+  --mm-bg-canvas:    #FBFDFF;
+  --mm-text:         #172033;
+  --mm-text-muted:   #667085;
+  --mm-border:       #D8E2EA;
+  --mm-border-hover: #9CCBD8;
+  --mm-accent:       var(--ai-mindmap-color, #4F46E5);
+  --mm-accent-2:     #059669;
+  --mm-warm:         #D97706;
+  --mm-accent-soft:  rgba(var(--ai-mindmap-color-rgb, 79, 70, 229), 0.10);
+  --mm-green-soft:   rgba(5, 150, 105, 0.10);
+  --mm-warm-soft:    rgba(217, 119, 6, 0.11);
+  --mm-loading-dot:  var(--ai-mindmap-color, #4F46E5);
+  --mm-radius:       8px;
+  --mm-radius-sm:    6px;
+  --mm-shadow:       0 12px 32px rgba(15, 23, 42, 0.07);
+  --mm-btn-bg:       rgba(var(--ai-mindmap-color-rgb, 79, 70, 229), 0.10);
+  --mm-btn-hover:    rgba(var(--ai-mindmap-color-rgb, 79, 70, 229), 0.16);
+  --mm-btn-text:     var(--ai-mindmap-color, #4F46E5);
+  --mm-flash:        rgba(var(--ai-mindmap-color-rgb, 79, 70, 229), 0.16);
+  --mm-link:         #94A3B8;
+  --mm-link-soft:    rgba(148, 163, 184, 0.20);
+  --mm-grid:         rgba(100, 116, 139, 0.14);
+}
+
+.halo-mindmap-block[data-theme="light"] {
+  color-scheme: light;
+  --mm-bg:           var(--ai-chat-bg-window, #FFFFFF);
+  --mm-bg-elev:      #F8FAFC;
+  --mm-bg-canvas:    #FBFDFF;
+  --mm-text:         #172033;
+  --mm-text-muted:   #667085;
+  --mm-border:       #D8E2EA;
+  --mm-border-hover: #9CCBD8;
+  --mm-accent:       var(--ai-mindmap-color, #4F46E5);
+  --mm-accent-2:     #059669;
+  --mm-warm:         #D97706;
+  --mm-accent-soft:  rgba(var(--ai-mindmap-color-rgb, 79, 70, 229), 0.10);
+  --mm-green-soft:   rgba(5, 150, 105, 0.10);
+  --mm-warm-soft:    rgba(217, 119, 6, 0.11);
+  --mm-loading-dot:  var(--ai-mindmap-color, #4F46E5);
+  --mm-shadow:       0 12px 32px rgba(15, 23, 42, 0.07);
+  --mm-btn-bg:       rgba(var(--ai-mindmap-color-rgb, 79, 70, 229), 0.10);
+  --mm-btn-hover:    rgba(var(--ai-mindmap-color-rgb, 79, 70, 229), 0.16);
+  --mm-btn-text:     var(--ai-mindmap-color, #4F46E5);
+  --mm-flash:        rgba(var(--ai-mindmap-color-rgb, 79, 70, 229), 0.16);
+  --mm-link:         #94A3B8;
+  --mm-link-soft:    rgba(148, 163, 184, 0.20);
+  --mm-grid:         rgba(100, 116, 139, 0.14);
+}
+
+/* ---------- 设计令牌（深色） ---------- */
+.halo-mindmap-block[data-theme="dark"] {
+  color-scheme: dark;
+  --mm-bg:           var(--ai-chat-bg-window, #111827);
+  --mm-bg-elev:      #172033;
+  --mm-bg-canvas:    #0F172A;
+  --mm-text:         #E5EEF6;
+  --mm-text-muted:   #9AA9B8;
+  --mm-border:       #26374A;
+  --mm-border-hover: #2E6F82;
+  --mm-accent:       var(--ai-mindmap-color, #A5B4FC);
+  --mm-accent-2:     #A7F3D0;
+  --mm-warm:         #FDE68A;
+  --mm-accent-soft:  rgba(var(--ai-mindmap-color-rgb, 165, 180, 252), 0.13);
+  --mm-green-soft:   rgba(167, 243, 208, 0.10);
+  --mm-warm-soft:    rgba(253, 230, 138, 0.10);
+  --mm-loading-dot:  var(--ai-mindmap-color, #A5B4FC);
+  --mm-shadow:       0 16px 40px rgba(0, 0, 0, 0.24);
+  --mm-btn-bg:       rgba(var(--ai-mindmap-color-rgb, 165, 180, 252), 0.10);
+  --mm-btn-hover:    rgba(var(--ai-mindmap-color-rgb, 165, 180, 252), 0.18);
+  --mm-btn-text:     var(--ai-mindmap-color, #A5B4FC);
+  --mm-flash:        rgba(var(--ai-mindmap-color-rgb, 165, 180, 252), 0.20);
+  --mm-link:         #64748B;
+  --mm-link-soft:    rgba(148, 163, 184, 0.24);
+  --mm-grid:         rgba(148, 163, 184, 0.11);
+}
+
+@media (prefers-color-scheme: dark) {
+  .halo-mindmap-block[data-theme="auto"] {
+    --mm-bg:           var(--ai-chat-bg-window, #111827);
+    --mm-bg-elev:      #172033;
+    --mm-bg-canvas:    #0F172A;
+    --mm-text:         #E5EEF6;
+    --mm-text-muted:   #9AA9B8;
+    --mm-border:       #26374A;
+    --mm-border-hover: #2E6F82;
+    --mm-accent:       var(--ai-mindmap-color, #A5B4FC);
+    --mm-accent-2:     #A7F3D0;
+    --mm-warm:         #FDE68A;
+    --mm-accent-soft:  rgba(var(--ai-mindmap-color-rgb, 165, 180, 252), 0.13);
+    --mm-green-soft:   rgba(167, 243, 208, 0.10);
+    --mm-warm-soft:    rgba(253, 230, 138, 0.10);
+    --mm-loading-dot:  var(--ai-mindmap-color, #A5B4FC);
+    --mm-shadow:       0 16px 40px rgba(0, 0, 0, 0.24);
+    --mm-btn-bg:       rgba(var(--ai-mindmap-color-rgb, 165, 180, 252), 0.10);
+    --mm-btn-hover:    rgba(var(--ai-mindmap-color-rgb, 165, 180, 252), 0.18);
+    --mm-btn-text:     var(--ai-mindmap-color, #A5B4FC);
+    --mm-flash:        rgba(var(--ai-mindmap-color-rgb, 165, 180, 252), 0.20);
+    --mm-link:         #64748B;
+    --mm-link-soft:    rgba(148, 163, 184, 0.24);
+    --mm-grid:         rgba(148, 163, 184, 0.11);
+  }
+}
+
+.halo-mindmap-action:focus-visible,
+.halo-mindmap-expand:focus-visible {
+  outline: 2px solid var(--mm-accent);
+  outline-offset: 2px;
+}
+
+/* ===== 沉浸式专属区块（B 方案核心；v2 位置：在正文容器最上方） ===== */
+.halo-mindmap-block {
+  display: block;
+  position: relative;
+  /* v2 位置调整：区块上方是 H1/文章元信息，下方是正文第一段 */
+  margin: 24px 0 20px;                  /* 上 24px（与上方元信息/H1 隔开） / 下 20px（与正文第一段隔开） */
+  background: var(--mm-bg);
+  border: 1px solid var(--mm-border);
+  border-radius: var(--mm-radius);
+  box-shadow: var(--mm-shadow);
+  overflow: hidden;                     /* 折叠时裁剪子元素 */
+  transition: max-height 0.3s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  max-width: 100%;
+  /* v2: 让区块和上方元素（H1/元信息栏）有清晰视觉分隔，
+        即使主题没给 .post-content 自身留 padding 也不挤在一起 */
+  scroll-margin-top: 80px;              /* 节点跳转/区块定位时留出顶部 header 空间 */
+}
+
+.halo-mindmap-block:hover {
+  border-color: var(--mm-border-hover);
+  box-shadow: var(--mm-shadow);
+}
+
+/* v3: 折叠态/展开态按钮互斥显示 */
+.halo-mindmap-block--collapsed .halo-mindmap-head {
+  border-bottom-color: transparent;
+}
+/* 展开态：藏起 expand（已经展开了，不需要重复的"展开"按钮）
+   用 :not(.halo-mindmap-block--collapsed) 让这条比折叠态那条特异性高 */
+.halo-mindmap-block:not(.halo-mindmap-block--collapsed) .halo-mindmap-expand {
+  display: none;
+}
+/* 折叠态：只显示 expand 主按钮（regen + collapse 都藏起来） */
+.halo-mindmap-block--collapsed .halo-mindmap-action {
+  display: none;
+}
+.halo-mindmap-block--collapsed .halo-mindmap-expand {
+  display: inline-flex;
+}
+
+/* ===== 头部（标题栏） ===== */
+.halo-mindmap-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--mm-border);
+  background: linear-gradient(180deg, var(--mm-bg-elev), var(--mm-bg));
+  user-select: none;
+}
+
+.halo-mindmap-block--collapsed .halo-mindmap-head {
+  border-bottom-color: transparent;     /* 折叠时去掉分隔线 */
+}
+
+.halo-mindmap-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.halo-mindmap-head-icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--mm-accent-soft), var(--mm-green-soft));
+  color: var(--mm-accent);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.halo-mindmap-head-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.halo-mindmap-head-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mm-text);
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+
+.halo-mindmap-head-pill {
+  font-size: 10px;
+  padding: 3px 8px;
+  background: var(--mm-green-soft);
+  color: var(--mm-accent);
+  border: 1px solid rgba(var(--ai-mindmap-color-rgb, 79, 70, 229), 0.14);
+  border-radius: 999px;
+  letter-spacing: 0;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+/* v3: pill 状态色 */
+.halo-mindmap-head-pill[data-state="loading"] {
+  background: var(--mm-accent-soft);
+  color: var(--mm-accent);
+  opacity: 0.7;
+}
+.halo-mindmap-head-pill[data-state="ready"] {
+  background: var(--mm-green-soft);
+  color: var(--mm-accent-2);
+}
+.halo-mindmap-block[data-theme="dark"] .halo-mindmap-head-pill {
+  border-color: rgba(var(--ai-mindmap-color-rgb, 165, 180, 252), 0.18);
+}
+.halo-mindmap-head-pill[data-state="error"] {
+  background: rgba(220, 80, 80, 0.10);
+  color: #DC5050;
+}
+.halo-mindmap-block[data-theme="dark"] .halo-mindmap-head-pill[data-state="error"] {
+  background: rgba(248, 113, 113, 0.16);
+  color: #FCA5A5;
+}
+
+.halo-mindmap-head-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.halo-mindmap-action {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--mm-text-muted);
+  cursor: pointer;
+  border-radius: 7px;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.2s ease;
+  flex: 0 0 auto;
+}
+.halo-mindmap-action svg {
+  width: 15px;
+  height: 15px;
+}
+.halo-mindmap-action:hover {
+  background: var(--mm-btn-bg);
+  color: var(--mm-accent);
+}
+.halo-mindmap-action:active {
+  transform: scale(0.92);
+}
+
+/* 折叠按钮：默认 ▼，折叠后 ▶ */
+.halo-mindmap-action--collapse svg {
+  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.halo-mindmap-block--collapsed .halo-mindmap-action--collapse svg {
+  transform: rotate(-90deg);            /* ▼ → ▶ */
+}
+
+/* v3: 标题栏右侧"展开"主按钮 — 折叠态下唯一可见的 CTA */
+.halo-mindmap-expand {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--mm-btn-bg);
+  color: var(--mm-accent);
+  border: 1px solid rgba(var(--ai-mindmap-color-rgb, 79, 70, 229), 0.18);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+.halo-mindmap-expand svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.halo-mindmap-expand:hover {
+  background: var(--mm-btn-hover);
+  color: var(--mm-btn-text);
+}
+.halo-mindmap-expand:active {
+  transform: scale(0.97);
+}
+
+/* ===== 主体（markmap 渲染区） =====
+ *
+ * v3 高度策略：
+ *   展开态：60vh（视口比例自适应），上限 560px，下限 360px
+ *         配合 markmap 内部 fit() + 手动 viewBox padding + xMidYMid meet
+ *         让 markmap 内容真正视觉居中（不贴边）
+ *   折叠态：height 0 + opacity 0 + min-height 0，过渡 0.3s
+ */
+.halo-mindmap-body {
+  position: relative;
+  width: 100%;
+  min-width: 600px;                     /* 沉浸式：撑满到 600px 起步 */
+  height: 60vh;                         /* v3: 视口比例自适应 */
+  min-height: 360px;                    /* v3: 太矮的视口下兜底 */
+  max-height: 560px;                    /* v3: 太高视口下兜底，避免内容被拉太散 */
+  background:
+    linear-gradient(var(--mm-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--mm-grid) 1px, transparent 1px),
+    linear-gradient(180deg, var(--mm-bg-canvas), var(--mm-bg));
+  background-size: 28px 28px, 28px 28px, 100% 100%;
+  overflow: hidden;
+  /* v3 强化：只让 height 过渡，opacity/transform 渐入由内部 svg 自己负责，
+     否则多层 opacity transition 叠加会拖沓 */
+  transition: height 0.3s ease, min-height 0.3s ease, max-height 0.3s ease;
+}
+
+.halo-mindmap-block--collapsed .halo-mindmap-body {
+  height: 0;
+  min-height: 0;
+  max-height: 0;
+  overflow: hidden;
+}
+
+.halo-mindmap-body > .halo-mindmap-svg {
+  width: 90%;
+  height: 90%;
+  display: block;
+  margin: 5% auto;
+  color: var(--mm-text);
+  /* v3 强化：展开后 svg 内容从轻微缩放 + 透明渐入（0.25s），
+     配合 body height 过渡（0.3s），让"折叠→展开"更有呼吸感 */
+  opacity: 1;
+  transform: scale(1);
+  transform-origin: 50% 50%;
+  transition: opacity 0.25s ease 0.05s, transform 0.3s cubic-bezier(0.32, 0.72, 0, 1) 0.05s;
+}
+
+.halo-mindmap-block[data-theme="light"] .halo-mindmap-body .markmap,
+.halo-mindmap-block[data-theme="light"] .halo-mindmap-body .markmap-dark {
+  --markmap-code-bg: #EEF5F8;
+  --markmap-code-color: #334155;
+  --markmap-circle-open-bg: #FFFFFF;
+  --markmap-text-color: var(--mm-text);
+  color: var(--mm-text) !important;
+}
+
+/* 折叠态：svg 完全淡出（0 透明）— body height 已经在 0，
+   视觉上 svg 看不到，过渡是"先折叠容器、再淡出内容"的复合效果 */
+.halo-mindmap-block--collapsed .halo-mindmap-body > .halo-mindmap-svg {
+  opacity: 0;
+  transform: scale(0.96);
+  /* 折叠时禁用 pointer-events（即使 size=0，zoom 事件也尽量不触发） */
+  pointer-events: none;
+}
+
+/* ===== markmap 节点 / 连线样式（与原方案保持一致风格 + 沉浸式加大） =====
+ *
+ * markmap 通过 SVG HTML attribute（fill / stroke）上色，CSS 选择器优先级不够。
+ * 必须用 !important 覆盖属性。
+ */
+.halo-mindmap-body svg circle {
+  fill: var(--mm-bg) !important;
+  stroke-width: 2 !important;
+  filter: drop-shadow(0 2px 3px rgba(15, 23, 42, 0.12));
+  transition: stroke-opacity 0.15s ease, r 0.15s ease;
+}
+
+/* 节点大小分级（透明度 100% / 70% / 40%） */
+.halo-mindmap-body svg g.markmap-node > circle {
+  stroke-opacity: 1;
+}
+.halo-mindmap-body svg g.markmap-node g.markmap-node > circle {
+  stroke-opacity: 0.75;
+}
+.halo-mindmap-body svg g.markmap-node g.markmap-node g.markmap-node > circle {
+  stroke-opacity: 0.5;
+}
+
+.halo-mindmap-body svg path {
+  fill: none !important;
+  stroke: var(--mm-link) !important;       /* 加粗线色 */
+  stroke-width: 1.2 !important;            /* 比 v1 加粗一点（v1 是 1） */
+  stroke-opacity: 0.50 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
+  transition: stroke-opacity 0.15s ease;
+}
+
+.halo-mindmap-body svg g:hover > path {
+  stroke-opacity: 0.85 !important;
+}
+.halo-mindmap-body svg g.markmap-node:hover > circle {
+  stroke-opacity: 1 !important;
+}
+
+.halo-mindmap-body svg g.markmap-node > circle {
+  cursor: pointer;
+}
+
+/* 节点彩色装饰条隐藏 */
+.halo-mindmap-body svg g.markmap-node line,
+.halo-mindmap-body svg g.markmap-node rect,
+.halo-mindmap-body svg g.markmap-node polygon,
+.halo-mindmap-body svg g.markmap-node polyline {
+  display: none !important;
+}
+
+/* 折叠节点保留可点击圆点，用 + 提示可展开 */
+.halo-mindmap-body svg g.markmap-fold > circle {
+  display: block !important;
+  fill: var(--mm-accent) !important;
+  stroke: var(--mm-bg) !important;
+  stroke-width: 2.4 !important;
+}
+.halo-mindmap-body svg .halo-mindmap-fold-plus {
+  fill: var(--mm-bg) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* 节点文字 */
+.halo-mindmap-body foreignObject,
+.halo-mindmap-body .markmap-node {
+  font-family: inherit;
+}
+.halo-mindmap-body foreignObject > div,
+.halo-mindmap-body .markmap-foreign {
+  font-weight: 500 !important;
+  line-height: 1.4 !important;
+  color: var(--mm-text) !important;
+  text-decoration: none !important;
+  text-shadow: 0 1px 0 var(--mm-bg);
+}
+.halo-mindmap-body foreignObject {
+  cursor: pointer;
+}
+.halo-mindmap-body foreignObject:hover .markmap-foreign,
+.halo-mindmap-body foreignObject:hover > div {
+  color: var(--mm-accent) !important;
+}
+/* 沉浸式：字号加大（v1 是 14/13/12 → B 改 16/14/13） */
+.halo-mindmap-body .markmap-node-level-0 { font-size: 16px !important; font-weight: 700 !important; }
+.halo-mindmap-body .markmap-node-level-1 { font-size: 14px !important; font-weight: 600 !important; }
+.halo-mindmap-body .markmap-node-level-2 { font-size: 13px !important; font-weight: 500 !important; }
+.halo-mindmap-body .markmap-node-level-3 { font-size: 12px !important; font-weight: 400 !important; }
+
+/* 干掉 markmap 默认彩色背景 */
+.halo-mindmap-body foreignObject * ,
+.halo-mindmap-body .markmap-foreign * {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.halo-mindmap-body foreignObject,
+.halo-mindmap-body .markmap-foreign,
+.halo-mindmap-body .markmap-foreign > div {
+  background-color: transparent !important;
+  color: var(--mm-text) !important;
+}
+
+/* 节点点击命中：markmap 给 click 节点加 ring 高亮（可选） */
+.halo-mindmap-body svg g.markmap-node.is-click {
+  cursor: pointer;
+}
+
+/* ===== 底部（meta） ===== */
+.halo-mindmap-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 18px;
+  border-top: 1px solid var(--mm-border);
+  background: var(--mm-bg);
+  font-size: 12px;
+  color: var(--mm-text-muted);
+}
+
+.halo-mindmap-block--collapsed .halo-mindmap-foot {
+  display: none;                        /* 折叠时不显示底栏 */
+}
+
+.halo-mindmap-foot-meta::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  border-radius: 999px;
+  background: var(--mm-accent-2);
+  vertical-align: middle;
+}
+
+.halo-mindmap-foot-note {
+  font-size: 11px;
+  letter-spacing: 0;
+  opacity: 0.7;
+}
+
+/* ===== Loading / 错误 状态 ===== */
+.halo-mindmap-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.halo-mindmap-loading,
+.halo-mindmap-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--mm-text-muted);
+  font-size: 14px;
+  text-align: center;
+  padding: 20px;
+}
+.halo-mindmap-error-icon {
+  font-size: 32px;
+}
+.halo-mindmap-loading-dots {
+  display: flex;
+  gap: 6px;
+}
+.halo-mindmap-loading-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mm-loading-dot);
+  animation: mm-bounce 1.2s ease-in-out infinite;
+}
+.halo-mindmap-loading-dots span:nth-child(2) { animation-delay: 0.15s; }
+.halo-mindmap-loading-dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes mm-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* ===== 锚点命中闪烁 ===== */
+@keyframes halo-mindmap-flash {
+  0%   { background-color: transparent; }
+  10%  { background-color: var(--mm-flash); }
+  100% { background-color: transparent; }
+}
+.halo-mindmap-flash {
+  animation: halo-mindmap-flash 1.4s ease-out;
+  border-radius: 4px;
+  scroll-margin-top: 80px;               /* 跳转后留出顶部 header 空间 */
+}
+
+/* ===== 响应式：窄屏 ==== */
+@media (max-width: 900px) {
+  .halo-mindmap-block {
+    margin: 18px 0 16px;                 /* v2: 窄屏与上方 H1/元信息 18px / 与下方正文 16px */
+  }
+  .halo-mindmap-body {
+    min-width: 0;                        /* 窄屏允许塌到容器宽度 */
+    height: 50vh;                        /* v3: 窄屏视口比例稍小 */
+    min-height: 320px;                   /* v3 */
+    max-height: 480px;                   /* v3 */
+  }
+  .halo-mindmap-head {
+    padding: 12px 14px;
+  }
+  .halo-mindmap-foot {
+    padding: 6px 14px;
+  }
+}
+
+@media (max-width: 600px) {
+  .halo-mindmap-block {
+    margin: 16px 0 14px;                 /* v2: 极窄屏再缩 */
+  }
+  .halo-mindmap-body {
+    height: 62vh;                        /* 移动端保持内嵌，但给足手势浏览空间 */
+    min-width: 0;
+    min-height: 340px;
+    max-height: 520px;
+  }
+  .halo-mindmap-block:not(.halo-mindmap-block--collapsed) .halo-mindmap-body > .halo-mindmap-svg {
+    width: 94%;
+    height: 94%;
+    margin: 3% auto;
+  }
+  .halo-mindmap-head-label {
+    font-size: 13px;
+  }
+  .halo-mindmap-head-left {
+    gap: 8px;
+  }
+  .halo-mindmap-head-icon {
+    width: 26px;
+    height: 26px;
+  }
+  .halo-mindmap-action {
+    width: 28px;
+    height: 28px;
+  }
+  .halo-mindmap-block:not(.halo-mindmap-block--collapsed) .halo-mindmap-head {
+    flex: 0 0 auto;
+    padding: max(12px, env(safe-area-inset-top)) 14px 12px;
+  }
+  .halo-mindmap-block:not(.halo-mindmap-block--collapsed) .halo-mindmap-foot {
+    flex: 0 0 auto;
+    padding: 8px 14px max(10px, env(safe-area-inset-bottom));
+  }
+  .halo-mindmap-head-pill {
+    display: none;                        /* 极窄屏隐藏 AI 胶囊 */
+  }
+  .halo-mindmap-expand span {
+    display: none;                        /* 极窄屏只显示图标不显示"展开"文字 */
+  }
+  .halo-mindmap-body .markmap-node-level-0 { font-size: 14px !important; }
+  .halo-mindmap-body .markmap-node-level-1 { font-size: 13px !important; }
+  .halo-mindmap-body .markmap-node-level-2 { font-size: 12px !important; }
+  .halo-mindmap-body .markmap-node-level-3 { font-size: 11px !important; }
+}

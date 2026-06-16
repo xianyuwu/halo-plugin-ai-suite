@@ -143,13 +143,13 @@ onUnmounted(() => {
 function loadWidgetCSS() {
   cssLink = document.createElement("link");
   cssLink.rel = "stylesheet";
-  cssLink.href = "/plugins/ai-assistant/assets/res/css/chat-widget.css";
+  cssLink.href = "/plugins/ai-suite/assets/res/css/chat-widget.css";
   document.head.appendChild(cssLink);
 }
 
 // 加载 marked + DOMPurify
 function loadMarkdownLibs() {
-  const base = "/plugins/ai-assistant/assets/res/js";
+  const base = "/plugins/ai-suite/assets/res/js";
   loadScript(`${base}/marked.min.js`).then(() => loadScript(`${base}/purify.min.js`)).then(() => {
     const marked = (window as any).marked;
     const purify = (window as any).DOMPurify;
@@ -174,7 +174,7 @@ function loadScript(src: string): Promise<void> {
 // 获取配置（快捷问题 + 主题色）
 async function fetchConfig() {
   try {
-    const res = await fetch("/apis/api.halo.run/v1alpha1/widget-config");
+    const res = await fetch("/apis/api.ai-suite.halo.run/v1alpha1/widget-config");
     const data = await res.json();
     if (data.color) themeColor.value = data.color;
     if (Array.isArray(data.shortcuts) && data.shortcuts.length) {
@@ -222,7 +222,7 @@ async function send() {
 
 // ---------- SSE 流式 ----------
 async function streamChat(text: string, aiMsg: ChatMsg) {
-  const res = await fetch("/apis/api.halo.run/v1alpha1/chat/stream", {
+  const res = await fetch("/apis/api.ai-suite.halo.run/v1alpha1/chat/stream", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message: text, history: history.slice(0, -1) }),

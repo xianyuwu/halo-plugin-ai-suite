@@ -2,10 +2,11 @@
  * 通用配置读写工具函数
  * 所有配置页面共用，避免重复代码
  */
-const API_BASE = "/apis/console.api.ai-assistant.halo.run/v1alpha1/config";
-const USAGE_LIMITS_API = "/apis/console.api.ai-assistant.halo.run/v1alpha1/usage/limits";
-const USAGE_TODAY_API = "/apis/console.api.ai-assistant.halo.run/v1alpha1/usage/today";
-const USAGE_STATS_API = "/apis/console.api.ai-assistant.halo.run/v1alpha1/usage/stats";
+const API_BASE = "/apis/console.api.ai-suite.halo.run/v1alpha1/config";
+const USAGE_LIMITS_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/usage/limits";
+const USAGE_TODAY_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/usage/today";
+const USAGE_STATS_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/usage/stats";
+const USAGE_CALLS_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/usage/calls";
 
 /**
  * 从后端加载指定 group 的配置，填充到 reactive form
@@ -159,7 +160,7 @@ export interface DailyStatsEntry {
   embeddingTokens: number;
   modelCount: number;
   /** model -> {p, c, e, calls}, 0 数据模型不出现 */
-  byModel: Record<string, { p: number; c: number; e: number; calls: number }>;
+  byModel: Record<string, { p: number; c: number; e: number; calls: number; failures?: number }>;
 }
 export interface UsageStatsResponse {
   range: string;
@@ -196,4 +197,62 @@ export async function loadUsageStats(
   } catch {
     return null;
   }
+}
+
+export interface UsageCallLog {
+  id: string;
+  date: string;
+  time: string;
+  model: string;
+  type: string;
+  scenario: string;
+  promptTokens: number;
+  completionTokens: number;
+  embeddingTokens: number;
+  totalTokens: number;
+  failure: boolean;
+  durationMs: number;
+  error: string;
+}
+
+export interface UsageCallsResponse {
+  start: string;
+  end: string;
+  retentionDays: number;
+  sort?: "asc" | "desc";
+  types: string[];
+  scenarios: string[];
+  total: number;
+  page: number;
+  size: number;
+  items: UsageCallLog[];
+}
+
+export async function loadUsageCalls(params: {
+  model: string;
+  start: string;
+  end: string;
+  type?: string;
+  scenario?: string;
+  status?: string;
+  sort?: "asc" | "desc";
+  page?: number;
+  size?: number;
+}): Promise<UsageCallsResponse> {
+  const query = new URLSearchParams({
+    model: params.model,
+    start: params.start,
+    end: params.end,
+    type: params.type || "all",
+    scenario: params.scenario || "all",
+    status: params.status || "all",
+    sort: params.sort || "desc",
+    page: String(params.page || 1),
+    size: String(params.size || 20),
+  });
+  const resp = await fetch(`${USAGE_CALLS_API}?${query.toString()}`);
+  if (!resp.ok) {
+    throw new Error(`请求失败：${resp.status}`);
+  }
+  return (await resp.json()) as UsageCallsResponse;
 }

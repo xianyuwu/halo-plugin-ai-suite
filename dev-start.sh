@@ -14,6 +14,15 @@
 
 set -e
 
+# ---- 信号陷阱：脚本被中断时清理 Halo 子进程 ----
+# 正常退出（含 --stop / --restart）不触发，避免误杀显式启动的进程
+cleanup_on_signal() {
+    if [ -n "${HALO_CHILD_PID:-}" ] && kill -0 "$HALO_CHILD_PID" 2>/dev/null; then
+        kill "$HALO_CHILD_PID" 2>/dev/null || true
+    fi
+}
+trap cleanup_on_signal INT TERM
+
 # ---- 配置 ----
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$SCRIPT_DIR"
@@ -21,12 +30,16 @@ DEV_DIR="$SCRIPT_DIR/dev"
 HALO_JAR="$DEV_DIR/halo.jar"
 export JAVA_HOME="${JAVA_HOME:-$HOME/jdk21/contents/Contents/Home}"
 JAVA="$JAVA_HOME/bin/java"
-PLUGIN_JAR="$PROJECT_DIR/build/libs/plugin-ai-assistant-0.2.1-SNAPSHOT.jar"
-PLUGIN_DEST="$DEV_DIR/data/plugins/plugin-ai-assistant.jar"
+PLUGIN_JAR="$PROJECT_DIR/build/libs/plugin-ai-suite-0.2.18-SNAPSHOT.jar"
+PLUGIN_DEST="$DEV_DIR/data/plugins/plugin-ai-suite.jar"
+LEGACY_PLUGIN_NAME="ai-assistant"
+LEGACY_PLUGIN_ARCHIVE="$DEV_DIR/data/plugins.disabled-legacy"
+PLUGIN_NAME="ai-suite"
 HALO_PORT=8090
 HALO_LOG="/tmp/halo-dev.log"
-HALO_URL="http://localhost:$HALO_PORT"
+HALO_URL="http://127.0.0.1:$HALO_PORT"
 HALO_ADMIN="admin:admin123"
+HALO_PID_FILE="$DEV_DIR/halo.pid"
 
 # ---- 颜色 ----
 GREEN='\033[0;32m'
@@ -89,10 +102,12 @@ start_halo() {
 
     info "启动 Halo..."
     cd "$DEV_DIR"
-    "$JAVA" -jar "$HALO_JAR" \
+    nohup "$JAVA" -jar "$HALO_JAR" \
         --spring.config.additional-location=file:./application.yaml \
         > "$HALO_LOG" 2>&1 &
     local pid=$!
+    echo "$pid" > "$HALO_PID_FILE"
+    disown "$pid" 2>/dev/null || true
     info "PID: $pid"
 
     # 等待启动
@@ -123,24 +138,45 @@ deploy_plugin() {
 
     # 复制 jar
     mkdir -p "$(dirname "$PLUGIN_DEST")"
+    mkdir -p "$LEGACY_PLUGIN_ARCHIVE"
+    find "$DEV_DIR/data/plugins" -maxdepth 1 -type f -name "*$LEGACY_PLUGIN_NAME*.jar" \
+        -exec mv {} "$LEGACY_PLUGIN_ARCHIVE/" \;
+    if [ -d "$DEV_DIR/plugins" ]; then
+        find "$DEV_DIR/plugins" -maxdepth 1 -type f -name "*$LEGACY_PLUGIN_NAME*.jar" \
+            -exec mv {} "$LEGACY_PLUGIN_ARCHIVE/" \;
+    fi
     cp "$PLUGIN_JAR" "$PLUGIN_DEST"
 
     # 检查插件是否已安装
     local exists=$(curl -s -o /dev/null -w "%{http_code}" -u "$HALO_ADMIN" \
-        "$HALO_URL/apis/plugin.halo.run/v1alpha1/plugins/ai-assistant" 2>/dev/null)
+        "$HALO_URL/apis/plugin.halo.run/v1alpha1/plugins/$PLUGIN_NAME" 2>/dev/null)
 
     if [ "$exists" = "200" ]; then
         info "更新已有插件..."
         # 禁用
         curl -s -u "$HALO_ADMIN" -X PATCH \
-            "$HALO_URL/apis/plugin.halo.run/v1alpha1/plugins/ai-assistant" \
+            "$HALO_URL/apis/plugin.halo.run/v1alpha1/plugins/$PLUGIN_NAME" \
             -H "Content-Type: application/json-patch+json" \
             -d '[{"op":"replace","path":"/spec/enabled","value":false}]' \
             -o /dev/null 2>/dev/null
         sleep 2
         # 删除
         curl -s -u "$HALO_ADMIN" -X DELETE \
-            "$HALO_URL/apis/plugin.halo.run/v1alpha1/plugins/ai-assistant" \
+            "$HALO_URL/apis/plugin.halo.run/v1alpha1/plugins/$PLUGIN_NAME" \
+            -o /dev/null 2>/dev/null
+        sleep 2
+    fi
+
+    # 插件 ID 从 ai-assistant 改为 ai-suite 后，开发环境可能同时存在旧插件。
+    # 只禁用旧插件，保留旧 ConfigMap / Secret / Extension 数据供新插件迁移读取。
+    local legacy_exists=$(curl -s -o /dev/null -w "%{http_code}" -u "$HALO_ADMIN" \
+        "$HALO_URL/apis/plugin.halo.run/v1alpha1/plugins/$LEGACY_PLUGIN_NAME" 2>/dev/null)
+    if [ "$legacy_exists" = "200" ]; then
+        info "禁用旧插件 $LEGACY_PLUGIN_NAME (保留数据用于迁移)..."
+        curl -s -u "$HALO_ADMIN" -X PATCH \
+            "$HALO_URL/apis/plugin.halo.run/v1alpha1/plugins/$LEGACY_PLUGIN_NAME" \
+            -H "Content-Type: application/json-patch+json" \
+            -d '[{"op":"replace","path":"/spec/enabled","value":false}]' \
             -o /dev/null 2>/dev/null
         sleep 2
     fi
@@ -154,15 +190,28 @@ deploy_plugin() {
 
     # 启用
     curl -s -u "$HALO_ADMIN" -X PATCH \
-        "$HALO_URL/apis/plugin.halo.run/v1alpha1/plugins/ai-assistant" \
+        "$HALO_URL/apis/plugin.halo.run/v1alpha1/plugins/$PLUGIN_NAME" \
         -H "Content-Type: application/json-patch+json" \
         -d '[{"op":"replace","path":"/spec/enabled","value":true}]' \
         -o /dev/null 2>/dev/null
     sleep 3
 
+    # 安装/启用新插件后，清理旧插件对象。业务数据通过新插件兼容读取，
+    # 这里删除的是旧 Plugin 入口，避免 Console 同时出现两个插件。
+    info "再次禁用旧插件 $LEGACY_PLUGIN_NAME..."
+    curl -s -u "$HALO_ADMIN" -X PATCH \
+        "$HALO_URL/apis/plugin.halo.run/v1alpha1/plugins/$LEGACY_PLUGIN_NAME" \
+        -H "Content-Type: application/json-patch+json" \
+        -d '[{"op":"replace","path":"/spec/enabled","value":false}]' \
+        -o /dev/null 2>/dev/null
+    curl -s -u "$HALO_ADMIN" -X DELETE \
+        "$HALO_URL/apis/plugin.halo.run/v1alpha1/plugins/$LEGACY_PLUGIN_NAME" \
+        -o /dev/null 2>/dev/null
+    sleep 2
+
     # 验证
     local phase=$(curl -s -u "$HALO_ADMIN" \
-        "$HALO_URL/apis/plugin.halo.run/v1alpha1/plugins/ai-assistant" 2>/dev/null \
+        "$HALO_URL/apis/plugin.halo.run/v1alpha1/plugins/$PLUGIN_NAME" 2>/dev/null \
         | python3 -c "import sys,json; print(json.load(sys.stdin)['status']['phase'])" 2>/dev/null)
 
     if [ "$phase" = "STARTED" ]; then
@@ -174,22 +223,35 @@ deploy_plugin() {
 
 # ---- 停止 Halo ----
 stop_halo() {
-    local pid=$(lsof -i ":$HALO_PORT" -sTCP:LISTEN -t 2>/dev/null)
+    # 优先从 pid 文件读，更准确
+    local pid=""
+    if [ -f "$HALO_PID_FILE" ]; then
+        pid=$(cat "$HALO_PID_FILE" 2>/dev/null || true)
+    fi
+    # 兜底用 lsof
+    if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
+        pid=$(lsof -i ":$HALO_PORT" -sTCP:LISTEN -t 2>/dev/null | head -1)
+    fi
+
     if [ -z "$pid" ]; then
         info "Halo 未在运行"
+        rm -f "$HALO_PID_FILE"
         return 0
     fi
+
     info "停止 Halo (PID: $pid)..."
-    kill "$pid"
+    kill "$pid" 2>/dev/null || true
     for i in $(seq 1 10); do
         if ! kill -0 "$pid" 2>/dev/null; then
+            rm -f "$HALO_PID_FILE"
             info "Halo 已停止"
             return 0
         fi
         sleep 1
     done
     warn "正常停止超时，强制终止..."
-    kill -9 "$pid" 2>/dev/null
+    kill -9 "$pid" 2>/dev/null || true
+    rm -f "$HALO_PID_FILE"
     info "Halo 已强制终止"
 }
 

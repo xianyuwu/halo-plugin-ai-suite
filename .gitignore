@@ -33,3 +33,11 @@ TestSchema.java
 # IDE
 .idea/
 *.iml
+
+# AI/工具缓存目录（不可提交，含大量历史与缓存数据）
+.gradle-work/
+.harness/
+.mavis/
+.opencode/
+.pnpm-store/
+.work/

@@ -1,6 +1,6 @@
 <template>
   <div class="ai-section-block">
-    <div class="ai-section-heading">
+    <div v-if="title || tag || $slots['heading-extra']" class="ai-section-heading">
       <h2>{{ title }}</h2>
       <span v-if="tag" class="ai-section-tag" :class="tagRequired ? 'ai-tag-required' : 'ai-tag-optional'">
         {{ tag }}

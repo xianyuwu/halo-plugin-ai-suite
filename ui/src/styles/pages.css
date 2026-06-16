@@ -22,12 +22,12 @@
 }
 
 .ai-topbar {
-  height: 88px;
+  height: 76px;
   background: rgba(255, 255, 255, 0.86);
   border-bottom: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
-  padding: 0 32px;
+  padding: 0 24px;
   position: sticky;
   top: 0;
   z-index: 8;
@@ -35,20 +35,20 @@
 }
 
 .ai-page-title {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0;
   color: var(--ai-color-fg);
 }
 
 .ai-page-desc {
-  margin-top: 6px;
-  font-size: 14px;
+  margin-top: 4px;
+  font-size: 13px;
   color: var(--ai-color-fg-subtle);
 }
 
 .ai-content {
-  padding: 28px 32px 48px;
+  padding: 24px 24px 44px;
   max-width: 1520px;
 }
 
@@ -57,13 +57,13 @@
   background: var(--ai-color-bg-card);
   border: 1px solid #e5e7eb;
   border-radius: var(--ai-radius-xl);
-  box-shadow: var(--ai-shadow-card);
-  margin-bottom: 22px;
+  box-shadow: none;
+  margin-bottom: 20px;
   overflow: hidden;
 }
 
 .ai-section-header {
-  padding: 14px 24px;
+  padding: 12px 20px;
   border-bottom: 1px solid #e5e7eb;
   display: flex;
   justify-content: space-between;
@@ -72,7 +72,7 @@
 }
 
 .ai-section-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--ai-color-fg);
@@ -85,36 +85,36 @@
 }
 
 .ai-section-body {
-  padding: 24px 26px;
+  padding: 20px 22px;
 }
 
 /* 统计卡片 */
 .ai-stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 18px;
+  gap: 16px;
 }
 
 .ai-stat-card {
-  padding: 22px;
+  padding: 18px;
   border-radius: var(--ai-radius-lg);
   background: linear-gradient(180deg, #ffffff, #fbfcfe);
   border: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 112px;
+  min-height: 96px;
 }
 
 .ai-stat-label {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--ai-color-fg-subtle);
   font-weight: 500;
 }
 
 .ai-stat-value {
-  margin-top: 10px;
-  font-size: 30px;
+  margin-top: 8px;
+  font-size: 26px;
   line-height: 1;
   font-weight: 700;
   letter-spacing: -0.04em;
@@ -126,13 +126,13 @@
 }
 
 .ai-stat-icon {
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--ai-radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 20px;
   background: var(--ai-color-bg-subtle);
 }
 
@@ -592,4 +592,3 @@
 .text-red { color: var(--ai-color-danger-strong); }
 .text-muted { color: var(--ai-color-fg-disabled); }
 /* --- Writing Page 旧样式已移除，新样式在 WritingView.vue scoped 中 --- */
-

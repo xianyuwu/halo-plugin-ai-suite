@@ -296,7 +296,7 @@ import RiCheckLine from "~icons/ri/check-line";
 import RiCloseLine from "~icons/ri/close-line";
 
 // ===== 常量 =====
-const CONFIG_API = "/apis/console.api.ai-assistant.halo.run/v1alpha1/config";
+const CONFIG_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/config";
 
 // 每个模型包含的配置字段，用于独立保存
 const MODEL_FIELDS: Record<string, string[]> = {

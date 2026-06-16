@@ -4,13 +4,13 @@
 
 /* ----- Page Structure ----- */
 .ai-content {
-  padding: 28px 32px 52px;
+  padding: 24px 24px 44px;
 }
 
 .ai-layout-grid {
   display: grid;
   grid-template-columns: 1.25fr 0.75fr;
-  gap: 24px;
+  gap: 20px;
   align-items: start;
 }
 
@@ -20,8 +20,8 @@
   border: 1px solid #e5e7eb;
   border-radius: var(--ai-radius-xl);
   box-shadow: var(--ai-shadow-card);
-  padding: 24px 26px;
-  margin-bottom: 24px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -29,14 +29,14 @@
 }
 
 .ai-intro-title {
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 6px;
   color: var(--ai-color-fg);
 }
 
 .ai-intro-desc {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--ai-color-fg-subtle);
   line-height: 1.7;
 }
@@ -65,21 +65,24 @@
 
 /* ----- Section Block ----- */
 .ai-section-block {
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 
 .ai-section-heading {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
 .ai-section-heading h2 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0;
   color: var(--ai-color-fg);
 }
 
@@ -110,28 +113,29 @@
   background: var(--ai-color-bg-card);
   border: 1px solid #e5e7eb;
   border-radius: var(--ai-radius-xl);
-  box-shadow: var(--ai-shadow-card);
+  box-shadow: none;
   overflow: hidden;
 }
 
 .ai-card-header {
-  padding: 14px 22px;
+  padding: 12px 18px;
   border-bottom: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
-  gap: 14px;
-  background: linear-gradient(180deg, #ffffff, #fbfcfe);
+  gap: 12px;
+  background: #ffffff;
 }
 
 .ai-card-header-icon {
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--ai-radius-md);
-  background: var(--ai-color-bg-subtle);
+  background: #f8fafc;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 16px;
+  color: var(--ai-color-fg-muted);
   flex-shrink: 0;
 }
 
@@ -141,19 +145,19 @@
 }
 
 .ai-card-header-title {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--ai-color-fg);
 }
 
 .ai-card-header-desc {
-  margin-top: 4px;
+  margin-top: 3px;
   font-size: 12px;
   color: var(--ai-color-fg-subtle);
 }
 
 .ai-card-body {
-  padding: 22px;
+  padding: 18px;
 }
 
 /* 卡片底部操作栏 — VSpace 视觉差异巨大，保留 Plugin 自建 div */
@@ -161,9 +165,9 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  padding-top: 16px;
+  padding-top: 14px;
   border-top: 1px solid var(--ai-color-divider);
-  margin-top: 18px;
+  margin-top: 16px;
 }
 
 /* ----- Form Elements ----- */
@@ -175,20 +179,20 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--ai-color-fg);
   margin-bottom: 8px;
 }
 
 .ai-input {
   width: 100%;
-  height: 46px;
+  height: 42px;
   border: 1px solid #cbd5e1 !important;
   background: var(--ai-color-bg-card);
   border-radius: var(--ai-radius-md);
-  padding: 0 14px;
-  font-size: 14px;
+  padding: 0 12px;
+  font-size: 13px;
   color: var(--ai-color-fg);
   outline: none;
   transition: all 0.2s ease;
@@ -213,8 +217,8 @@
     linear-gradient(45deg, transparent 50%, #6b7280 50%),
     linear-gradient(135deg, #6b7280 50%, transparent 50%);
   background-position:
-    calc(100% - 20px) 19px,
-    calc(100% - 14px) 19px;
+    calc(100% - 20px) 17px,
+    calc(100% - 14px) 17px;
   background-size: 6px 6px, 6px 6px;
   background-repeat: no-repeat;
   background-color: var(--ai-color-bg-card);
@@ -225,7 +229,7 @@
 .ai-textarea {
   height: auto;
   min-height: 80px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   resize: vertical;
   line-height: 1.6;
 }
@@ -238,7 +242,7 @@
 }
 
 .ai-field-value {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--ai-color-fg);
   background: var(--ai-color-bg-subtle);

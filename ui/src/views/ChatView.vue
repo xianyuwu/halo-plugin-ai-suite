@@ -4,7 +4,7 @@
       <!-- 左侧：固定标题 + 可滚动卡片 -->
       <div class="chat-config">
         <div class="ai-section-heading">
-          <h2><RiChatSmileLine /> 对话设置</h2>
+          <h2><RiChatSmileLine /> 对话与外观</h2>
         </div>
         <div class="chat-config-scroll">
         <!-- 对话设置（标题已固定在上方，此处隐藏） -->
@@ -105,29 +105,59 @@
                 <input class="ai-input" v-model.number="form.widgetHeight" type="number" min="400" max="800" />
               </div>
               <div class="ai-form-field">
-                <label class="ai-field-label">按钮对齐策略</label>
+                <label class="ai-field-label">按钮垂直位置</label>
                 <select class="ai-input ai-select" v-model="form.widgetTriggerAlign">
-                  <option value="auto">自动对齐博客按钮组</option>
-                  <option value="fixed_right">固定在右侧</option>
-                  <option value="fixed_left">固定在左侧</option>
+                  <option value="auto">自动（距底部 80px）</option>
                   <option value="manual">手动指定距底像素</option>
                 </select>
+                <div class="ai-helper-text">自动模式距底部 80px，可避让多数主题的「返回顶部」按钮</div>
               </div>
               <div class="ai-form-field" v-if="form.widgetTriggerAlign === 'manual'">
                 <label class="ai-field-label">按钮距底部 (px)</label>
                 <input class="ai-input" v-model.number="form.widgetTriggerOffsetY" type="number" min="16" max="240" />
                 <div class="ai-helper-text">建议 80-120</div>
               </div>
+              <div class="ai-form-field">
+                <label class="ai-field-label">按钮水平边距 (px)</label>
+                <input class="ai-input" v-model.number="form.widgetTriggerOffsetX" type="number" min="0" max="120" />
+                <div class="ai-helper-text">距左/右边缘的距离，建议 16-32</div>
+              </div>
+              <div class="ai-form-field">
+                <label class="ai-field-label">按钮尺寸 (px)</label>
+                <input class="ai-input" v-model.number="form.widgetTriggerSize" type="number" min="28" max="64" />
+                <div class="ai-helper-text">建议 40-56</div>
+              </div>
             </div>
             <div class="ai-form-field" style="margin-top: 18px">
               <label class="ai-field-label">悬浮按钮图标</label>
-              <select class="ai-input ai-select" v-model="form.widgetIcon">
-                <option v-for="icon in ICON_PRESETS" :key="icon.value" :value="icon.value">{{ icon.label }}</option>
-              </select>
+              <div class="ai-icon-grid" :style="{ '--ai-chat-color': form.widgetThemeColor }">
+                <button
+                  v-for="icon in ICON_PRESETS"
+                  :key="icon.value"
+                  type="button"
+                  :class="['ai-icon-grid-item', { active: form.widgetIcon === icon.value }]"
+                  :title="icon.label"
+                  @click="form.widgetIcon = icon.value"
+                  v-html="icon.svg"
+                ></button>
+              </div>
+              <div class="ai-helper-text">当前：{{ currentIconLabel }}</div>
             </div>
             <div class="ai-form-field" style="margin-top: 18px">
-              <label class="ai-field-label">按钮尺寸 <span class="ai-range-value">{{ form.widgetTriggerSize }}px</span></label>
-              <input class="ai-range" v-model.number="form.widgetTriggerSize" type="range" min="28" max="56" step="2" />
+              <label class="ai-field-label">按钮形状</label>
+              <div class="ai-shape-grid" :style="{ '--ai-chat-color': form.widgetThemeColor }">
+                <button
+                  v-for="shape in TRIGGER_SHAPES"
+                  :key="shape.value"
+                  type="button"
+                  :class="['ai-shape-item', { active: form.widgetTriggerShape === shape.value }]"
+                  :title="shape.label"
+                  @click="form.widgetTriggerShape = shape.value"
+                >
+                  <span class="ai-shape-preview" :style="{ borderRadius: shape.radius }"></span>
+                  <span class="ai-shape-label">{{ shape.label }}</span>
+                </button>
+              </div>
             </div>
             <div class="ai-form-field" style="margin-top: 18px">
               <label class="ai-field-label">按钮文字（留空则显示图标）</label>
@@ -136,14 +166,18 @@
             </div>
             <div class="ai-form-field" style="margin-top: 18px">
               <label class="ai-field-label">主题色</label>
-              <div class="ai-color-row">
-                <div class="ai-color-preview" :style="{ background: form.widgetThemeColor }"></div>
-                <input class="ai-input" v-model="form.widgetThemeColor" placeholder="#4F46E5" />
+              <ThemeColorPicker
+                v-model="form.widgetThemeColor"
+                :effective-color="form.widgetThemeColor || DEFAULTS.widgetThemeColor"
+                :invalid="!widgetThemeColorValid"
+              />
+              <div class="ai-helper-text" :class="{ error: !widgetThemeColorValid }">
+                {{ widgetThemeColorHint }}
               </div>
             </div>
             <div class="ai-card-actions">
-              <VButton type="default" @click="resetFields(['widgetPosition','widgetTheme','widgetWidth','widgetHeight','widgetTriggerAlign','widgetTriggerOffsetY','widgetThemeColor','widgetIcon','widgetTriggerSize','widgetTriggerLabel'])">恢复默认</VButton>
-              <VButton type="primary" :disabled="saving" @click="save">{{ saving ? '保存中...' : '保存配置' }}</VButton>
+              <VButton type="default" @click="resetFields(['widgetPosition','widgetTheme','widgetWidth','widgetHeight','widgetTriggerAlign','widgetTriggerOffsetY','widgetTriggerOffsetX','widgetTriggerShape','widgetThemeColor','widgetIcon','widgetTriggerSize','widgetTriggerLabel'])">恢复默认</VButton>
+              <VButton type="primary" :disabled="saving || !widgetThemeColorValid" @click="save">{{ saving ? '保存中...' : '保存配置' }}</VButton>
             </div>
           </div>
         </SectionCard>
@@ -169,33 +203,31 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted, watch } from "vue";
+import { computed, reactive, ref, onMounted, watch } from "vue";
 import { Toast , VButton, VSpace} from "@halo-dev/components";
 import { saveGroup, loadGroup } from "../utils/config";
+import { ICON_PRESETS, TRIGGER_SHAPES } from "../utils/trigger-icons";
 import SectionCard from "../components/SectionCard.vue";
 import OptionCard from "../components/OptionCard.vue";
 import DebugTrace from "../components/DebugTrace.vue";
+import ThemeColorPicker from "../components/ThemeColorPicker.vue";
 import RiChatSmileLine from "~icons/ri/chat-smile-line";
 import RiHandHeartLine from "~icons/ri/hand-heart-line";
 import RiLockLine from "~icons/ri/lock-line";
 import RiPaletteLine from "~icons/ri/palette-line";
 
-const previewSrc = window.location.origin + "/plugins/ai-assistant/assets/res/embed.html?ai-embed=1";
+// 带时间戳防止浏览器缓存旧版 embed.html 及其引用的 chat-widget.js，
+// 保证后台预览总是渲染最新部署的访客端代码（图标随配置实时联动）
+const previewSrc =
+  window.location.origin +
+  "/plugins/ai-suite/assets/res/embed.html?ai-embed=1&_t=" +
+  Date.now();
 
-const ICON_PRESETS = [
-  { value: "ri-sparkling-2-line", label: "✨ 星光（默认）" },
-  { value: "ri-chat-3-line", label: "💬 对话框" },
-  { value: "ri-robot-2-line", label: "🤖 机器人" },
-  { value: "ri-message-2-line", label: "🗨 消息" },
-  { value: "ri-customer-service-2-line", label: "🎧 客服耳机" },
-  { value: "ri-question-answer-line", label: "❓ 问答" },
-  { value: "ri-shining-line", label: "⭐ 闪光" },
-  { value: "ri-lightbulb-line", label: "💡 灯泡" },
-  { value: "ri-send-plane-line", label: "✈️ 飞机" },
-  { value: "ri-thumb-up-line", label: "👍 点赞" },
-  { value: "ri-heart-line", label: "❤️ 爱心" },
-  { value: "ri-star-line", label: "🌟 星星" },
-];
+// 当前选中图标的中文名称（显示在选择器下方辅助说明）
+const currentIconLabel = computed(
+  () => ICON_PRESETS.find((i) => i.value === form.widgetIcon)?.label || "星光（默认）"
+);
+
 
 const DEFAULTS = {
   systemPrompt: "",
@@ -205,17 +237,19 @@ const DEFAULTS = {
   streamOutput: true,
   showRetrievalStatus: false,
   widgetPosition: "right-bottom",
-  widgetThemeColor: "#4F46E5",
-  widgetIcon: "ri-sparkling-2-line",
+  widgetThemeColor: "#5387C4",
+  widgetIcon: "ri-chat-3-line",
   widgetTriggerSize: 35,
-  widgetTriggerLabel: "",
+  widgetTriggerLabel: "AI",
   widgetTheme: "auto",
   welcomeMessage: "Hi! 有什么想了解的？",
   shortcutQuestions: "推荐热门文章\n关于AI的最新文章\n旅行推荐",
   widgetWidth: 400,
   widgetHeight: 600,
-  widgetTriggerAlign: "auto",
-  widgetTriggerOffsetY: 24,
+  widgetTriggerAlign: "manual",
+  widgetTriggerOffsetY: 125,
+  widgetTriggerOffsetX: 17,
+  widgetTriggerShape: "square",
   allowGuest: true,
   showPrivacyTip: false,
 };
@@ -225,6 +259,16 @@ const saving = ref(false);
 const saveMsg = ref("");
 const saveOk = ref(false);
 const rightTab = ref<"preview" | "debug">("preview");
+
+const widgetThemeColorValid = computed(() => {
+  const value = form.widgetThemeColor.trim();
+  return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value);
+});
+
+const widgetThemeColorHint = computed(() => {
+  if (!widgetThemeColorValid.value) return "请输入合法 HEX 色值，例如 #4F46E5。";
+  return "访客问答浮窗、默认搜索弹框和默认脑图区块会使用这个主题色。";
+});
 
 // ===== 实时预览：通过 postMessage 将配置变化推送到 iframe =====
 const iframeRef = ref<HTMLIFrameElement | null>(null);
@@ -244,6 +288,11 @@ function sendPreviewConfig() {
         theme: form.widgetTheme,
         icon: form.widgetIcon,
         triggerLabel: form.widgetTriggerLabel,
+        triggerAlign: form.widgetTriggerAlign === "manual" ? "manual" : "auto",
+        triggerOffsetY: form.widgetTriggerOffsetY,
+        triggerOffsetX: form.widgetTriggerOffsetX,
+        triggerShape: form.widgetTriggerShape,
+        triggerSize: form.widgetTriggerSize,
         welcome: form.welcomeMessage,
         shortcuts,
         allowGuest: form.allowGuest,
@@ -260,6 +309,11 @@ watch(
     form.widgetTheme,
     form.widgetIcon,
     form.widgetTriggerLabel,
+    form.widgetTriggerAlign,
+    form.widgetTriggerOffsetY,
+    form.widgetTriggerOffsetX,
+    form.widgetTriggerShape,
+    form.widgetTriggerSize,
     form.welcomeMessage,
     form.shortcutQuestions,
     form.allowGuest,
@@ -278,6 +332,12 @@ function resetFields(keys: string[]) {
 }
 
 async function save() {
+  if (!widgetThemeColorValid.value) {
+    saveOk.value = false;
+    saveMsg.value = "主题色格式不正确";
+    Toast.error("主题色格式不正确");
+    return;
+  }
   await saveGroup("chat", form, saving, saveMsg, saveOk);
   if (saveOk.value) {
     Toast.success(saveMsg.value || "保存成功");
@@ -303,9 +363,9 @@ onMounted(async () => {
 .chat-page .ai-content {
   display: flex;
   height: 100%;
-  gap: 28px;
+  gap: 22px;
   /* 覆盖全局 .ai-content 的上下 padding 28/52，避免把卡片可用高度挤掉 80px */
-  padding: 0 32px;
+  padding: 0 24px;
 }
 /* 左右两栏自己留上下呼吸，避免紧贴顶栏/视口底 */
 .chat-config {
@@ -313,32 +373,28 @@ onMounted(async () => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 24px 0;
+  padding: 20px 0;
 }
 .chat-config-scroll {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 28px;
-}
-/* 第一个 SectionCard 的标题已作为固定标题显示在上方，此处隐藏 */
-.chat-config-scroll :deep(.ai-section-block:first-child .ai-section-heading) {
-  display: none;
+  gap: 22px;
 }
 .chat-preview {
   flex: 0 0 480px;
   display: flex;
   flex-direction: column;
-  padding: 24px 40px;
+  padding: 20px 28px;
   overflow: hidden;
 }
 
 /* 预览 */
 .ai-preview-label {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0;
   color: #111827;
   margin: 0 0 16px 0;
 }
@@ -346,7 +402,7 @@ onMounted(async () => {
   width: 400px;
   height: 600px;
   border: none;
-  border-radius: 16px;
+  border-radius: 12px;
   background: #fff;
   box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 12px rgba(0,0,0,0.04);
 }
@@ -409,9 +465,77 @@ onMounted(async () => {
 .ai-color-row { display: flex; align-items: center; gap: 12px; }
 .ai-color-preview { width: 46px; height: 46px; border-radius: 10px; flex-shrink: 0; box-shadow: inset 0 0 0 4px #fff, 0 0 0 1px #e5e7eb; border: 1px solid #e5e7eb; }
 .ai-color-row .ai-input { flex: 1; }
+.ai-helper-text.error { color: #dc2626; }
 .ai-range { width: 100%; height: 6px; appearance: none; background: linear-gradient(to right, #111827 0%, #111827 50%, #e5e7eb 50%, #e5e7eb 100%); border-radius: 999px; outline: none; cursor: pointer; margin-top: 4px; }
 .ai-range::-webkit-slider-thumb { appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid #111827; box-shadow: 0 2px 8px rgba(17,24,39,0.15); cursor: pointer; }
 .ai-range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid #111827; box-shadow: 0 2px 8px rgba(17,24,39,0.15); cursor: pointer; }
 
 .ai-input[type="number"] { border: 1px solid #94a3b8 !important; background: #fff !important; -webkit-appearance: none; -moz-appearance: textfield; appearance: none; }
+
+/* 悬浮按钮图标网格选择器 — 所见即所得，SVG 与访客端同源 */
+.ai-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-top: 4px;
+}
+.ai-icon-grid-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  color: #4b5563;
+  font-size: 22px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+.ai-icon-grid-item :deep(svg) { width: 1em; height: 1em; }
+.ai-icon-grid-item:hover { color: #111827; border-color: #cbd5e1; }
+.ai-icon-grid-item:active { transform: scale(0.94); }
+.ai-icon-grid-item.active {
+  color: var(--ai-chat-color, #4F46E5);
+  border-color: var(--ai-chat-color, #4F46E5);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ai-chat-color, #4F46E5) 18%, transparent);
+}
+.ai-icon-grid-item.active :deep(svg) { fill: currentColor; }
+
+/* 按钮形状选择器 — 用主题色预览块展示真实 border-radius */
+.ai-shape-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 4px;
+}
+.ai-shape-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ai-shape-item:hover { border-color: #cbd5e1; }
+.ai-shape-item.active {
+  border-color: var(--ai-chat-color, #4F46E5);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ai-chat-color, #4F46E5) 18%, transparent);
+}
+.ai-shape-preview {
+  width: 28px;
+  height: 28px;
+  background: var(--ai-chat-color, #4F46E5);
+}
+.ai-shape-label {
+  font-size: 12px;
+  color: #4b5563;
+  white-space: nowrap;
+}
+.ai-shape-item.active .ai-shape-label { color: var(--ai-chat-color, #4F46E5); font-weight: 600; }
 </style>

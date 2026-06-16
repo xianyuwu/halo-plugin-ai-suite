@@ -62,17 +62,17 @@
   --ai-color-info-bg:        #eff6ff;
 
   /* Radius（圆角，按尺寸由小到大） */
-  --ai-radius-sm:   6px;
-  --ai-radius-md:   10px;
-  --ai-radius-lg:   14px;
-  --ai-radius-xl:   18px;
+  --ai-radius-sm:   4px;
+  --ai-radius-md:   8px;
+  --ai-radius-lg:   10px;
+  --ai-radius-xl:   12px;
   --ai-radius-pill: 999px;
 
   /* Shadow（阴影，按使用场景） */
-  --ai-shadow-card:        0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
-  --ai-shadow-card-strong: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
-  --ai-shadow-hover:       0 6px 16px rgba(15, 23, 42, 0.10);
-  --ai-shadow-pop:         0 8px 24px rgba(15, 23, 42, 0.12);
+  --ai-shadow-card:        0 1px 2px rgba(15, 23, 42, 0.04);
+  --ai-shadow-card-strong: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --ai-shadow-hover:       0 4px 10px rgba(15, 23, 42, 0.08);
+  --ai-shadow-pop:         0 8px 20px rgba(15, 23, 42, 0.10);
   --ai-shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 

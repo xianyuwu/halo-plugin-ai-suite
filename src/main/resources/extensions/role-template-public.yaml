@@ -1,0 +1,24 @@
+apiVersion: v1alpha1
+kind: Role
+metadata:
+  name: ai-suite-role-template-anonymous-public
+  labels:
+    halo.run/role-template: "true"
+    halo.run/hidden: "true"
+    rbac.authorization.halo.run/aggregate-to-anonymous: "true"
+  annotations:
+    rbac.authorization.halo.run/module: "AI智能套件"
+    rbac.authorization.halo.run/display-name: "AI智能套件公开接口"
+rules:
+  - apiGroups: ["api.ai-suite.halo.run"]
+    resources:
+      - widget-config
+      - chat
+      - chat/stream
+      - chat/feedback
+      - search
+      - search/results
+      - search/halo-results
+      - search/answer
+      - mindmap
+    verbs: ["get", "list", "create"]

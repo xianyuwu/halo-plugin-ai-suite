@@ -4,16 +4,43 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI 助手预览</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4/fonts/remixicon.css">
-<link rel="stylesheet" href="/plugins/ai-assistant/assets/res/css/chat-widget.css">
+<link rel="stylesheet" href="/plugins/ai-suite/assets/res/css/chat-widget.css">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; overflow: hidden; background: #fff; }
 </style>
 </head>
 <body>
-<script src="/plugins/ai-assistant/assets/res/js/marked.min.js" defer></script>
-<script src="/plugins/ai-assistant/assets/res/js/purify.min.js" defer></script>
-<script src="/plugins/ai-assistant/assets/res/js/chat-widget.js" defer></script>
+<script>
+  // 预览页专用资源加载器：给每个资源追加版本号查询参数，强制浏览器绕过缓存，
+  // 保证后台预览总是运行最新部署的 chat-widget.js（避免缓存旧版导致预览空白/图标不联动）。
+  // 顺序加载 marked → purify → chat-widget（保持依赖顺序）。
+  (function () {
+    var base = "/plugins/ai-suite/assets/res";
+    var v = "?_v=" + (window.__AI_SUITE_VER__ || Date.now());
+    var css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.href = base + "/css/chat-widget.css" + v;
+    document.head.appendChild(css);
+
+    function loadJS(src, cb) {
+      var s = document.createElement("script");
+      s.src = src;
+      s.onload = cb;
+      s.onerror = cb; // 即使失败也继续，避免阻塞后续
+      document.body.appendChild(s);
+    }
+    var queue = [
+      base + "/js/marked.min.js" + v,
+      base + "/js/purify.min.js" + v,
+      base + "/js/chat-widget.js" + v
+    ];
+    function next() {
+      if (queue.length === 0) return;
+      loadJS(queue.shift(), next);
+    }
+    next();
+  })();
+</script>
 </body>
 </html>

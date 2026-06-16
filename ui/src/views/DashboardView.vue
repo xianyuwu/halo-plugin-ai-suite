@@ -50,7 +50,7 @@
             <div class="ai-section-title">访客问答状态</div>
             <div class="ai-section-desc">最近 7 天访客提问、反馈分布与点踩率</div>
           </div>
-          <router-link to="/ai-assistant/chat-logs" class="ai-btn">查看详情 →</router-link>
+          <router-link to="/ai-suite/chat-logs" class="ai-btn">查看详情 →</router-link>
         </div>
         <div class="ai-section-body">
           <div class="ai-metric-grid">
@@ -94,7 +94,7 @@
         </div>
         <div class="ai-section-body">
           <div class="ai-quick-grid">
-            <router-link to="/ai-assistant/usage" class="ai-quick-card ai-quick-card--usage">
+            <router-link to="/ai-suite/usage" class="ai-quick-card ai-quick-card--usage">
               <div>
                 <div class="ai-quick-icon"><RiBarChartLine /></div>
                 <div class="ai-quick-title">今日用量</div>
@@ -106,7 +106,7 @@
               </div>
               <div class="ai-quick-arrow">查看详情 →</div>
             </router-link>
-            <router-link to="/ai-assistant/knowledge" class="ai-quick-card">
+            <router-link to="/ai-suite/knowledge" class="ai-quick-card">
               <div>
                 <div class="ai-quick-icon"><RiDatabase2Line /></div>
                 <div class="ai-quick-title">索引中心</div>
@@ -114,7 +114,7 @@
               </div>
               <div class="ai-quick-arrow">进入管理 →</div>
             </router-link>
-            <router-link to="/ai-assistant/models" class="ai-quick-card">
+            <router-link to="/ai-suite/models" class="ai-quick-card">
               <div>
                 <div class="ai-quick-icon"><RiRobotLine /></div>
                 <div class="ai-quick-title">模型配置</div>
@@ -122,7 +122,12 @@
               </div>
               <div class="ai-quick-arrow">开始配置 →</div>
             </router-link>
-            <router-link to="/ai-assistant/chat" class="ai-quick-card">
+            <router-link to="/ai-suite/chat" class="ai-quick-card">
+              <label class="ai-switch ai-switch--corner" @click.stop>
+                <input type="checkbox" :checked="!!config.chat?.allowGuest" :disabled="toggling" @change.stop="toggleFeature('chat', 'allowGuest')" />
+                <span class="ai-switch-slider" />
+                <span class="ai-switch-tip">对访客显示聊天浮窗</span>
+              </label>
               <div>
                 <div class="ai-quick-icon"><RiChatSmileLine /></div>
                 <div class="ai-quick-title">对话与外观</div>
@@ -130,7 +135,38 @@
               </div>
               <div class="ai-quick-arrow">编辑外观 →</div>
             </router-link>
-            <router-link to="/ai-assistant/excerpt" class="ai-quick-card">
+            <router-link to="/ai-suite/search" class="ai-quick-card">
+              <label class="ai-switch ai-switch--corner" @click.stop>
+                <input type="checkbox" :checked="!!config.search?.enabled" :disabled="toggling" @change.stop="toggleFeature('search', 'enabled')" />
+                <span class="ai-switch-slider" />
+                <span class="ai-switch-tip">启用 AI 搜索</span>
+              </label>
+              <div>
+                <div class="ai-quick-icon"><RiSearchLine /></div>
+                <div class="ai-quick-title">AI 搜索</div>
+                <div class="ai-quick-desc">配置搜索弹框、结果展示与 AI 回答策略。</div>
+              </div>
+              <div class="ai-quick-arrow">查看配置 →</div>
+            </router-link>
+            <router-link to="/ai-suite/mindmap" class="ai-quick-card">
+              <label class="ai-switch ai-switch--corner" @click.stop>
+                <input type="checkbox" :checked="!!config.mindmap?.enabled" :disabled="toggling" @change.stop="toggleFeature('mindmap', 'enabled')" />
+                <span class="ai-switch-slider" />
+                <span class="ai-switch-tip">启用文章 AI 脑图</span>
+              </label>
+              <div>
+                <div class="ai-quick-icon"><RiMindMap /></div>
+                <div class="ai-quick-title">AI 脑图</div>
+                <div class="ai-quick-desc">为文章自动生成思维导图，访客可展开浏览大纲。</div>
+              </div>
+              <div class="ai-quick-arrow">查看配置 →</div>
+            </router-link>
+            <router-link to="/ai-suite/excerpt" class="ai-quick-card">
+              <label class="ai-switch ai-switch--corner" @click.stop>
+                <input type="checkbox" :checked="!!config.excerpt?.enabled" :disabled="toggling" @change.stop="toggleFeature('excerpt', 'enabled')" />
+                <span class="ai-switch-slider" />
+                <span class="ai-switch-tip">启用发布时自动摘要</span>
+              </label>
               <div>
                 <div class="ai-quick-icon"><RiFileTextLine /></div>
                 <div class="ai-quick-title">AI 摘要</div>
@@ -138,7 +174,7 @@
               </div>
               <div class="ai-quick-arrow">查看配置 →</div>
             </router-link>
-            <router-link to="/ai-assistant/writing" class="ai-quick-card">
+            <router-link to="/ai-suite/writing" class="ai-quick-card">
               <div>
                 <div class="ai-quick-icon"><RiQuillPenLine /></div>
                 <div class="ai-quick-title">写作辅助</div>
@@ -176,19 +212,21 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { VButton, VTag } from "@halo-dev/components";
+import { VButton, VTag, Toast } from "@halo-dev/components";
 import MetricCard from "../components/MetricCard.vue";
 import RiDatabase2Line from "~icons/ri/database-2-line";
 import RiRobotLine from "~icons/ri/robot-line";
 import RiChatSmileLine from "~icons/ri/chat-smile-line";
+import RiSearchLine from "~icons/ri/search-line";
+import RiMindMap from "~icons/ri/mind-map";
 import RiFileTextLine from "~icons/ri/file-text-line";
 import RiQuillPenLine from "~icons/ri/quill-pen-line";
 import RiBarChartLine from "~icons/ri/bar-chart-line";
 import { loadUsageToday } from "../utils/config";
 
-const CONFIG_API = "/apis/console.api.ai-assistant.halo.run/v1alpha1/config";
-const KNOWLEDGE_API = "/apis/console.api.ai-assistant.halo.run/v1alpha1/knowledge";
-const CHAT_LOGS_API = "/apis/console.api.ai-assistant.halo.run/v1alpha1/chat-logs/stats";
+const CONFIG_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/config";
+const KNOWLEDGE_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/knowledge";
+const CHAT_LOGS_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/chat-logs/stats";
 
 // 防御：后端缺字段时不让 toFixed 抛错
 function safeNumber(v: unknown): number {
@@ -218,6 +256,8 @@ const chatStats = ref({
 // 今日用量统计
 const usageToday = ref<{ date: string; models: Array<{ model: string; promptTokens: number; completionTokens: number; calls: number; failures: number; embeddingTokens: number }> }>({ date: "", models: [] });
 const loading = ref(false);
+// 开关切换中状态：防止并发点击
+const toggling = ref(false);
 
 // 今日用量卡片摘要指标
 const usageSummary = computed(() => {
@@ -249,12 +289,12 @@ const configSummary = computed(() => {
   const themeLabel: Record<string, string> = { auto: "跟随系统", light: "浅色", dark: "深色", system: "跟随系统" };
 
   return [
-    { label: "聊天模型", value: chatOk ? "已配置" : "未配置", tag: chatOk ? "已配置" : "待配置", ok: chatOk, to: "/ai-assistant/models" },
-    { label: "Embedding 模型", value: embOk ? "已配置" : "未配置", tag: embOk ? "已配置" : "待配置", ok: embOk, to: "/ai-assistant/models" },
-    { label: "检索模式", value: modeLabel[r.searchMode] || r.searchMode || "未设置", tag: r.searchMode || "默认", ok: !!r.searchMode, to: "/ai-assistant/retrieval" },
-    { label: "切片大小", value: config.value.chunking?.chunkSize ? `${config.value.chunking.chunkSize} 字符` : "500 字符", tag: config.value.chunking?.chunkSize ? "自定义" : "默认", ok: true, to: "/ai-assistant/chunking" },
-    { label: "系统提示词", value: promptOk ? "已配置" : "未配置", tag: promptOk ? "已配置" : "待配置", ok: promptOk, to: "/ai-assistant/chat" },
-    { label: "浮窗主题", value: themeLabel[c.widgetTheme] || c.widgetTheme || "auto", tag: c.widgetTheme || "auto", ok: true, to: "/ai-assistant/chat" },
+    { label: "聊天模型", value: chatOk ? "已配置" : "未配置", tag: chatOk ? "已配置" : "待配置", ok: chatOk, to: "/ai-suite/models" },
+    { label: "Embedding 模型", value: embOk ? "已配置" : "未配置", tag: embOk ? "已配置" : "待配置", ok: embOk, to: "/ai-suite/models" },
+    { label: "检索模式", value: modeLabel[r.searchMode] || r.searchMode || "未设置", tag: r.searchMode || "默认", ok: !!r.searchMode, to: "/ai-suite/retrieval" },
+    { label: "切片大小", value: config.value.chunking?.chunkSize ? `${config.value.chunking.chunkSize} 字符` : "500 字符", tag: config.value.chunking?.chunkSize ? "自定义" : "默认", ok: true, to: "/ai-suite/chunking" },
+    { label: "系统提示词", value: promptOk ? "已配置" : "未配置", tag: promptOk ? "已配置" : "待配置", ok: promptOk, to: "/ai-suite/chat" },
+    { label: "浮窗主题", value: themeLabel[c.widgetTheme] || c.widgetTheme || "auto", tag: c.widgetTheme || "auto", ok: true, to: "/ai-suite/chat" },
   ];
 });
 
@@ -263,6 +303,36 @@ async function loadConfig() {
     const resp = await fetch(CONFIG_API);
     if (resp.ok) config.value = await resp.json();
   } catch { /* 静默处理 */ }
+}
+
+// 快速操作卡片开关：切换某个配置组的单个布尔字段。
+// 不能只 POST {group:{field:val}}（会丢该组其他字段），必须 GET 全量→改一字段→POST 全树。
+// 乐观更新：先翻转 UI，失败再回滚。
+async function toggleFeature(group: string, field: string) {
+  if (toggling.value) return;
+  const grp = config.value[group] || {};
+  const oldVal = !!grp[field];
+  const newVal = !oldVal;
+  config.value[group] = { ...grp, [field]: newVal }; // 乐观更新，UI 立即翻转
+  toggling.value = true;
+  try {
+    const r = await fetch(CONFIG_API);
+    const all = r.ok ? await r.json() : {};
+    all[group] = { ...(all[group] || {}), [field]: newVal };
+    const resp = await fetch(`${CONFIG_API}/save`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(all),
+    });
+    const data = await resp.json();
+    if (!data.saved) throw new Error(data.error || "保存失败");
+    Toast.success(newVal ? "已开启" : "已关闭");
+  } catch {
+    config.value[group] = { ...grp, [field]: oldVal }; // 失败回滚
+    Toast.error("更新失败，已恢复");
+  } finally {
+    toggling.value = false;
+  }
 }
 
 async function loadKnowledgeStats() {
@@ -314,3 +384,88 @@ async function loadUsage() {
   usageToday.value = await loadUsageToday();
 }
 </script>
+
+<style scoped>
+/* 快速操作卡片：加 position:relative 给右上角开关做定位锚 */
+.ai-quick-card {
+  position: relative;
+}
+/* 开关固定在卡片右上角。用双 class 提高特异性：下面 .ai-switch 也设了 position:relative，
+   若这里只写单 class，同特异性下后定义的 relative 会盖掉 absolute，开关就退回文档流堆到左上角 */
+.ai-switch.ai-switch--corner {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+}
+/* 滑动开关（与 SearchView/MindMapView 的 .ai-switch 一致：46×26，开启色 #111827） */
+.ai-switch {
+  position: relative;
+  display: inline-block;
+  width: 46px;
+  height: 26px;
+}
+.ai-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.ai-switch-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: #d1d5db;
+  border-radius: 999px;
+  transition: 0.2s;
+}
+.ai-switch-slider::before {
+  content: "";
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: 0.2s;
+}
+.ai-switch input:checked + .ai-switch-slider {
+  background: #111827;
+}
+.ai-switch input:checked + .ai-switch-slider::before {
+  transform: translateX(20px);
+}
+.ai-switch input:disabled + .ai-switch-slider {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+/* hover 提示气泡：开关下方、右对齐展开（不超卡片右边），带向上小箭头 */
+.ai-switch-tip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  white-space: nowrap;
+  background: #111827;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 3;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.ai-switch-tip::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  right: 14px;
+  border: 4px solid transparent;
+  border-bottom-color: #111827;
+}
+.ai-switch:hover .ai-switch-tip {
+  opacity: 1;
+}
+</style>

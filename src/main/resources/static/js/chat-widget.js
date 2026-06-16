@@ -13,7 +13,7 @@
   // 防重复注入（容器模式由 Vue 组件负责清理，不做此检查）
   if (!isContainerMode && document.getElementById("ai-chat-trigger")) return;
 
-  var configApiBase = "/apis/api.halo.run/v1alpha1";
+  var configApiBase = "/apis/api.ai-suite.halo.run/v1alpha1";
 
   var config = {
     apiBase: configApiBase,
@@ -24,10 +24,14 @@
     shortcuts: [],
     width: 400,
     height: 600,
-    triggerAlign: "auto",
-    triggerOffsetY: 24,
+    triggerAlign: "manual",
+    triggerOffsetY: 125,
+    triggerOffsetX: 17,
+    triggerShape: "square",
     stream: true,
     allowGuest: true,
+    searchTheme: "inherit",
+    searchColor: "",
   };
 
   var posSide = "right";
@@ -81,20 +85,56 @@
              '</svg>'
   };
 
-  function getAvatarHTML() {
+  // ===== 悬浮按钮 / 头像图标库（内置 SVG，不依赖主题 Remix Icon 字体） =====
+  // key 与后台 ICON_PRESETS 下发的 config.icon 类名完全一致，value 为内联 SVG。
+  // 这样无论主题是否加载 Remix Icon 字体，配置的图标都能一致渲染。
+  // path 数据取自 Remix Icon 官方 24px 版本（https://remixicon.com），保证视觉一致。
+  var SVG_ATTR = 'viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em"';
+  var TRIGGER_ICONS = {
+    "ri-sparkling-2-line": '<svg ' + SVG_ATTR + '><path d="M10 2C9.44772 2 9 2.44772 9 3V5.5C9 6.05228 9.44772 6.5 10 6.5C10.5523 6.5 11 6.05228 11 5.5V3C11 2.44772 10.5523 2 10 2Z"/><path d="M5.35786 4.22183C4.96695 3.8309 4.33379 3.8309 3.94287 4.22183C3.55195 4.61275 3.55195 5.24592 3.94287 5.63684L5.70753 7.4015C6.09845 7.79242 6.73162 7.79242 7.12254 7.4015C7.51346 7.01057 7.51346 6.37741 7.12254 5.98649L5.35786 4.22183Z"/><path d="M14.2925 7.4015L16.0572 5.63684C16.4481 5.24592 16.4481 4.61275 16.0572 4.22183C15.6663 3.8309 15.0331 3.8309 14.6422 4.22183L12.8775 5.98649C12.4866 6.37741 12.4866 7.01057 12.8775 7.4015C13.2684 7.79242 13.9016 7.79242 14.2925 7.4015Z"/><path d="M5.35786 15.7782L7.12254 14.0135C7.51346 13.6226 7.51346 12.9894 7.12254 12.5985C6.73162 12.2076 6.09845 12.2076 5.70753 12.5985L3.94287 14.3632C3.55195 14.7541 3.55195 15.3873 3.94287 15.7782C4.33379 16.1691 4.96695 16.1691 5.35786 15.7782Z"/><path d="M9 14C9 13.4477 9.44772 13 10 13C10.5523 13 11 13.4477 11 14V17C11 18.6569 12.3431 20 14 20H17C17.5523 20 18 20.4477 18 21C18 21.5523 17.5523 22 17 22H14C11.2386 22 9 19.7614 9 17V14Z"/></svg>',
+    "ri-chat-3-line": '<svg ' + SVG_ATTR + '><path d="M7.29117 20.8242L2 22L3.17581 16.7088C2.42544 15.3056 2 13.7025 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C10.2975 22 8.69442 21.5746 7.29117 20.8242ZM7.41455 18.8492L7.95943 19.1487C9.13556 19.7936 10.5198 20.16 12 20.16C16.5053 20.16 20.16 16.5053 20.16 12C20.16 7.49471 16.5053 3.84 12 3.84C7.49471 3.84 3.84 7.49471 3.84 12C3.84 13.4802 4.2064 14.8644 4.85135 16.0406L5.15078 16.5854L4.48545 19.5146L7.41455 18.8492Z"/></svg>',
+    "ri-robot-2-line": '<svg ' + SVG_ATTR + '><path d="M13 4.05484C17.5 4.55177 21 8.36688 21 13V20H3V13C3 8.36688 6.49997 4.55177 11 4.05484V2H13V4.05484ZM19 20V13C19 9.13401 15.866 6 12 6C8.13401 6 5 9.13401 5 13V20H19ZM9 13H7C7 15.2091 8.79086 17 11 17V15C9.89543 15 9 14.1046 9 13Z"/></svg>',
+    "ri-message-2-line": '<svg ' + SVG_ATTR + '><path d="M7.29117 20.8242L2 22L3.17581 16.7088C2.42544 15.3056 2 13.7025 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C10.2975 22 8.69442 21.5746 7.29117 20.8242ZM5 19.6914L7.62311 19.0461L8.15857 19.3405C9.30542 19.9706 10.6133 20.3148 12 20.3148C16.5276 20.3148 20.1429 16.6353 20.1429 12C20.1429 7.36471 16.5276 3.68519 12 3.68519C7.47242 3.68519 3.85714 7.36471 3.85714 12C3.85714 13.4193 4.2205 14.7765 4.88176 15.9617L5.18143 16.4923L5 19.6914ZM7 13H9C9 14.1046 9.89543 15 11 15V17C8.79086 17 7 15.2091 7 13Z"/></svg>',
+    "ri-customer-service-2-line": '<svg ' + SVG_ATTR + '><path d="M14.7336 7.24228C14.7067 7.13159 14.6769 7.01941 14.6442 6.90595C13.9525 4.52064 11.8407 3.4 9.5 3.4C7.15881 3.4 5.04658 4.5213 4.35533 6.90761C4.32281 7.01996 4.29316 7.13103 4.26642 7.24061C2.90704 7.63373 2 8.9896 2 11C2 13.0104 2.90704 14.3663 4.26642 14.7594C4.29316 14.869 4.32281 14.98 4.35533 15.0924C5.04658 17.4787 7.15881 18.6 9.5 18.6C10.0523 18.6 10.5 18.1523 10.5 17.6C10.5 17.0477 10.0523 16.6 9.5 16.6C8.04001 16.6 6.94511 16.011 6.54557 14.6356L6.53351 14.5926C6.60206 14.5948 6.67069 14.6 6.74 14.6H17.26C17.3293 14.6 17.3979 14.5948 17.4665 14.5926L17.4544 14.6356C17.0549 16.011 15.96 16.6 14.5 16.6C13.9477 16.6 13.5 17.0477 13.5 17.6C13.5 18.1523 13.9477 18.6 14.5 18.6C16.8407 18.6 18.9525 17.4787 19.6442 15.0924C19.6769 14.979 19.7067 14.8668 19.7336 14.7561C21.0926 14.3627 22 13.0068 22 11C22 8.99324 21.0926 7.63734 19.7336 7.24388C19.7067 7.13319 19.6769 7.021 19.6442 6.90755C18.9525 4.52224 16.8407 3.4 14.5 3.4C13.9477 3.4 13.5 3.84772 13.5 4.4C13.5 4.95228 13.9477 5.4 14.5 5.4C15.96 5.4 17.0549 5.98902 17.4544 7.36439L17.4665 7.40736C17.3979 7.40516 17.3293 7.4 17.26 7.4H6.74C6.67069 7.4 6.60206 7.40516 6.53351 7.40736L6.54557 7.36439C6.94511 5.98902 8.04001 5.4 9.5 5.4C10.0523 5.4 10.5 4.95228 10.5 4.4C10.5 3.84772 10.0523 3.4 9.5 3.4Z"/></svg>',
+    "ri-question-answer-line": '<svg ' + SVG_ATTR + '><path d="M15.364 21.4853L12.1213 18.2426H8C5.79086 18.2426 4 16.4518 4 14.2426V6.24264C4 4.0335 5.79086 2.24264 8 2.24264H20C22.2091 2.24264 24 4.0335 24 6.24264V14.2426C24 16.4518 22.2091 18.2426 20 18.2426H18.1213L15.364 21.4853ZM16.9497 16.2426H20C21.1046 16.2426 22 15.3472 22 14.2426V6.24264C22 5.13807 21.1046 4.24264 20 4.24264H8C6.89543 4.24264 6 5.13807 6 6.24264V14.2426C6 15.3472 6.89543 16.2426 8 16.2426H12.9497L15.0503 18.3431L16.9497 16.2426Z"/></svg>',
+    "ri-shining-line": '<svg ' + SVG_ATTR + '><path d="M1.48464 13.879L5.54927 9.81437L7.67059 11.9357L5.54927 14.057C4.3777 15.2286 4.3777 17.1281 5.54927 18.2996C6.72084 19.4712 8.62033 19.4712 9.7919 18.2996L11.9132 16.1783L14.0345 18.2996L9.96989 22.3643C7.62674 24.7074 3.82779 24.7074 1.48464 22.3643C-0.858504 20.0211 -0.858504 16.2222 1.48464 13.879Z"/><path d="M9.81437 5.54927L13.879 1.48464C16.2222 -0.858504 20.0211 -0.858504 22.3643 1.48464C24.7074 3.82779 24.7074 7.62674 22.3643 9.96989L18.2996 14.0345L16.1783 11.9132L18.2996 9.7919C19.4712 8.62033 19.4712 6.72084 18.2996 5.54927C17.1281 4.3777 15.2286 4.3777 14.057 5.54927L11.9357 7.67059L9.81437 5.54927Z"/></svg>',
+    "ri-lightbulb-line": '<svg ' + SVG_ATTR + '><path d="M9.97308 18H11V14H13V18H14.0269C14.1578 16.2341 14.7046 15.1875 15.7947 14.2352C17.0558 13.1312 18 11.6915 18 9.58594C18 6.02934 15.2917 3 12 3C8.70833 3 6 6.02934 6 9.58594C6 11.6915 6.94424 13.1312 8.20531 14.2352C9.29542 15.1875 9.84224 16.2341 9.97308 18ZM9 21H15V23H9V21Z"/></svg>',
+    "ri-send-plane-line": '<svg ' + SVG_ATTR + '><path d="M3.49751 2.19039C3.05301 2.01449 2.54804 2.11129 2.20501 2.43662C1.86199 2.76195 1.7405 3.26156 1.89472 3.71416L4.17872 10.4129C4.3204 10.8287 4.68231 11.1315 5.11549 11.2073L11.4654 12.318C11.8014 12.384 12.0004 12.648 12.0004 13.0001C12.0004 13.3521 11.8014 13.6161 11.4654 13.6821L5.11549 14.7928C4.68231 14.8686 4.3204 15.1714 4.17872 15.5872L1.89472 22.2859C1.7405 22.7385 1.86199 23.2381 2.20501 23.5635C2.54804 23.8888 3.05301 23.9856 3.49751 23.8097L21.4975 16.6607C21.9745 16.4717 22.3004 16.0126 22.3004 15.4997V10.5004C22.3004 9.98754 21.9745 9.5284 21.4975 9.33944L3.49751 2.19039ZM4.62352 4.63168L18.9448 10.2965L4.80686 12.7739C4.79374 12.5225 4.79374 12.4777 4.80686 12.2263L4.62352 4.63168ZM4.62352 21.3684L4.80686 13.7737C4.79374 13.5223 4.79374 13.4775 4.80686 13.2261L18.9448 15.7035L4.62352 21.3684Z"/></svg>',
+    "ri-thumb-up-line": '<svg ' + SVG_ATTR + '><path d="M2 9.5V20C2 20.5523 2.44772 21 3 21H5C5.55228 21 6 20.5523 6 20V9.5C6 8.94772 5.55228 8.5 5 8.5H3C2.44772 8.5 2 8.94772 2 9.5Z"/><path d="M7.5 9C7.5 6.79086 8.79086 5 10.5 5C11.6046 5 12.5 5.89543 12.5 7V9.5C12.5 10.0523 12.9477 10.5 13.5 10.5H17C17.8284 10.5 18.5 11.1716 18.5 12V14C18.5 14.2652 18.3946 14.5196 18.2071 14.7071L14.5 18.4142C14.3126 18.6017 14.0582 18.7071 13.7929 18.7071H8C7.72386 18.7071 7.5 18.4833 7.5 18.2071V9ZM10.5 3C7.46243 3 5.5 5.68629 5.5 9V19.2071C5.5 20.5878 6.61929 21.7071 8 21.7071H13.7929C14.5885 21.7071 15.3516 21.3911 15.9142 20.8284L19.6213 17.1213C20.1839 16.5587 20.5 15.7957 20.5 15V12C20.5 10.067 18.933 8.5 17 8.5H14.5V7C14.5 4.79086 12.7091 3 10.5 3Z"/></svg>',
+    "ri-heart-line": '<svg ' + SVG_ATTR + '><path d="M12.001 3C9.71369 3 7.63441 3.92566 6.12915 5.42178C3.84634 7.68995 2.68259 11.2565 4.37864 15.0803C5.81121 18.2237 9.00922 20.4896 11.929 21.8594C11.9763 21.8815 12.0257 21.8815 12.073 21.8594C14.9928 20.4896 18.1908 18.2237 19.6234 15.0803C21.3194 11.2565 20.1557 7.68995 17.8729 5.42178C16.3676 3.92566 14.2883 3 12.001 3Z"/></svg>',
+    "ri-star-line": '<svg ' + SVG_ATTR + '><path d="M12.0006 18.26L4.94715 22.2082L6.52248 14.2799L0.587891 8.7918L8.61493 7.84006L12.0006 0.5L15.3862 7.84006L23.4132 8.7918L17.4787 14.2799L19.054 22.2082L12.0006 18.26ZM12.0006 15.968L16.2473 18.3451L15.2986 13.5717L18.8719 10.2694L14.039 9.69434L12.0006 5.27502L9.96214 9.69434L5.12921 10.2694L8.70255 13.5717L7.75383 18.3451L12.0006 15.968Z"/></svg>'
+  };
+
+  /**
+   * 悬浮按钮 / AI 头像统一图标 HTML。
+   * 文字标签优先于图标；否则按 config.icon 查内置 SVG 表，未命中时用默认星光。
+   * 不再依赖主题的 Remix Icon 字体，跨主题一致。
+   */
+  function getTriggerIconHTML() {
     if (config.triggerLabel) {
       return '<span class="ai-avatar-label">' + escapeHtml(config.triggerLabel) + '</span>';
     }
-    return '<i class="' + (config.icon || "ri-sparkling-2-line") + '"></i>';
+    return TRIGGER_ICONS[config.icon] || TRIGGER_ICONS["ri-sparkling-2-line"];
   }
+
+  function getAvatarHTML() {
+    return getTriggerIconHTML();
+  }
+
+  // ===== 按钮形状 → border-radius 映射 =====
+  // 与后台 ui/src/utils/trigger-icons.ts 的 TRIGGER_SHAPES.radius 逐字一致。
+  var SHAPE_RADIUS = {
+    circle: "50%",
+    rounded: "30%",
+    square: "5px"
+  };
 
   // ===== 创建 DOM =====
 
   var trigger = document.createElement("button");
   trigger.id = "ai-chat-trigger";
-  // Remix Icon 字体图标（与博客主题图标库一致）；若博客未加载 Remix，<i> 不会渲染出图标，
-  // 此时 fallback 到 sparkles SVG。检测在 applyConfig 里做。
-  trigger.innerHTML = '<i class="ri-sparkling-2-line"></i>';
+  // 初始占位用默认星光 SVG；applyConfig() 会按 config.icon 覆盖为实际配置图标。
+  trigger.innerHTML = TRIGGER_ICONS["ri-sparkling-2-line"];
   trigger.title = "AI 助手";
   trigger.addEventListener("click", toggleChat);
 
@@ -229,12 +269,8 @@
     trigger.style.height = triggerSize + "px";
     trigger.style.fontSize = (triggerSize * 0.55) + "px";
 
-    // 更新悬浮按钮内容：文字标签优先于图标
-    if (config.triggerLabel) {
-      trigger.innerHTML = '<span class="ai-trigger-label">' + escapeHtml(config.triggerLabel) + '</span>';
-    } else {
-      trigger.innerHTML = '<i class="' + (config.icon || "ri-sparkling-2-line") + '"></i>';
-    }
+    // 更新悬浮按钮内容：文字标签优先于图标（内置 SVG，不依赖主题字体）
+    trigger.innerHTML = getTriggerIconHTML();
 
     // 更新所有 AI 头像为当前配置图标
     var avatars = chatWindow.querySelectorAll(".ai-chat-header-avatar, .ai-chat-row-avatar");
@@ -243,29 +279,31 @@
       avatars[ai].innerHTML = avatarHTML;
     }
 
-    // 检测 Remix Icon 是否加载（仅在非文字模式时检测）
-    if (!config.triggerLabel && !isRemixIconAvailable()) {
-      trigger.innerHTML = ICON.sparkles;
-    }
-
-    // 悬浮按钮位置：按 admin 选择的对齐策略
-    //   - manual: 永远用 config.triggerOffsetY（admin 自己指定）
-    //   - auto  : 优先 calcTriggerBottom()（自动对齐博客 .actions 容器顶端 + 5px）
-    //             若没有 .actions 容器（非 Dream 主题）→ fallback 到 triggerOffsetY
+    // 悬浮按钮垂直位置：
+    //   - manual：用后台配置的 triggerOffsetY（用户手动指定）
+    //   - auto  ：固定距底 80px（可避让多数主题的「返回顶部」按钮）
     var bottom;
-    if (config.triggerAlign === "manual") {
-      bottom = (typeof config.triggerOffsetY === "number" && config.triggerOffsetY > 0)
-        ? config.triggerOffsetY : 120;
+    if (config.triggerAlign === "manual" &&
+        typeof config.triggerOffsetY === "number" && config.triggerOffsetY > 0) {
+      bottom = config.triggerOffsetY;
     } else {
-      bottom = calcTriggerBottom();
-      if (bottom == null) {
-        bottom = (typeof config.triggerOffsetY === "number" && config.triggerOffsetY > 0)
-          ? config.triggerOffsetY : 120;
-      }
+      bottom = 80;
     }
     trigger.style.setProperty("--ai-chat-trigger-bottom", bottom + "px");
     // 弹窗底部 = trigger bottom + 35（按钮高）+ 8（间距）
     chatWindow.style.setProperty("--ai-chat-window-bottom", (bottom + 43) + "px");
+
+    // 水平边距：trigger 与 chatWindow 共用同一 CSS 变量（position-right 用 right，position-left 用 left）
+    var offsetX = (typeof config.triggerOffsetX === "number" && config.triggerOffsetX >= 0)
+      ? config.triggerOffsetX : 16;
+    trigger.style.setProperty("--ai-chat-trigger-x", offsetX + "px");
+    chatWindow.style.setProperty("--ai-chat-window-x", (offsetX + 8) + "px");
+
+    // 按钮形状：shape 映射成 border-radius，未命中时用默认圆形
+    trigger.style.setProperty(
+      "--ai-chat-trigger-radius",
+      SHAPE_RADIUS[config.triggerShape] || SHAPE_RADIUS.square
+    );
 
     applyTheme();
 
@@ -382,41 +420,6 @@
   }
 
   /**
-   * 检测博客是否已加载 Remix Icon 字体库 — 决定 trigger 用 <i> 还是 SVG fallback
-   */
-  function isRemixIconAvailable() {
-    var links = document.querySelectorAll('link[rel="stylesheet"], link[rel="preload stylesheet"]');
-    for (var i = 0; i < links.length; i++) {
-      if ((links[i].href || "").toLowerCase().indexOf("remixicon") >= 0) return true;
-    }
-    return false;
-  }
-
-  /**
-   * 计算 trigger 按钮的 bottom 像素 — 对齐到博客 .actions 容器顶端 + 5px 间距
-   *
-   * Dream 主题 .actions 默认 right:-48px 隐藏，滚动 > 100px 加 .show 出现。
-   * AI 按钮独立于 .actions（始终可见），但位置 y 跟 .actions 顶端对齐。
-   * .actions { bottom: 40 } + 每子 35x35 + margin-bottom:5 → 堆叠单元 40。
-   *
-   * 返回 null 表示页面无 .actions 容器（非 Dream），由 caller fallback 到 widgetTriggerOffsetY 配置。
-   */
-  function calcTriggerBottom() {
-    var actions = document.querySelector(".actions");
-    if (!actions) return null;
-
-    // 数当前可见的子元素（响应式：is-hidden-mobile / is-hidden-desktop / is-hidden-all 会改 display）
-    var visibleCount = 0;
-    for (var i = 0; i < actions.children.length; i++) {
-      var s = window.getComputedStyle(actions.children[i]);
-      if (s.display !== "none") visibleCount++;
-    }
-    if (visibleCount === 0) return null;
-
-    return 40 + visibleCount * 40 + 5;
-  }
-
-  /**
    * 探测当前博客页面深浅 — 返回 "dark" / "light" / null（无可靠信号）
    *
    * 优先级：
@@ -453,6 +456,43 @@
     }
 
     return null;
+  }
+
+  function resolveComponentTheme(componentTheme, inheritedTheme) {
+    if (componentTheme === "light" || componentTheme === "dark") return componentTheme;
+    if (componentTheme === "system") {
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark" : "light";
+    }
+    if (componentTheme === "auto") {
+      var detected = detectPageTheme();
+      if (detected) return detected;
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark" : "light";
+    }
+    if (inheritedTheme === "light" || inheritedTheme === "dark") return inheritedTheme;
+    var inheritedDetected = detectPageTheme();
+    if (inheritedDetected) return inheritedDetected;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark" : "light";
+  }
+
+  function hexToRgbParts(hex) {
+    var value = (hex || "").trim();
+    if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value)) return null;
+    if (value.length === 4) {
+      value = "#" + value[1] + value[1] + value[2] + value[2] + value[3] + value[3];
+    }
+    var n = parseInt(value.slice(1), 16);
+    return ((n >> 16) & 255) + ", " + ((n >> 8) & 255) + ", " + (n & 255);
+  }
+
+  function applySearchThemeVars(modal, color) {
+    var resolvedColor = color || config.searchColor || config.color || "#7C3BED";
+    modal.style.setProperty("--ai-chat-color", resolvedColor);
+    modal.style.setProperty("--ai-search-color", resolvedColor);
+    var rgb = hexToRgbParts(resolvedColor);
+    if (rgb) modal.style.setProperty("--ai-search-color-rgb", rgb);
   }
 
   /**
@@ -1107,12 +1147,37 @@
 
   function escapeHtml(text) {
     if (!text) return "";
-    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+    return String(text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+      .replace(/\n/g, "<br>");
   }
 
   function escapeAttr(text) {
     if (!text) return "";
-    return text.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    return String(text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function safeUrl(url) {
+    if (!url) return "#";
+    var value = String(url).trim();
+    if (value.charAt(0) === "/" || value.charAt(0) === "#") return value;
+    if (/^https?:\/\//i.test(value)) return value;
+    return "#";
+  }
+
+  function sanitizeSnippet(html) {
+    return escapeHtml(String(html || ""))
+      .replace(/&lt;mark&gt;/gi, "<mark>")
+      .replace(/&lt;\/mark&gt;/gi, "</mark>");
   }
 
   /**
@@ -1132,8 +1197,7 @@
   /**
    * 提交反馈(点赞 / 点踩) — GET /chat/feedback?logId=...&type=...&comment=...
    *
-   * <p>走 GET 是为了绕开 Halo 对 api.halo.run 组的 POST RBAC 拦截（实测 302 跳登录）。
-   * 跟 /chat/stream 的设计保持一致。200 字内中文 URL 编码约 600 字节，远低于上限。
+   * 200 字内中文 URL 编码约 600 字节，远低于上限。
    *
    * sessionStorage 记忆本次会话的反馈状态, 避免刷新重复提交.
    */
@@ -1157,7 +1221,7 @@
     if (likeBtn) likeBtn.disabled = true;
     if (disBtn) disBtn.disabled = true;
 
-    var apiBase = (config && config.apiBase) || "/apis/api.halo.run/v1alpha1";
+    var apiBase = (config && config.apiBase) || "/apis/api.ai-suite.halo.run/v1alpha1";
     var params = "logId=" + encodeURIComponent(logId) +
       "&type=" + encodeURIComponent(type) +
       "&comment=" + encodeURIComponent(comment || "");
@@ -1261,144 +1325,6 @@
     }
   }
 
-  /**
-   * 搜索结果页 AI 综合回答卡片 — 在 /search?keyword=xxx 页面顶部注入流式回答.
-   *
-   * 流程:
-   *   1. 判 pathname === '/search' 且 query 含 keyword
-   *   2. 创建 <div class="ai-search-answer-card"> 插入到 main / .search-results / body 顶部
-   *   3. fetch /search/answer?keyword=... → 复用 parseSseStream 解析流
-   *   4. 用现有 renderAssistant 渲染 Markdown + 引用角标
-   *   5. 流结束后追加引用 chip 列表 (复用 finishStream 里的过滤 + 渲染规则)
-   *   6. 失败 → 隐藏卡片, 不破坏原搜索结果
-   *
-   * popstate 监听 (浏览器后退/前进): URL keyword 变化时移除旧卡片并重新注入.
-   * 不劫持 pushState — 避免破坏博客自身 SPA 路由, popstate 已覆盖 99% 场景.
-   */
-  function tryInjectSearchAnswer() {
-    try {
-      var path = window.location.pathname;
-      if (path !== "/search") return;
-      var url = new URL(window.location.href);
-      var keyword = url.searchParams.get("keyword");
-      if (!keyword) return;
-      keyword = keyword.trim();
-      if (!keyword) return;
-
-      // 避免重复注入 (popstate 触发时先移除旧的)
-      var existing = document.querySelector(".ai-search-answer-card");
-      if (existing) existing.remove();
-
-      // 探测当前主题 → 给卡片设 data-theme, 让 CSS 走对应 token 副本
-      var theme = detectPageTheme();
-      if (!theme && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        theme = "dark";
-      }
-      if (!theme) theme = "light";
-
-      // 创建卡片 DOM
-      var card = document.createElement("div");
-      card.className = "ai-search-answer-card";
-      card.setAttribute("data-theme", theme);
-      card.innerHTML =
-        '<div class="ai-search-answer-header">' +
-          '<span class="ai-search-answer-title">AI 综合回答</span>' +
-          '<span class="ai-search-answer-badge">AI</span>' +
-        '</div>' +
-        '<div class="ai-search-answer-body">' +
-          '<div class="ai-search-answer-loading">AI 正在思考...</div>' +
-        '</div>';
-
-      // 插入位置: main → .search-results → body 顶部
-      var target = document.querySelector("main")
-                || document.querySelector(".search-results")
-                || document.body;
-      if (target.firstChild) {
-        target.insertBefore(card, target.firstChild);
-      } else {
-        target.appendChild(card);
-      }
-
-      // 取 apiBase: 与浮窗共用 (config 可能在 init 前为空, 走默认值)
-      var apiBase = (config && config.apiBase) || "/apis/api.halo.run/v1alpha1";
-      var reqUrl = apiBase + "/search/answer?keyword=" + encodeURIComponent(keyword);
-
-      var body = card.querySelector(".ai-search-answer-body");
-      var content = "";
-      var citations = [];
-      var loaded = false;
-
-      function clearLoading() {
-        if (loaded) return;
-        loaded = true;
-        if (body) body.innerHTML = "";
-      }
-
-      function renderCitations() {
-        if (!card.isConnected || citations.length === 0) return;
-        var oldCites = card.querySelector(".ai-search-answer-citations");
-        if (oldCites) oldCites.remove();
-
-        // 过滤: 只显示 AI 正文里实际引用的 (复用 finishStream 的 [N] 扫描)
-        var usedNums = {};
-        var inlineCites = body.querySelectorAll(".ai-cite-inline");
-        for (var ci = 0; ci < inlineCites.length; ci++) {
-          usedNums[inlineCites[ci].getAttribute("data-num")] = true;
-        }
-        var filtered = citations.filter(function (_, i) {
-          return usedNums[String(i + 1)];
-        });
-        if (filtered.length === 0) filtered = citations;
-
-        var citeEl = document.createElement("div");
-        citeEl.className = "ai-search-answer-citations";
-        var chipHtml = '<span class="ai-cite-label">参考文章：</span>' +
-          filtered.map(function (c) {
-            var originalIdx = citations.indexOf(c);
-            var num = String(originalIdx + 1);
-            var title = escapeHtml(c.title || "文章");
-            var cUrl = c.url || "";
-            if (cUrl) {
-              return '<a class="ai-cite-link" data-num="' + num + '" href="' + escapeAttr(cUrl) +
-                '" target="_blank">' + title + '</a>';
-            }
-            return '<span class="ai-cite-link ai-cite-disabled" data-num="' + num + '">' + title + '</span>';
-          }).join("");
-        citeEl.innerHTML = chipHtml;
-        card.appendChild(citeEl);
-      }
-
-      fetch(reqUrl)
-        .then(function (response) {
-          if (!response.ok) throw new Error("HTTP " + response.status);
-          parseSseStream(response, {
-            onCitation: function (c) { citations = c; },
-            onToken: function (token) {
-              if (!card.isConnected) return;
-              clearLoading();
-              content += token;
-              renderAssistant(body, content);
-            },
-            onDone: function () {
-              if (!card.isConnected) return;
-              clearLoading();
-              renderAssistant(body, content);
-              renderCitations();
-            },
-            onError: function () {
-              if (card.isConnected) card.style.display = "none";
-            }
-          });
-        })
-        .catch(function () {
-          // 网络失败 / 后端 5xx → 静默隐藏卡片, 不破坏原搜索
-          if (card.isConnected) card.style.display = "none";
-        });
-    } catch (e) {
-      // 防御: 任何异常都静默吞掉, 不影响页面其他功能
-    }
-  }
-
   // ===== 初始化：拉取配置 → 渲染 UI =====
 
   function init() {
@@ -1418,11 +1344,17 @@
           config.height = data.height || config.height;
           if (data.triggerAlign === "manual" || data.triggerAlign === "auto") config.triggerAlign = data.triggerAlign;
           if (typeof data.triggerOffsetY === "number") config.triggerOffsetY = data.triggerOffsetY;
+          if (typeof data.triggerOffsetX === "number") config.triggerOffsetX = data.triggerOffsetX;
+          if (data.triggerShape) config.triggerShape = data.triggerShape;
           config.stream = data.stream !== false;
           config.allowGuest = data.allowGuest !== false;
           config.showReferences = data.showReferences !== false;
           config.showRetrievalStatus = data.showRetrievalStatus === true;
           config.showPrivacyTip = data.showPrivacyTip === true;
+          config.searchEnabled = data.searchEnabled !== false;
+          config.searchShowAiAnswer = data.searchShowAiAnswer !== false;
+          config.searchTheme = data.searchTheme || "inherit";
+          config.searchColor = data.searchColor || config.color;
         }
       })
       .catch(function () { /* 用默认配置 */ })
@@ -1450,29 +1382,57 @@
         renderShortcuts(config.shortcuts);
         watchPageTheme();
         initResize();
-        // 搜索结果页 AI 综合回答卡片 — 与 widget 浮窗独立, 即使 widget-config 拉取失败也能跑
-        tryInjectSearchAnswer();
-        // 避让主题「返回顶部」按钮（Dream 主题等 bottom-right 按钮常见）
-        // 默认 120/165px 间距与「返回顶部」太近会视觉挤，自动上移
-        if (!isContainerMode) {
-          var backToTop = document.querySelector(
-            '.back-to-top, .go-top, .to-top, [class*="back-to-top"]'
-          );
-          if (backToTop) {
-            trigger.style.setProperty("bottom", "80px", "important");
-            chatWindow.style.setProperty("bottom", "125px", "important");
-          }
-        }
         // 预览模式：URL 含 ?ai-preview=1 时自动打开浮窗
         if (!isEmbed && window.location.search.indexOf("ai-preview=1") >= 0) {
           setTimeout(function () { toggleChat(); }, 300);
         }
-        // 监听 popstate (浏览器后退/前进) — URL keyword 变化时重置卡片
-        window.addEventListener("popstate", function () {
-          var oldCard = document.querySelector(".ai-search-answer-card");
-          if (oldCard) oldCard.remove();
-          tryInjectSearchAnswer();
-        });
+        // ===== 搜索弹框：快捷键 + 触发按钮 =====
+        // 全局快捷键：Ctrl+K / Cmd+K 打开，Esc 关闭
+        if (!isContainerMode) {
+          window.addEventListener("keydown", function (e) {
+            // Ctrl+K / Cmd+K — 打开搜索
+            if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+              e.preventDefault();
+              if (config.searchEnabled !== false) openSearchModal();
+              return;
+            }
+            // / — 当焦点不在输入元素时打开搜索
+            if (e.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)) {
+              e.preventDefault();
+              if (config.searchEnabled !== false) openSearchModal();
+              return;
+            }
+            // Esc — 关闭搜索弹框
+            if (e.key === "Escape" && searchModal) {
+              e.preventDefault();
+              closeSearchModal();
+              return;
+            }
+          });
+
+          // 接管主题搜索入口：覆盖 SearchWidget.open()
+          // 备份原生实现：searchEnabled 关闭时把点击转发回主题原生搜索，
+          // 否则原生入口被覆盖丢失，主题搜索按钮点击会无反应
+          if (!window.SearchWidget) { window.SearchWidget = {}; }
+          var nativeSearchOpen = typeof window.SearchWidget.open === "function"
+            ? window.SearchWidget.open : null;
+          var nativeSearchClose = typeof window.SearchWidget.close === "function"
+            ? window.SearchWidget.close : null;
+          window.SearchWidget.open = function () {
+            if (config.searchEnabled !== false) {
+              openSearchModal();
+            } else if (nativeSearchOpen) {
+              nativeSearchOpen.call(window.SearchWidget);
+            }
+          };
+          window.SearchWidget.close = function () {
+            if (config.searchEnabled !== false) {
+              closeSearchModal();
+            } else if (nativeSearchClose) {
+              nativeSearchClose.call(window.SearchWidget);
+            }
+          };
+        }
       });
   }
 
@@ -1490,6 +1450,11 @@
     if (data.theme) { config.theme = data.theme; needApply = true; }
     if (data.icon) { config.icon = data.icon; needApply = true; }
     if (data.triggerLabel !== undefined) { config.triggerLabel = data.triggerLabel; needApply = true; }
+    if (data.triggerAlign !== undefined) { config.triggerAlign = data.triggerAlign; needApply = true; }
+    if (data.triggerOffsetY !== undefined) { config.triggerOffsetY = data.triggerOffsetY; needApply = true; }
+    if (data.triggerOffsetX !== undefined) { config.triggerOffsetX = data.triggerOffsetX; needApply = true; }
+    if (data.triggerShape !== undefined) { config.triggerShape = data.triggerShape; needApply = true; }
+    if (data.triggerSize !== undefined) { config.triggerSize = data.triggerSize; needApply = true; }
     if (needApply) applyConfig();
 
     // 欢迎语：仅在无对话历史时更新第一条 assistant 消息
@@ -1516,6 +1481,232 @@
       if (inputArea) inputArea.style.display = data.allowGuest ? "" : "none";
     }
   });
+
+  // ===== AI 搜索弹框 =====
+  // Ctrl+K / Cmd+K / / 唤起，Esc 关闭。
+  // 上方：AI 流式回答（复用 SearchAnswerEndpoint + parseSseStream）
+  // 下方：关键词搜索结果（调用 PublicSearchEndpoint）
+
+  var searchModal = null;     // 当前弹框 DOM 引用
+  var searchAbort = null;     // AbortController，关闭时取消请求
+
+  /** 打开搜索弹框 */
+  function openSearchModal() {
+    if (searchModal) return; // 防重复
+
+    var theme = resolveComponentTheme(config.searchTheme, config.theme);
+
+    // 遮罩层
+    var overlay = document.createElement("div");
+    overlay.className = "ai-search-overlay";
+    overlay.setAttribute("data-theme", theme);
+
+    // 弹框容器
+    var modal = document.createElement("div");
+    modal.className = "ai-search-modal";
+    modal.setAttribute("data-theme", theme);
+    applySearchThemeVars(modal, config.searchColor);
+
+    modal.innerHTML =
+      // 搜索输入区
+      '<div class="ai-search-input-wrap">' +
+        '<svg class="ai-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>' +
+        '<input class="ai-search-input" type="text" placeholder="搜索文章..." autofocus />' +
+        '<button class="ai-search-clear" title="清空" style="display:none">&times;</button>' +
+        '<kbd class="ai-search-kbd">Esc</kbd>' +
+      '</div>' +
+      // 结果区域（滚动）
+      '<div class="ai-search-results">' +
+        // AI 回答区（默认隐藏，有关键词后显示）
+        '<div class="ai-search-ai-section" style="display:none">' +
+          '<div class="ai-search-ai-header">' +
+            '<span class="ai-search-ai-title">✨ AI 综合回答</span>' +
+            '<span class="ai-search-ai-badge">AI</span>' +
+          '</div>' +
+          '<div class="ai-search-ai-body"></div>' +
+        '</div>' +
+        // 关键词结果区
+        '<div class="ai-search-kw-section" style="display:none">' +
+          '<div class="ai-search-kw-header">📄 搜索结果 <span class="ai-search-kw-count"></span></div>' +
+          '<div class="ai-search-kw-list"></div>' +
+        '</div>' +
+        // 空状态
+        '<div class="ai-search-empty">输入关键词开始搜索</div>' +
+      '</div>';
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    searchModal = overlay;
+
+    // 聚焦输入框
+    var input = modal.querySelector(".ai-search-input");
+    var clearBtn = modal.querySelector(".ai-search-clear");
+    setTimeout(function () { input.focus(); }, 50);
+
+    // 遮罩点击关闭
+    overlay.addEventListener("click", function (e) {
+      if (e.target === overlay) closeSearchModal();
+    });
+
+    // 点击关键词搜索结果项时关闭弹框
+    // 主题 pjax 无刷新导航只替换内容区，浮窗 DOM 会残留遮挡新页面，故需主动移除
+    var kwList = modal.querySelector(".ai-search-kw-list");
+    kwList.addEventListener("click", function (e) {
+      if (e.target.closest(".ai-search-kw-item")) closeSearchModal();
+    });
+
+    // 清空按钮
+    clearBtn.addEventListener("click", function () {
+      input.value = "";
+      clearBtn.style.display = "none";
+      input.focus();
+      resetSearchResults(modal);
+    });
+
+    // 输入监听（防抖 300ms）
+    var debounceTimer = null;
+    input.addEventListener("input", function () {
+      var val = input.value.trim();
+      clearBtn.style.display = val ? "" : "none";
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (!val) {
+        resetSearchResults(modal);
+        return;
+      }
+      debounceTimer = setTimeout(function () { doSearch(val, modal, theme); }, 300);
+    });
+
+    // 回车立即搜索（跳过防抖）
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (debounceTimer) clearTimeout(debounceTimer);
+        var val = input.value.trim();
+        if (val) doSearch(val, modal, theme);
+      }
+    });
+  }
+
+  /** 关闭搜索弹框 */
+  function closeSearchModal() {
+    if (!searchModal) return;
+    // 取消未完成的请求
+    if (searchAbort) { searchAbort.abort(); searchAbort = null; }
+    searchModal.remove();
+    searchModal = null;
+  }
+
+  /** 重置搜索结果区域 */
+  function resetSearchResults(modal) {
+    var aiSection = modal.querySelector(".ai-search-ai-section");
+    var kwSection = modal.querySelector(".ai-search-kw-section");
+    var empty = modal.querySelector(".ai-search-empty");
+    aiSection.style.display = "none";
+    aiSection.querySelector(".ai-search-ai-body").innerHTML = "";
+    kwSection.style.display = "none";
+    kwSection.querySelector(".ai-search-kw-list").innerHTML = "";
+    empty.style.display = "";
+    empty.textContent = "输入关键词开始搜索";
+  }
+
+  /** 并行搜索：AI 流式回答 + 关键词结果 */
+  function doSearch(keyword, modal, theme) {
+    // 取消上一次请求
+    if (searchAbort) searchAbort.abort();
+    searchAbort = new AbortController();
+
+    var apiBase = (config && config.apiBase) || "/apis/api.ai-suite.halo.run/v1alpha1";
+    var aiSection = modal.querySelector(".ai-search-ai-section");
+    var aiBody = modal.querySelector(".ai-search-ai-body");
+    var kwSection = modal.querySelector(".ai-search-kw-section");
+    var kwList = modal.querySelector(".ai-search-kw-list");
+    var kwCount = modal.querySelector(".ai-search-kw-count");
+    var empty = modal.querySelector(".ai-search-empty");
+
+    // 隐藏空状态，按配置显示区域
+    empty.style.display = "none";
+    var showAi = config.searchShowAiAnswer !== false;
+    aiSection.style.display = showAi ? "" : "none";
+    kwSection.style.display = "none"; // 有结果后再显示
+    aiBody.innerHTML = showAi ? '<div class="ai-search-ai-loading">AI 正在思考...</div>' : "";
+    kwList.innerHTML = "";
+
+    // 1) AI 流式回答（按配置决定是否请求）
+    if (showAi) {
+    fetch(apiBase + "/search/answer?keyword=" + encodeURIComponent(keyword), {
+      signal: searchAbort.signal
+    }).then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      var loadingEl = aiBody.querySelector(".ai-search-ai-loading");
+      if (loadingEl) loadingEl.remove();
+
+      parseSseStream(res, {
+        onCitation: function (cites) {
+          // 存引用，流结束后渲染
+          aiBody._citations = cites;
+        },
+        onToken: function (token) {
+          // 首 token 到达时清理 loading
+          if (!aiBody._started) {
+            aiBody._started = true;
+            aiBody._content = "";
+          }
+          aiBody._content += token;
+          renderAssistant(aiBody, aiBody._content);
+        },
+        onDone: function () {
+          // 追加引用来源
+          var cites = aiBody._citations;
+          if (cites && cites.length > 0) {
+            var citeHtml = '<div class="ai-search-ai-cites">';
+            for (var i = 0; i < cites.length; i++) {
+              var c = cites[i];
+              citeHtml += '<a class="ai-search-ai-cite" href="' + escapeAttr(safeUrl(c.url || '#')) + '" target="_blank" rel="noopener noreferrer">'
+                + '[' + (i + 1) + '] ' + escapeHtml(c.title || '未知') + '</a>';
+            }
+            citeHtml += '</div>';
+            aiBody.insertAdjacentHTML("beforeend", citeHtml);
+          }
+          aiBody._started = false;
+          aiBody._citations = null;
+          aiBody._content = "";
+        },
+        onError: function () {
+          aiBody.innerHTML = '<div class="ai-search-ai-error">AI 暂时不可用</div>';
+        }
+      });
+    }).catch(function (e) {
+      if (e.name === "AbortError") return;
+      aiBody.innerHTML = '<div class="ai-search-ai-error">AI 暂时不可用</div>';
+    });
+    } // end showAi
+
+    // 2) 关键词搜索结果
+    fetch(apiBase + "/search/halo-results?keyword=" + encodeURIComponent(keyword), {
+      signal: searchAbort.signal
+    }).then(function (res) { return res.json(); })
+    .then(function (data) {
+      if (!data || !data.articles || data.articles.length === 0) {
+        kwSection.style.display = "none";
+        return;
+      }
+      kwSection.style.display = "";
+      kwCount.textContent = "(" + data.total + ")";
+
+      var html = "";
+      for (var i = 0; i < data.articles.length; i++) {
+        var a = data.articles[i];
+        html += '<a class="ai-search-kw-item" href="' + escapeAttr(safeUrl(a.url || '#')) + '">' +
+          '<div class="ai-search-kw-title">' + escapeHtml(a.title || '无标题') + '</div>' +
+          '<div class="ai-search-kw-snippet">' + sanitizeSnippet(a.snippet || '') + '</div>' +
+        '</a>';
+      }
+      kwList.innerHTML = html;
+    }).catch(function (e) {
+      if (e.name === "AbortError") return;
+      kwSection.style.display = "none";
+    });
+  }
 
   init();
 })();

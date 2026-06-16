@@ -1,20 +1,20 @@
 /* ===== AI Assistant Console Styles ===== */
 
 /* --- Overview Page --- */
-.ai-assistant-overview {
+.ai-suite-overview {
   padding: 24px;
   max-width: 960px;
 }
-.ai-assistant-overview h1 { font-size: 24px; margin-bottom: 4px; }
-.ai-assistant-overview .description { color: #6b7280; margin-bottom: 24px; }
+.ai-suite-overview h1 { font-size: 24px; margin-bottom: 4px; }
+.ai-suite-overview .description { color: #6b7280; margin-bottom: 24px; }
 
-.ai-assistant-overview .status-cards {
+.ai-suite-overview .status-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 16px;
   margin-bottom: 32px;
 }
-.ai-assistant-overview .card {
+.ai-suite-overview .card {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 16px;
@@ -22,14 +22,14 @@
   align-items: center;
   gap: 12px;
 }
-.ai-assistant-overview .card.active { border-color: #4F46E5; }
-.ai-assistant-overview .card-icon { font-size: 28px; }
-.ai-assistant-overview .card-content { flex: 1; }
-.ai-assistant-overview .card-content h3 { margin: 0 0 4px; font-size: 14px; }
-.ai-assistant-overview .card-content p { margin: 0; font-size: 13px; color: #6b7280; }
-.ai-assistant-overview .card-link { font-size: 13px; color: #4F46E5; text-decoration: none; white-space: nowrap; }
+.ai-suite-overview .card.active { border-color: #4F46E5; }
+.ai-suite-overview .card-icon { font-size: 28px; }
+.ai-suite-overview .card-content { flex: 1; }
+.ai-suite-overview .card-content h3 { margin: 0 0 4px; font-size: 14px; }
+.ai-suite-overview .card-content p { margin: 0; font-size: 13px; color: #6b7280; }
+.ai-suite-overview .card-link { font-size: 13px; color: #4F46E5; text-decoration: none; white-space: nowrap; }
 
-.ai-assistant-overview .knowledge-entry {
+.ai-suite-overview .knowledge-entry {
   border: 1px solid #c7d2fe;
   border-radius: 8px;
   padding: 16px;
@@ -40,19 +40,19 @@
   margin-bottom: 16px;
   background: #f5f3ff;
 }
-.ai-assistant-overview .knowledge-entry h3 { margin: 0 0 4px; font-size: 15px; color: #3730a3; }
-.ai-assistant-overview .knowledge-entry p { margin: 0; font-size: 13px; color: #4338ca; }
-.ai-assistant-overview .knowledge-entry strong { color: #312e81; }
+.ai-suite-overview .knowledge-entry h3 { margin: 0 0 4px; font-size: 15px; color: #3730a3; }
+.ai-suite-overview .knowledge-entry p { margin: 0; font-size: 13px; color: #4338ca; }
+.ai-suite-overview .knowledge-entry strong { color: #312e81; }
 
-.ai-assistant-overview .writing-entry {
+.ai-suite-overview .writing-entry {
   border-color: #a7f3d0 !important;
   background: #f0fdf4 !important;
   margin-bottom: 32px;
 }
-.ai-assistant-overview .writing-entry h3 { color: #166534 !important; }
-.ai-assistant-overview .writing-entry p { color: #15803d !important; }
+.ai-suite-overview .writing-entry h3 { color: #166534 !important; }
+.ai-suite-overview .writing-entry p { color: #15803d !important; }
 
-.ai-assistant-overview .btn-outline {
+.ai-suite-overview .btn-outline {
   padding: 8px 16px;
   border: 1px solid #4F46E5;
   border-radius: 6px;
@@ -61,20 +61,20 @@
   font-size: 13px;
   white-space: nowrap;
 }
-.ai-assistant-overview .btn-outline:hover { background: #EEF2FF; }
+.ai-suite-overview .btn-outline:hover { background: #EEF2FF; }
 
-.ai-assistant-overview .test-section { border-top: 1px solid #e5e7eb; padding-top: 20px; }
-.ai-assistant-overview .test-section h2 { font-size: 16px; margin-bottom: 12px; }
-.ai-assistant-overview .test-section button {
+.ai-suite-overview .test-section { border-top: 1px solid #e5e7eb; padding-top: 20px; }
+.ai-suite-overview .test-section h2 { font-size: 16px; margin-bottom: 12px; }
+.ai-suite-overview .test-section button {
   padding: 8px 16px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   background: white;
   cursor: pointer;
 }
-.ai-assistant-overview .test-section button:hover { background: #f9fafb; }
-.ai-assistant-overview .success { color: #059669; margin-left: 12px; }
-.ai-assistant-overview .error { color: #dc2626; margin-left: 12px; }
+.ai-suite-overview .test-section button:hover { background: #f9fafb; }
+.ai-suite-overview .success { color: #059669; margin-left: 12px; }
+.ai-suite-overview .error { color: #dc2626; margin-left: 12px; }
 
 /* --- Knowledge Page --- */
 .knowledge-page {

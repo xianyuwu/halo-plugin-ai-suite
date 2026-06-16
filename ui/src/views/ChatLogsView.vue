@@ -96,7 +96,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="log in items" :key="log.id" @click="openDetail(log)" class="chat-logs-row" :class="{ 'row-selected': selectedIds.has(log.id) }">
+                  <tr v-for="log in items" :key="log.id" @click="handleRowClick($event, log)" class="chat-logs-row" :class="{ 'row-selected': selectedIds.has(log.id) }">
                     <td class="text-center" @click.stop>
                       <input type="checkbox" :checked="selectedIds.has(log.id)" @change="toggleSelect(log.id)" />
                     </td>
@@ -114,9 +114,9 @@
                       <span v-else class="chat-logs-fb-none">—</span>
                     </td>
                     <td class="actions-cell" style="text-align: left;">
-                      <VSpace :spacing="sm">
-                        <VButton size="xs" type="default" @click.stop="openDetail(log)">详情</VButton>
-                        <VButton size="xs" type="danger" @click.stop="askDelete(log)">删除</VButton>
+                      <VSpace spacing="sm">
+                        <VButton size="xs" type="default" @click="openDetail(log)">详情</VButton>
+                        <VButton size="xs" type="danger" @click="askDelete(log)">删除</VButton>
                       </VSpace>
                     </td>
                   </tr>
@@ -333,7 +333,7 @@ import RiAlertLine from "~icons/ri/alert-line";
 import RiCloseLine from "~icons/ri/close-line";
 import RiInformationLine from "~icons/ri/information-line";
 
-const API = "/apis/console.api.ai-assistant.halo.run/v1alpha1";
+const API = "/apis/console.api.ai-suite.halo.run/v1alpha1";
 
 interface Feedback { type: string; comment: string; timestamp: string; }
 interface LogEntry {
@@ -454,7 +454,11 @@ async function loadAll() {
 
 async function loadStats() {
   try {
-    const resp = await fetch(API + "/chat-logs/stats");
+    const { from, to } = rangeToFromTo(filters.range);
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    const resp = await fetch(API + "/chat-logs/stats?" + params.toString());
     if (!resp.ok) return;
     const data = await resp.json();
     stats.value = {
@@ -527,6 +531,7 @@ function reload() {
   page.value = 0;
   selectedIds.value = new Set();
   loadList();
+  loadStats();
 }
 
 function changePage(p: number) {
@@ -540,6 +545,14 @@ function onPageSizeChange() {
   page.value = 0;
   selectedIds.value = new Set();
   loadList();
+}
+
+function handleRowClick(event: MouseEvent, log: LogEntry) {
+  const target = event.target as HTMLElement | null;
+  if (target?.closest(".actions-cell, button, input, select, textarea, a, label")) {
+    return;
+  }
+  openDetail(log);
 }
 
 function openDetail(log: LogEntry) {
@@ -666,6 +679,8 @@ async function confirmDelete() {
       await loadAll();
     } else {
       Toast.success("已删除");
+      // 同步后端统计，避免乐观更新与实际不一致
+      await loadStats();
     }
   } catch (e: any) {
     Toast.error("删除失败: " + e.message);

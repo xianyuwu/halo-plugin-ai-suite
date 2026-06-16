@@ -155,7 +155,7 @@ async function fetchStream(
   cb: InternalStreamCallbacks
 ): Promise<void> {
   const resp = await fetch(
-    "/apis/console.api.ai-assistant.halo.run/v1alpha1/writing/assist/stream",
+    "/apis/console.api.ai-suite.halo.run/v1alpha1/writing/assist/stream",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

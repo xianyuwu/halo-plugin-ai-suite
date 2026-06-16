@@ -320,7 +320,7 @@ import RiLightbulbLine from "~icons/ri/lightbulb-line";
 import RiSearchLine from "~icons/ri/search-line";
 import RiInboxLine from "~icons/ri/inbox-line";
 
-const API_BASE = "/apis/console.api.ai-assistant.halo.run/v1alpha1";
+const API_BASE = "/apis/console.api.ai-suite.halo.run/v1alpha1";
 
 // ===== 概览统计 =====
 const stats = ref({

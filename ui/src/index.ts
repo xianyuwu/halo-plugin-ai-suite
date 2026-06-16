@@ -3,7 +3,7 @@ import { markRaw } from "vue";
 import RiRobotLine from "~icons/ri/robot-line";
 import "./styles/index.css";
 
-import AIAssistantLayout from "./views/AIAssistantLayout.vue";
+import AISuiteLayout from "./views/AISuiteLayout.vue";
 import DashboardView from "./views/DashboardView.vue";
 import ModelConfigView from "./views/ModelConfigView.vue";
 import ChunkingView from "./views/ChunkingView.vue";
@@ -14,13 +14,17 @@ import KnowledgeView from "./views/KnowledgeView.vue";
 import ExcerptView from "./views/ExcerptView.vue";
 import WritingView from "./views/WritingView.vue";
 import UsageView from "./views/UsageView.vue";
+import SearchView from "./views/SearchView.vue";
+import MindMapView from "./views/MindMapView.vue";
+import EvaluationView from "./views/EvaluationView.vue";
+import AgentView from "./views/AgentView.vue";
 import ChatLogsView from "./views/ChatLogsView.vue";
 import { AiWritingExtension } from "./extensions/ai-writing";
 import { disposeOutline } from "./extensions/ai-writing/outline-state";
 import { getWritingEnabled } from "./extensions/ai-writing/writing-enabled";
 
 export default definePlugin({
-  name: "ai-assistant",
+  name: "ai-suite",
   components: {},
   deactivated: () => {
     // 插件卸载时清理 OutlineModal 资源
@@ -30,14 +34,14 @@ export default definePlugin({
     {
       parentName: "Root",
       route: {
-        path: "/ai-assistant",
-        name: "AIAssistantRoot",
-        component: AIAssistantLayout,
+        path: "/ai-suite",
+        name: "AISuiteRoot",
+        component: AISuiteLayout,
         meta: {
-          title: "AI 智能助手",
+          title: "AI智能套件",
           desc: "集中管理知识库索引、模型能力、检索策略与对话体验",
           menu: {
-            name: "AI 智能助手",
+            name: "AI智能套件",
             group: "tool",
             icon: markRaw(RiRobotLine),
             priority: 0,
@@ -46,71 +50,95 @@ export default definePlugin({
         children: [
           {
             path: "",
-            redirect: "/ai-assistant/dashboard",
+            redirect: "/ai-suite/dashboard",
           },
           {
             path: "dashboard",
-            name: "AIAssistantDashboard",
+            name: "AISuiteDashboard",
             component: DashboardView,
             meta: { title: "总览", desc: "集中管理知识库索引、模型能力、检索策略与对话体验" },
           },
           {
             path: "models",
-            name: "AIAssistantModels",
+            name: "AISuiteModels",
             component: ModelConfigView,
             meta: { title: "模型配置", desc: "配置对话模型、向量模型、重排序与查询改写能力" },
           },
           {
             path: "chunking",
-            name: "AIAssistantChunking",
+            name: "AISuiteChunking",
             component: ChunkingView,
             meta: { title: "文档切片", desc: "配置文档解析、分段切片、重叠策略与清洗规则" },
           },
           {
             path: "retrieval",
-            name: "AIAssistantRetrieval",
+            name: "AISuiteRetrieval",
             component: RetrievalView,
             meta: { title: "检索设置", desc: "配置混合检索、相似度阈值、候选数量与最终返回策略" },
           },
           {
             path: "enhance",
-            name: "AIAssistantEnhance",
+            name: "AISuiteEnhance",
             component: EnhancementView,
             meta: { title: "检索增强", desc: "配置查询改写、HyDE、Rerank、跨语言检索与引用展示" },
           },
           {
+            path: "search",
+            name: "AISuiteSearch",
+            component: SearchView,
+            meta: { title: "AI 搜索", desc: "配置 AI 搜索弹框的功能开关、AI 回答与关键词结果" },
+          },
+          {
+            path: "mindmap",
+            name: "AISuiteMindMap",
+            component: MindMapView,
+            meta: { title: "AI 脑图", desc: "配置文章页 AI 脑图的生成参数、主题色与深浅色模式" },
+          },
+          {
+            path: "evaluation",
+            name: "AISuiteEvaluation",
+            component: EvaluationView,
+            meta: { title: "效果评测", desc: "评测问答、搜索与生成能力的质量、稳定性和引用效果" },
+          },
+          {
+            path: "agent",
+            name: "AISuiteAgent",
+            component: AgentView,
+            meta: { title: "运营智能体", desc: "运行博客内容运营任务，生成内容缺口、选题与优化建议" },
+          },
+          {
             path: "chat",
-            name: "AIAssistantChat",
+            name: "AISuiteChat",
             component: ChatView,
             meta: { title: "对话与外观", desc: "定义 AI 助手的对话行为、浮窗外观与访客交互体验" },
           },
           {
             path: "excerpt",
-            name: "AIAssistantExcerpt",
+            name: "AISuiteExcerpt",
             component: ExcerptView,
             meta: { title: "AI 摘要", desc: "AI 自动生成文章摘要，写入 excerpt 字段用于 SEO 和社交分享" },
           },
           {
             path: "writing",
-            name: "AIAssistantWriting",
+            name: "AISuiteWriting",
             component: WritingView,
             meta: { title: "写作辅助", desc: "配置 AI 写作辅助模型与大纲生成规则" },
           },
           {
             path: "knowledge",
-            name: "AIAssistantKnowledge",
+            name: "AISuiteKnowledge",
             component: KnowledgeView,
             meta: { title: "索引中心", desc: "管理索引重建、切片状态与关键词覆盖，查看运行状态与维护建议" },
           },
           {
             path: "usage",
-            name: "AIAssistantUsage",
+            name: "AISuiteUsage",
             component: UsageView,
             meta: { title: "用量统计", desc: "查看每模型每日 token 消耗、调用次数、失败率，并设置每日上限" },
           },
           {
             path: "chat-logs",
-            name: "AIAssistantChatLogs",
+            name: "AISuiteChatLogs",
             component: ChatLogsView,
             meta: { title: "问答记录", desc: "查看访客问答历史、点赞/点踩分布与模型使用情况" },
           },

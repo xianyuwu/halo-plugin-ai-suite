@@ -38,7 +38,7 @@ function handleClick(action: ActionKey, e: MouseEvent) {
       </button>
     </div>
     <div class="ai-bubble-divider" aria-hidden="true"></div>
-    <div class="ai-bubble-attribution">AI 智能助手插件</div>
+    <div class="ai-bubble-attribution">AI智能套件插件</div>
   </div>
 </template>
 

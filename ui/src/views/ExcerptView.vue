@@ -165,7 +165,7 @@ import RiFileTextLine from "~icons/ri/file-text-line";
 import RiLightbulbLine from "~icons/ri/lightbulb-line";
 import RiSearchLine from "~icons/ri/search-line";
 
-const API_BASE = "/apis/console.api.ai-assistant.halo.run/v1alpha1";
+const API_BASE = "/apis/console.api.ai-suite.halo.run/v1alpha1";
 const CONFIG_API = `${API_BASE}/config`;
 
 const excerptEnabled = ref(false);

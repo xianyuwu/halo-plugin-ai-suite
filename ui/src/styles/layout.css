@@ -4,66 +4,66 @@
   align-items: flex-start;
   min-height: calc(100vh - 64px);
   background: var(--ai-color-bg-page);
-  padding: 24px 24px 0 24px;
-  gap: 24px;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  padding: 20px 20px 0 20px;
+  gap: 20px;
+  font-family: var(--font-sans);
 }
 
-/* ===== 侧栏 — 280px 直角（无圆角）===== */
+/* ===== 侧栏 — 作为 Halo Console 内的二级导航，保持轻量 ===== */
 .ai-sidebar {
-  width: 280px;
+  width: 248px;
   flex-shrink: 0;
   background: var(--ai-color-bg-card);
   border: 1px solid #e5e7eb;
-  border-radius: 0;
+  border-radius: var(--ai-radius-lg);
   display: flex;
   flex-direction: column;
   position: sticky;
-  top: 24px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  top: 20px;
+  box-shadow: none;
   overflow: hidden;
 }
 
 /* ===== 顶部品牌区 ===== */
 .ai-sidebar-header {
-  padding: 18px 18px 16px;
+  padding: 14px 14px 12px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   border-bottom: 1px solid #f1f5f9;
 }
 
 .ai-logo {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #111827, #374151);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--ai-radius-md);
+  background: #242e41;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
   font-weight: 700;
-  font-size: 15px;
-  letter-spacing: -0.5px;
+  font-size: 13px;
+  letter-spacing: 0;
   flex-shrink: 0;
 }
 
 .ai-brand-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--ai-color-fg);
   line-height: 1.2;
 }
 .ai-brand-subtitle {
-  margin-top: 3px;
-  font-size: 11px;
+  margin-top: 2px;
+  font-size: 10.5px;
   color: var(--ai-color-fg-muted);
-  letter-spacing: 0.1px;
+  letter-spacing: 0;
 }
 
 /* ===== 导航列表 ===== */
 .ai-nav {
-  padding: 10px 8px 14px;
+  padding: 8px 8px 12px;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -72,12 +72,13 @@
 
 /* ===== 顶层 nav 项 — 统一规范 ===== */
 .ai-nav-item {
-  padding: 9px 10px 9px 12px;
-  border-radius: 6px;
+  min-height: 36px;
+  padding: 7px 10px 7px 11px;
+  border-radius: var(--ai-radius-md);
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 13.5px;
+  gap: 9px;
+  font-size: 13px;
   font-weight: 500;
   color: #374151;
   text-decoration: none;
@@ -107,15 +108,15 @@
   top: 50%;
   transform: translateY(-50%);
   width: 3px;
-  height: 26px;
+  height: 22px;
   background: #242e41;
   border-radius: 0 6px 6px 0;
 }
 
 /* ===== 图标 / 文字 ===== */
 .ai-nav-icon {
-  width: 18px;
-  font-size: 18px;
+  width: 17px;
+  font-size: 17px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -138,12 +139,12 @@
 
 /* ===== 分组标题 — RAG 流水线（不可折叠）===== */
 .ai-nav-group-label {
-  padding: 9px 10px 9px 12px;
-  border-radius: 6px;
-  font-size: 10.5px;
+  padding: 8px 10px 6px 11px;
+  border-radius: var(--ai-radius-md);
+  font-size: 10px;
   font-weight: 700;
   color: var(--ai-color-fg-muted);
-  letter-spacing: 0.8px;
+  letter-spacing: 0.7px;
   text-transform: uppercase;
   margin-top: 2px;
   margin-bottom: 2px;
@@ -158,17 +159,17 @@
 .ai-nav-divider {
   height: 1px;
   background: #e5e7eb;
-  margin: 8px 4px;
+  margin: 7px 4px;
   opacity: 0.8;
 }
 
 /* ===== 子项 — RAG 流水线下的 4 个 ===== */
 .ai-nav-item-child {
-  padding-left: 34px;
+  padding-left: 31px;
 }
 .ai-nav-item-child .ai-nav-icon {
-  width: 15px;
-  font-size: 15px;
+  width: 14px;
+  font-size: 14px;
 }
 
 .ai-layout-main {

@@ -481,8 +481,67 @@ function hasDocuments(stage: TraceStage): boolean {
 
 // 用 marked 渲染 AI 回复（GFM + 换行转 <br>），覆盖标题/列表/代码块/引用/表格等
 const renderedResponse = computed(() =>
-  marked.parse(aiResponse.value, { breaks: true, gfm: true, async: false }) as string
+  sanitizeHtml(marked.parse(aiResponse.value, { breaks: true, gfm: true, async: false }) as string)
 );
+
+const ALLOWED_TAGS = new Set([
+  "A", "B", "BLOCKQUOTE", "BR", "CODE", "DEL", "DIV", "EM", "H1", "H2", "H3",
+  "H4", "H5", "H6", "HR", "I", "LI", "OL", "P", "PRE", "S", "SPAN", "STRONG",
+  "TABLE", "TBODY", "TD", "TH", "THEAD", "TR", "UL"
+]);
+const ALLOWED_ATTRS: Record<string, Set<string>> = {
+  A: new Set(["href", "title", "target", "rel"]),
+  CODE: new Set(["class"]),
+  PRE: new Set(["class"]),
+  SPAN: new Set(["class"]),
+  DIV: new Set(["class"]),
+  TH: new Set(["align"]),
+  TD: new Set(["align"]),
+};
+
+function sanitizeHtml(html: string): string {
+  const template = document.createElement("template");
+  template.innerHTML = html || "";
+  cleanNode(template.content);
+  return template.innerHTML;
+}
+
+function cleanNode(parent: ParentNode) {
+  for (const child of Array.from(parent.childNodes)) {
+    if (child.nodeType === Node.TEXT_NODE) continue;
+    if (child.nodeType !== Node.ELEMENT_NODE) {
+      child.parentNode?.removeChild(child);
+      continue;
+    }
+    const el = child as HTMLElement;
+    if (!ALLOWED_TAGS.has(el.tagName)) {
+      el.replaceWith(document.createTextNode(el.textContent || ""));
+      continue;
+    }
+    const allowedAttrs = ALLOWED_ATTRS[el.tagName] || new Set<string>();
+    for (const attr of Array.from(el.attributes)) {
+      if (!allowedAttrs.has(attr.name)) {
+        el.removeAttribute(attr.name);
+      }
+    }
+    if (el.tagName === "A") {
+      const href = el.getAttribute("href") || "";
+      if (!isSafeHref(href)) {
+        el.removeAttribute("href");
+      } else {
+        el.setAttribute("target", "_blank");
+        el.setAttribute("rel", "noopener noreferrer");
+      }
+    }
+    cleanNode(el);
+  }
+}
+
+function isSafeHref(href: string): boolean {
+  return href.startsWith("/")
+    || href.startsWith("#")
+    || /^https?:\/\//i.test(href);
+}
 
 // SSE 解析辅助
 function parseSSEBlock(block: string): { eventType: string; eventData: string } {
@@ -511,7 +570,7 @@ async function sendDebug() {
 
   try {
     const res = await fetch(
-      "/apis/console.api.ai-assistant.halo.run/v1alpha1/chat/debug/stream",
+      "/apis/console.api.ai-suite.halo.run/v1alpha1/chat/debug/stream",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -2,20 +2,19 @@
 apiVersion: "plugin.halo.run/v1alpha1"
 kind: "Plugin"
 metadata:
-  name: "ai-assistant"
+  name: "ai-suite"
 spec:
-  version: "0.1.0"
+  version: "0.2.18-SNAPSHOT"
   enabled: true
   requires: ">=2.24.0"
   author:
     name: "rainwu"
     website: "https://github.com/rainwu"
-  logo: "/plugins/ai-assistant/assets/res/images/logo.png"
-  homepage: "https://github.com/rainwu/plugin-ai-assistant#readme"
-  displayName: "AI 智能助手"
+  logo: "/plugins/ai-suite/assets/res/images/logo.png"
+  homepage: "https://github.com/rainwu/plugin-ai-suite#readme"
+  displayName: "AI智能套件"
   description: "为 Halo 博客提供 AI 智能问答、文档智能编辑、AI 摘要等功能，支持对接主流 AI 大模型厂商"
-  settingName: "ai-assistant-settings"
-  configMapName: "ai-assistant-configmap"
+  configMapName: "ai-suite-configmap"
   license:
   - name: "GPL-3.0"
-    url: "https://github.com/rainwu/plugin-ai-assistant/blob/main/LICENSE"
+    url: "https://github.com/rainwu/plugin-ai-suite/blob/main/LICENSE"

@@ -215,7 +215,7 @@ function handleCancel() {
             插入到编辑器
           </VButton>
         </VSpace>
-        <span class="ai-outline-brand">Powered by AI 智能助手插件</span>
+        <span class="ai-outline-brand">Powered by AI智能套件插件</span>
       </div>
     </template>
   </VModal>

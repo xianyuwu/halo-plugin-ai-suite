@@ -7,5 +7,5 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-rootProject.name = 'plugin-ai-assistant'
+rootProject.name = 'plugin-ai-suite'
 include 'ui'
