@@ -63,6 +63,10 @@ public class PublicSearchEndpoint implements CustomEndpoint {
         }
 
         return aiProperties.getSearchConfig().flatMap(searchConfig -> {
+            // 前置校验: 后台关闭搜索功能时返回空结果, 防止绕过前端隐藏直调 API
+            if (searchConfig == null || !searchConfig.isEnabled()) {
+                return ServerResponse.ok().bodyValue(emptyResult("disabled"));
+            }
             int resultCount = Math.max(1, Math.min(30, searchConfig.getResultCount()));
             return searchByPluginLucene(keyword, resultCount)
                 .flatMap(result -> ServerResponse.ok().bodyValue(result))

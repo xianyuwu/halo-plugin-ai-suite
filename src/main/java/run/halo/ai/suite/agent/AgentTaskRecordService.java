@@ -2,12 +2,16 @@ package run.halo.ai.suite.agent;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -17,6 +21,7 @@ import run.halo.app.extension.ListOptions;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AgentTaskRecordService {
@@ -24,7 +29,56 @@ public class AgentTaskRecordService {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
+    /** running 任务超时阈值: 超过此时长仍 running 视为孤儿任务(进程崩溃/异常未捕获) */
+    private static final Duration RUNNING_TIMEOUT = Duration.ofMinutes(30);
+    /** 乐观锁冲突重试次数 */
+    private static final int UPDATE_RETRY = 3;
+
     private final ReactiveExtensionClient client;
+
+    /**
+     * 启动时扫描孤儿 running 任务 — 进程崩溃或 LLM 异常未走到 completeTask/failTask 时,
+     * 任务会永久卡在 running。启动时把超过 {@link #RUNNING_TIMEOUT} 的 running 任务标记 failed,
+     * 避免状态机终态泄漏(前端永远显示"运行中")。
+     */
+    @PostConstruct
+    public void reapStaleRunningTasks() {
+        Mono.fromRunnable(() -> {
+            try {
+                List<AgentTaskRecord> all = client.listAll(AgentTaskRecord.class,
+                    ListOptions.builder().build(), Sort.by(Sort.Order.desc("spec.createdAt"))).collectList().block();
+                if (all == null || all.isEmpty()) return;
+                Instant cutoff = Instant.now().minus(RUNNING_TIMEOUT);
+                int reaped = 0;
+                for (AgentTaskRecord record : all) {
+                    AgentTaskRecord.Spec spec = record.getSpec();
+                    if (spec == null || !"running".equals(spec.getStatus())) continue;
+                    Instant created = spec.getCreatedAt();
+                    if (created == null || created.isAfter(cutoff)) continue;
+                    // 超时 running → 标记 failed
+                    spec.setStatus("failed");
+                    spec.setError("任务超时未完成(可能因进程重启中断),已自动标记失败");
+                    spec.setCurrentStep("分析失败");
+                    spec.setCompletedAt(Instant.now());
+                    if (created != null) {
+                        spec.setDurationMs(Math.max(0,
+                            spec.getCompletedAt().toEpochMilli() - created.toEpochMilli()));
+                    }
+                    try {
+                        client.update(record).block();
+                        reaped++;
+                    } catch (Exception e) {
+                        log.warn("[AgentTaskRecord] 清理孤儿任务 {} 失败: {}", spec.getTaskId(), e.getMessage());
+                    }
+                }
+                if (reaped > 0) {
+                    log.info("[AgentTaskRecord] 启动时清理了 {} 个超时 running 任务", reaped);
+                }
+            } catch (Exception e) {
+                log.warn("[AgentTaskRecord] 启动扫描孤儿任务失败: {}", e.getMessage());
+            }
+        }).subscribeOn(Schedulers.boundedElastic()).subscribe();
+    }
 
     public Mono<List<Map<String, Object>>> listRecords() {
         return client.listAll(AgentTaskRecord.class, ListOptions.builder().build(),
@@ -81,8 +135,7 @@ public class AgentTaskRecordService {
 
     public Mono<Void> updateProgress(String taskId, int progress, String currentStep,
                                      List<Map<String, Object>> steps) {
-        return client.fetch(AgentTaskRecord.class, taskId)
-            .flatMap(record -> Mono.fromCallable(() -> {
+        return Mono.<Void>fromRunnable(() -> updateWithRetry(taskId, record -> {
                 AgentTaskRecord.Spec spec = record.getSpec();
                 if (spec == null) {
                     spec = new AgentTaskRecord.Spec();
@@ -97,10 +150,7 @@ public class AgentTaskRecordService {
                 spec.setStepsJson(toJson(Map.of("steps", steps != null ? steps : initialSteps())));
                 spec.setReportJson(toJson(runningReport(fromJson(spec.getInputJson()),
                     steps != null ? steps : initialSteps())));
-                client.update(record).block();
-                return 0;
-            }).subscribeOn(Schedulers.boundedElastic()))
-            .then();
+            })).subscribeOn(Schedulers.boundedElastic());
     }
 
     public Mono<Void> failTask(String taskId, String error) {
@@ -131,8 +181,7 @@ public class AgentTaskRecordService {
     }
 
     private Mono<Void> updateTask(String taskId, Map<String, Object> result, String status) {
-        return client.fetch(AgentTaskRecord.class, taskId)
-            .flatMap(record -> Mono.fromCallable(() -> {
+        return Mono.<Void>fromRunnable(() -> updateWithRetry(taskId, record -> {
                 AgentTaskRecord.Spec spec = record.getSpec();
                 if (spec == null) {
                     spec = new AgentTaskRecord.Spec();
@@ -164,10 +213,7 @@ public class AgentTaskRecordService {
                 spec.setSummary(stringVal(report.get("summary")));
                 spec.setStepsJson(toJson(Map.of("steps", report.get("steps") instanceof List<?> steps
                     ? steps : List.of())));
-                client.update(record).block();
-                return 0;
-            }).subscribeOn(Schedulers.boundedElastic()))
-            .then();
+            })).subscribeOn(Schedulers.boundedElastic());
     }
 
     private AgentTaskRecord.Spec toSpec(String taskId,
@@ -328,6 +374,39 @@ public class AgentTaskRecordService {
             return objectMapper.readValue(json, MAP_TYPE);
         } catch (Exception e) {
             return Map.of();
+        }
+    }
+
+    /**
+     * 带乐观锁重试的 update — fetch-modify-update 模式在并发更新同一任务(如 progress 回调
+     * 与 completeTask 竞争)时会触发 OptimisticLockingFailureException。这里重试整个
+     * fetch-modify-update: 重新拉取最新版本, 重新应用修改函数, 再次 update.
+     *
+     * @param taskId   任务 ID
+     * @param modifier 修改函数: 接收最新 record, 应用字段修改(不调 update)
+     */
+    private void updateWithRetry(String taskId, java.util.function.Consumer<AgentTaskRecord> modifier) {
+        for (int attempt = 1; attempt <= UPDATE_RETRY; attempt++) {
+            try {
+                AgentTaskRecord record = client.fetch(AgentTaskRecord.class, taskId).block();
+                if (record == null) return;
+                modifier.accept(record);
+                client.update(record).block();
+                return;
+            } catch (OptimisticLockingFailureException e) {
+                if (attempt >= UPDATE_RETRY) {
+                    log.warn("[AgentTaskRecord] 任务 {} 更新重试 {} 次仍失败(乐观锁冲突): {}",
+                        taskId, UPDATE_RETRY, e.getMessage());
+                    throw e;
+                }
+                log.debug("[AgentTaskRecord] 任务 {} 乐观锁冲突, 重试 {}/{}", taskId, attempt, UPDATE_RETRY);
+                try {
+                    Thread.sleep(50L * attempt);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(ie);
+                }
+            }
         }
     }
 }

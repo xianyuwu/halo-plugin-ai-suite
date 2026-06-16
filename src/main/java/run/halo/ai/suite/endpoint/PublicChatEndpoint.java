@@ -103,6 +103,13 @@ public class PublicChatEndpoint implements CustomEndpoint {
 
     /** 流式对话核心逻辑 — GET 和 POST 路由共用 */
     private Mono<ServerResponse> doStreamChat(ServerRequest request, String message, List<Map<String, String>> history) {
+        // 前置校验: 后台关闭访客聊天(allowGuest=false)时, 拒绝匿名调用, 防止绕过前端隐藏直调 API 触发 LLM 成本
+        return ensureGuestChatAllowed().flatMap(allowed -> allowed
+            ? doStreamChatInternal(request, message, history)
+            : forbiddenStream("访客聊天功能已关闭"));
+    }
+
+    private Mono<ServerResponse> doStreamChatInternal(ServerRequest request, String message, List<Map<String, String>> history) {
         final String logId = UUID.randomUUID().toString();
         final StringBuilder answerBuf = new StringBuilder();
         final AtomicBoolean logWritten = new AtomicBoolean(false);
@@ -431,6 +438,14 @@ public class PublicChatEndpoint implements CustomEndpoint {
     /** 非流式对话核心逻辑 — GET 和 POST 路由共用. clientIp 走方法参数(访客限流用) */
     private Mono<ServerResponse> doChat(String message, List<Map<String, String>> history,
                                         String clientIp) {
+        // 前置校验: 后台关闭访客聊天时拒绝, 防止绕过前端隐藏直调 API
+        return ensureGuestChatAllowed().flatMap(allowed -> allowed
+            ? doChatInternal(message, history, clientIp)
+            : forbiddenJson("访客聊天功能已关闭"));
+    }
+
+    private Mono<ServerResponse> doChatInternal(String message, List<Map<String, String>> history,
+                                                String clientIp) {
         return chatService.chat(message, history, clientIp)
             .onErrorResume(e -> {
                 log.error("[PublicChatEndpoint] 对话失败: {}", e.getMessage());
@@ -440,6 +455,39 @@ public class PublicChatEndpoint implements CustomEndpoint {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("reply", reply))
             );
+    }
+
+    /**
+     * 访客聊天开关校验 — 读取 chatConfig.allowGuest. 配置读取失败时默认拒绝(安全兜底),
+     * 避免配置异常导致功能在不知情下开放.
+     *
+     * @return true=允许访客聊天; false=后台已关闭, 应拒绝
+     */
+    private Mono<Boolean> ensureGuestChatAllowed() {
+        return aiProperties.getChatConfig()
+            .map(chatConfig -> chatConfig != null && chatConfig.isAllowGuest())
+            .defaultIfEmpty(false)
+            .onErrorResume(e -> {
+                log.warn("[PublicChatEndpoint] 读取 chatConfig 失败, 默认拒绝访客聊天: {}", e.getMessage());
+                return Mono.just(false);
+            });
+    }
+
+    /** SSE 路径的拒绝响应 — 发送 error 事件后 [DONE] */
+    private Mono<ServerResponse> forbiddenStream(String reason) {
+        return ServerResponse.ok()
+            .contentType(MediaType.TEXT_EVENT_STREAM)
+            .body(Flux.just(
+                ServerSentEvent.<String>builder().event("error").data(reason).build(),
+                ServerSentEvent.<String>builder().data("[DONE]").build()
+            ), String.class);
+    }
+
+    /** JSON 路径的拒绝响应 */
+    private Mono<ServerResponse> forbiddenJson(String reason) {
+        return ServerResponse.ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(Map.of("error", reason));
     }
 
     /**

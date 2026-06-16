@@ -118,8 +118,14 @@ public class ChatWidgetFilter implements AdditionalWebFilter {
                         return buildWidgetHtml(html, path)
                             .onErrorReturn(buildChatWidgetHtml())
                             .map(widgetHtml -> {
-                                String modifiedHtml = html.replace("</body>", widgetHtml + "</body>");
+                                // replaceFirst: 只替换第一个 </body>（真正的页面闭合标签）。
+                                // 全局 replace 会在 HTML 含多个 </body>（如被转义的示例代码）时注入多次。
+                                String modifiedHtml = html.replaceFirst("</body>",
+                                    Matcher.quoteReplacement(widgetHtml) + "</body>");
                                 byte[] modifiedBytes = modifiedHtml.getBytes(StandardCharsets.UTF_8);
+                                // 注入后字节数变化, 必须移除原 Content-Length, 否则浏览器按旧长度
+                                // 截断响应(widget 脚本加载不全)或卡死。移除后框架改用 chunked 编码。
+                                getHeaders().remove("Content-Length");
                                 return originalResponse.bufferFactory().wrap(modifiedBytes);
                             })
                             // 最终兜底：buildWidgetHtml 成功但 map 出错 → 返回原始 HTML

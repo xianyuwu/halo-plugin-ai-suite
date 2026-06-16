@@ -63,11 +63,18 @@ public class ChatLogMigrator {
                 MAPPER.getTypeFactory().constructCollectionType(List.class, Map.class));
             log.info("[ChatLogMigrator] 发现 {} 条旧记录, 开始迁移到 ChatLog Extension", records.size());
 
-            int ok = 0, fail = 0;
+            int ok = 0, fail = 0, skipped = 0;
             for (var rec : records) {
                 try {
                     ChatLogEntry entry = toEntry(rec);
                     ChatLog ext = toExtension(entry);
+                    String name = ext.getMetadata().getName();
+                    // 幂等: create 前先判存在. 重跑(上次迁移中途失败、ConfigMap 未删)时,
+                    // 已迁移的记录会被跳过, 避免重复 create 触发 AlreadyExists.
+                    if (name != null && client.fetch(ChatLog.class, name).block() != null) {
+                        skipped++;
+                        continue;
+                    }
                     client.create(ext).block();
                     ok++;
                 } catch (Exception e) {
@@ -75,10 +82,15 @@ public class ChatLogMigrator {
                     log.warn("[ChatLogMigrator] 迁移单条失败: {}", e.getMessage());
                 }
             }
-            log.info("[ChatLogMigrator] 迁移完成: {} 成功, {} 失败", ok, fail);
+            log.info("[ChatLogMigrator] 迁移完成: {} 成功, {} 跳过(已存在), {} 失败", ok, skipped, fail);
 
-            // 迁移完后删旧 ConfigMap (失败也不重试, 反正新数据已经写到 ChatLog 了)
-            safeDelete(old);
+            // 仅当全部成功(无失败)才删源 ConfigMap; 有失败则保留, 下次启动重试未完成的记录.
+            // 原实现无条件删源, 失败的记录永久丢失.
+            if (fail == 0) {
+                safeDelete(old);
+            } else {
+                log.warn("[ChatLogMigrator] 有 {} 条失败, 保留旧 ConfigMap {} 等待下次重试", fail, OLD_CM_NAME);
+            }
         } catch (Exception e) {
             log.warn("[ChatLogMigrator] 迁移过程出错: {}", e.getMessage());
         }
