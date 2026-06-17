@@ -58,7 +58,7 @@ public class LlmClient {
      * 确保 baseUrl 以 /v1 结尾（或包含版本路径）
      * 用户可能只填 https://api.deepseek.com 而漏掉 /v1
      */
-    private String normalizeBaseUrl(String baseUrl) {
+    static String normalizeBaseUrl(String baseUrl) {
         if (baseUrl == null || baseUrl.isBlank()) return baseUrl;
         validateBaseUrl(baseUrl);
         // 已经包含版本路径的不处理
