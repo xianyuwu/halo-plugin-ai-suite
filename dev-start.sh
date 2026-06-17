@@ -30,7 +30,9 @@ DEV_DIR="$SCRIPT_DIR/dev"
 HALO_JAR="$DEV_DIR/halo.jar"
 export JAVA_HOME="${JAVA_HOME:-$HOME/jdk21/contents/Contents/Home}"
 JAVA="$JAVA_HOME/bin/java"
-PLUGIN_JAR="$PROJECT_DIR/build/libs/plugin-ai-suite-0.2.18-SNAPSHOT.jar"
+# 版本号从 gradle.properties 读取, 避免升版本时手改脚本
+PLUGIN_VERSION=$(grep '^version=' "$PROJECT_DIR/gradle.properties" | cut -d= -f2 | tr -d ' \r')
+PLUGIN_JAR="$PROJECT_DIR/build/libs/plugin-ai-suite-${PLUGIN_VERSION}.jar"
 PLUGIN_DEST="$DEV_DIR/data/plugins/plugin-ai-suite.jar"
 LEGACY_PLUGIN_NAME="ai-assistant"
 LEGACY_PLUGIN_ARCHIVE="$DEV_DIR/data/plugins.disabled-legacy"
