@@ -218,9 +218,13 @@ public class LuceneIndexService {
     }
 
     /**
-     * 删除一篇文章的所有切片
+     * 删除一篇文章的所有切片。
+     * <p>必须 synchronized: 与 {@link #replaceAll} 共用同一把锁。{@code replaceAll}
+     * 在全量重建时会 {@link #close()} 整个索引(IndexWriter/SearcherManager/Directory),
+     * 若 {@code deleteByPostId} 不持锁并发进入, 会访问到已关闭的 {@code indexWriter}
+     * 导致 NPE/AlreadyClosedException.
      */
-    public void deleteByPostId(String postId) throws IOException {
+    public synchronized void deleteByPostId(String postId) throws IOException {
         ensureInitialized();
         indexWriter.deleteDocuments(new Term(FIELD_POST_ID, postId));
         indexWriter.commit();

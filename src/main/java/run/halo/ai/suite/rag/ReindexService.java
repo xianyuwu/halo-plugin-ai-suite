@@ -487,7 +487,10 @@ public class ReindexService {
      */
     public Sinks.Many<String> reindexPostWithProgress(String postName) {
         Sinks.Many<String> sink = Sinks.many().replay().latest();
-        if (indexing.get()) {
+        // CAS 占用 indexing 标志: 原实现仅 get() 检查(非 CAS), 不占标志, 多个调用方可
+        // 同时进入并行调 embedding + 写 Lucene. CAS 占用后, 在成功/失败回调里释放,
+        // 确保与全量重建互斥, 且并发调用快速失败.
+        if (!indexing.compareAndSet(false, true)) {
             emitSingle(sink, "error", "全量索引正在重建中，请稍后重试", 0, 0);
             sink.tryEmitComplete();
             return sink;
@@ -520,10 +523,12 @@ public class ReindexService {
         .subscribeOn(Schedulers.boundedElastic())
         .subscribe(
             chunks -> {
+                indexing.set(false);
                 emitSingle(sink, "done", "", chunks, 100);
                 sink.tryEmitComplete();
             },
             e -> {
+                indexing.set(false);
                 log.error("[ReindexService] 单篇重建失败 {}: {}", postName, e.getMessage());
                 emitSingle(sink, "error", e.getMessage(), 0, 0);
                 sink.tryEmitComplete();
