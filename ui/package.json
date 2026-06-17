@@ -1,6 +1,6 @@
 {
   "name": "@halo-dev/plugin-ai-suite-ui",
-  "version": "0.2.20-SNAPSHOT",
+  "version": "0.2.21-SNAPSHOT",
   "private": true,
   "type": "module",
   "scripts": {
