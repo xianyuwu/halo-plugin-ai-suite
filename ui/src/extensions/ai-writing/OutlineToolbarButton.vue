@@ -11,7 +11,6 @@
 
 import { computed } from "vue";
 import { openOutline } from "./outline-state";
-import { getStore } from "./ai-writing-store";
 import { getWritingEnabled } from "./writing-enabled";
 import RiSparkling2Line from "~icons/ri/sparkling-2-line";
 
@@ -29,8 +28,8 @@ const tooltip = computed(() =>
 
 function handleClick() {
   if (isDisabled.value) return;
-  // 从 editor 拿到(或懒创建)对应 store, 打开该 editor 专属的大纲 modal
-  openOutline(getStore(props.editor));
+  // 全局单 modal, editor 作为参数传入, apply 时插入到该 editor
+  openOutline(props.editor);
 }
 </script>
 

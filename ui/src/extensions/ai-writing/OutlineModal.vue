@@ -15,22 +15,24 @@ import {
   outlineToHtml,
   countStreamingSections,
 } from "./outline-json";
-import { setOutlineTopic, closeOutline } from "./outline-state";
+import {
+  getOutlineVisible,
+  getOutlineState,
+  setOutlineTopic,
+  closeOutline,
+} from "./outline-state";
 import { startOutline, applyOutline, cancelOutline } from "./outline-controller";
-import type { WritingStore } from "./ai-writing-store";
 
-const props = defineProps<{ store: WritingStore }>();
-
-const visibleRef = props.store.outlineVisible;
-const state = props.store.outlineState;
+const visibleRef = getOutlineVisible();
+const state = getOutlineState();
 const inputEl = ref<HTMLTextAreaElement | null>(null);
 const previewEl = ref<HTMLElement | null>(null);
 
-// v-model 不能写回 store ref, 用 computed get/set 包一层, 关闭时调 closeOutline(store)
+// v-model 不能写回模块 ref, 用 computed get/set 包一层, 关闭时调 closeOutline
 const visible = computed({
   get: () => visibleRef.value,
   set: (v) => {
-    if (!v) closeOutline(props.store);
+    if (!v) closeOutline();
   },
 });
 
@@ -46,7 +48,7 @@ const canApply = computed(
 
 const topicValue = computed({
   get: () => state.value.topic,
-  set: (v) => setOutlineTopic(props.store, v),
+  set: (v) => setOutlineTopic(v),
 });
 
 // 流式阶段统计已生成的章节数
@@ -94,28 +96,28 @@ function handleKeyDown(e: KeyboardEvent) {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     if (canGenerate.value) {
-      startOutline(props.store);
+      startOutline();
     }
   } else if (e.key === "Escape") {
     e.preventDefault();
     if (isStreaming.value) {
-      cancelOutline(props.store);
+      cancelOutline();
     } else {
-      closeOutline(props.store);
+      closeOutline();
     }
   }
 }
 
 function handleGenerate() {
-  if (canGenerate.value) startOutline(props.store);
+  if (canGenerate.value) startOutline();
 }
 
 function handleApply() {
-  applyOutline(props.store);
+  applyOutline();
 }
 
 function handleCancel() {
-  cancelOutline(props.store);
+  cancelOutline();
 }
 </script>
 

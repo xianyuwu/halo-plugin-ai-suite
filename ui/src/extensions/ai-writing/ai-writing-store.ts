@@ -14,7 +14,6 @@
 import { ref, shallowRef, type App, type Ref, type ShallowRef } from "vue";
 import type { Editor } from "@halo-dev/richtext-editor";
 import { ChatState, ChatTurn, makeTurnId } from "./chat-state";
-import { OutlineState } from "./outline-state";
 import { createBubbleMenuPlugin } from "./AIBubbleMenuPlugin";
 import { createChatComposerPlugin } from "./ChatComposerPlugin";
 
@@ -36,15 +35,6 @@ export interface WritingStore {
   // ===== Chat composer DOM (原 ChatComposerPlugin.ts 模块变量) =====
   composerApp: App | null;
   composerEl: HTMLDivElement | null;
-
-  // ===== 大纲状态 (原 outline-state.ts 单例) =====
-  outlineVisible: Ref<boolean>;
-  outlineState: Ref<OutlineState>;
-  outlineApp: App | null;
-  outlineContainer: HTMLDivElement | null;
-  outlineMounted: ShallowRef<boolean>;
-  /** 当前大纲流式会话的 abort 句柄 (原 outline-controller.ts 模块变量) */
-  outlineCancel: (() => void) | null;
 
   // ===== useAIAssist 实例对齐 (原 AIBubbleMenu/ChatComposer 各 new 一份导致 abort 对不齐) =====
   /** 当前活跃的 useAIAssist 实例, abort 时调它; 新 start 时覆盖 */
@@ -82,17 +72,6 @@ function createStore(editor: Editor): WritingStore {
     windowListeners: null,
     composerApp: null,
     composerEl: null,
-    outlineVisible: ref(false),
-    outlineState: ref<OutlineState>({
-      topic: "",
-      content: "",
-      status: "idle",
-      error: null,
-    }),
-    outlineApp: null,
-    outlineContainer: null,
-    outlineMounted: shallowRef(false),
-    outlineCancel: null,
     assistAbort: null,
     bubblePlugin: null as any, // 下面赋值, 避免循环引用
     composerPlugin: null as any,
@@ -128,16 +107,8 @@ export function disposeStore(editor: Editor): void {
   unmountApp(store.composerApp);
   store.composerApp = null;
   store.composerEl = null;
-  unmountApp(store.outlineApp);
-  if (store.outlineContainer) {
-    store.outlineContainer.remove();
-    store.outlineContainer = null;
-  }
-  store.outlineApp = null;
-  store.outlineMounted.value = false;
   // 取消进行中的流
   store.assistAbort?.();
-  store.outlineCancel?.();
   stores.delete(editor);
 }
 
@@ -152,5 +123,4 @@ function unmountApp(app: App | null) {
 
 // 重新导出常用类型/工具, 方便调用方单点 import
 export type { ChatState, ChatTurn } from "./chat-state";
-export type { OutlineState } from "./outline-state";
 export { makeTurnId } from "./chat-state";

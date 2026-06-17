@@ -20,14 +20,15 @@ import EvaluationView from "./views/EvaluationView.vue";
 import AgentView from "./views/AgentView.vue";
 import ChatLogsView from "./views/ChatLogsView.vue";
 import { AiWritingExtension } from "./extensions/ai-writing";
+import { disposeOutline } from "./extensions/ai-writing/outline-state";
 import { getWritingEnabled } from "./extensions/ai-writing/writing-enabled";
 
 export default definePlugin({
   name: "ai-suite",
   components: {},
   deactivated: () => {
-    // per-editor 资源(editor 的 Vue app / window 监听 / 大纲 modal)已在
-    // AiWritingExtension.onDestroy 按编辑器清理, 此处无需全局兜底.
+    // 清理全局大纲 modal (chat composer / bubble menu 已在 editor onDestroy 清理)
+    disposeOutline();
   },
   routes: [
     {

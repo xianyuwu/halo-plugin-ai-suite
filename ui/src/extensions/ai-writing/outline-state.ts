@@ -1,12 +1,16 @@
 /**
- * AI 大纲 — 类型定义 + 操作函数
+ * AI 大纲 — 全局状态 + 操作函数
  *
- * <p>原模块级单例(visible/state/app/container/mounted)已移除, 改为 store 字段
- * (见 ai-writing-store.ts). 操作函数接收 store 参数.
+ * <p>大纲 modal 保持全局单例设计(一次只为一个文章生成大纲, 不像 chat composer 需要
+ * per-editor 隔离). 当前激活的 editor 在点按钮时存入 activeEditor, apply 时用它.
+ *
+ * <p>注意: activeEditor 是模块级变量, 多标签页同时操作大纲时会以后点击的为准 — 但
+ * 大纲是"点按钮→生成→应用→关闭"的一次性操作, 并发概率极低, 此设计可接受.
  */
 
-import { createApp } from "vue";
-import type { WritingStore } from "./ai-writing-store";
+import { createApp, ref, shallowRef, type App, type Ref } from "vue";
+import OutlineModal from "./OutlineModal.vue";
+import type { Editor } from "@halo-dev/richtext-editor";
 
 export interface OutlineState {
   topic: string;
@@ -15,79 +19,91 @@ export interface OutlineState {
   error: string | null;
 }
 
-// 懒 import OutlineModal: 顶层 import 会循环 (OutlineModal → outline-controller → 本文件).
-// 运行时函数调用时再 import, 此时所有模块已加载, 无循环问题.
-let OutlineModalComp: typeof import("./OutlineModal.vue").default | null = null;
-async function getOutlineModal() {
-  if (!OutlineModalComp) {
-    OutlineModalComp = (await import("./OutlineModal.vue")).default;
-  }
-  return OutlineModalComp;
-}
+// ===== 全局状态 (modal 单例) =====
+const visible = ref(false);
+const state: Ref<OutlineState> = ref({
+  topic: "",
+  content: "",
+  status: "idle",
+  error: null,
+});
 
-/**
- * 懒挂载 OutlineModal: 第一次 openOutline 时渲染到 body.
- * modal DOM 全局(body 下), 但 store 每 editor 独立, 通过 props 传入.
- */
-export function ensureOutlineMounted(store: WritingStore) {
-  if (store.outlineMounted.value) return;
-  const container = document.createElement("div");
-  container.className = "ai-outline-modal-root";
-  document.body.appendChild(container);
-  store.outlineContainer = container;
-  store.outlineMounted.value = true;
-  // 异步加载组件再挂载 (避免循环依赖)
-  getOutlineModal().then((Comp) => {
-    // 加载期间可能已被 dispose, 二次检查
-    if (!store.outlineMounted.value || store.outlineContainer !== container) return;
-    const app = createApp(Comp, { store });
-    app.mount(container);
-    store.outlineApp = app;
-  }).catch((e) => {
-    console.error("[ai-writing] 挂载 OutlineModal 失败:", e);
-  });
-}
+let app: App | null = null;
+let container: HTMLDivElement | null = null;
+const mounted = shallowRef(false);
 
-/** 卸载大纲 modal (单 editor 专属, disposeStore 会调) */
-export function disposeOutline(store: WritingStore) {
-  if (store.outlineApp && store.outlineContainer) {
+// ===== 当前激活的 editor (点按钮时设置, apply 时用) =====
+let activeEditor: Editor | null = null;
+
+/** 卸载大纲 modal (plugin deactivated 时调) */
+export function disposeOutline() {
+  if (app && container) {
     try {
-      store.outlineApp.unmount();
+      app.unmount();
     } catch {
       // 忽略
     }
-    store.outlineApp = null;
-    store.outlineContainer.remove();
-    store.outlineContainer = null;
-    store.outlineMounted.value = false;
+    app = null;
+    container.remove();
+    container = null;
+    mounted.value = false;
   }
 }
 
-export function openOutline(store: WritingStore) {
-  ensureOutlineMounted(store);
-  store.outlineState.value = { topic: "", content: "", status: "idle", error: null };
-  store.outlineVisible.value = true;
+function ensureMounted() {
+  if (mounted.value) return;
+  try {
+    container = document.createElement("div");
+    container.id = "ai-outline-modal-root";
+    document.body.appendChild(container);
+    app = createApp(OutlineModal);
+    app.mount(container);
+    mounted.value = true;
+  } catch (e) {
+    console.error("[ai-writing] ensureMounted failed:", e);
+  }
 }
 
-export function closeOutline(store: WritingStore) {
-  store.outlineVisible.value = false;
+export function getOutlineVisible() {
+  return visible;
 }
 
-export function setOutlineTopic(store: WritingStore, topic: string) {
-  store.outlineState.value.topic = topic;
+export function getOutlineState() {
+  return state;
 }
 
-export function setOutlineStatus(
-  store: WritingStore,
+export function getActiveOutlineEditor(): Editor | null {
+  return activeEditor;
+}
+
+/**
+ * 打开大纲 modal. editor 为触发打开的编辑器实例, apply 时会用它插入内容.
+ */
+export function openOutline(editor: Editor) {
+  activeEditor = editor;
+  ensureMounted();
+  state.value = { topic: "", content: "", status: "idle", error: null };
+  visible.value = true;
+}
+
+export function closeOutline() {
+  visible.value = false;
+}
+
+export function setOutlineTopic(topic: string) {
+  state.value.topic = topic;
+}
+
+export function setStatus(
   status: OutlineState["status"],
   content?: string,
   error?: string | null
 ) {
-  store.outlineState.value.status = status;
-  if (content !== undefined) store.outlineState.value.content = content;
-  if (error !== undefined) store.outlineState.value.error = error;
+  state.value.status = status;
+  if (content !== undefined) state.value.content = content;
+  if (error !== undefined) state.value.error = error;
 }
 
-export function appendOutlineContent(store: WritingStore, token: string) {
-  store.outlineState.value.content += token;
+export function appendContent(token: string) {
+  state.value.content += token;
 }
