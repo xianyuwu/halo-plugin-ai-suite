@@ -722,14 +722,19 @@ public class RAGPipeline {
             return RAGContext.empty();
         }
 
-        String contextText = docs.stream()
-            .map(doc -> {
-                int idx = docs.indexOf(doc) + 1;
-                return "[%d] %s\n%s".formatted(idx, doc.postTitle(), doc.content());
-            })
-            .collect(Collectors.joining("\n\n"));
+        // 用索引计数器生成 [n] 编号, 避免 docs.indexOf(doc):
+        // 1) indexOf 是 O(n²); 2) RetrievedDocument 是 record, equals 比较所有字段
+        // (含 float score), 两个内容相同的文档会返回同一 index → 编号重复/错乱.
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < docs.size(); i++) {
+            if (i > 0) sb.append("\n\n");
+            RetrievedDocument doc = docs.get(i);
+            sb.append("[").append(i + 1).append("] ")
+              .append(doc.postTitle()).append("\n")
+              .append(doc.content());
+        }
 
-        return new RAGContext(contextText, docs, false, null);
+        return new RAGContext(sb.toString(), docs, false, null);
     }
 
     // ===== RAG Context =====

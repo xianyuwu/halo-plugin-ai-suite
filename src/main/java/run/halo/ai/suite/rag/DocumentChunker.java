@@ -187,6 +187,13 @@ public class DocumentChunker {
                         end = boundary;
                     }
                 }
+                // 死循环防护: findBestBoundary 返回 boundary+1, 极端情况下 boundary <= start-1
+                // (start=0 且无标点时 lastIndexOf 返回 -1 → boundary+1=0=start), 导致 end==start,
+                // 进而 nextStart=end-overlap 被 clamp 回 start → start 不前进 → 死循环.
+                // 强制 end 至少前进 1 个字符.
+                if (end <= start) {
+                    end = Math.min(start + 1, segment.length());
+                }
 
                 String chunk = segment.substring(start, end).trim();
                 if (!chunk.isEmpty()) {
