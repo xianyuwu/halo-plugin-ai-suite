@@ -26,7 +26,7 @@ import run.halo.app.extension.GVK;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @GVK(
-    group = "ai-assistant.halo.run",
+    group = "ai-suite.halo.run",
     version = "v1alpha1",
     kind = "ChatLog",
     plural = "chatlogs",

@@ -52,10 +52,10 @@ public class AISuitePlugin extends BasePlugin {
         // 第二次 register 会被跳过，导致 IndicesManager 里的 ChatLog class
         // 是旧 classloader 的，client.create() 用新 classloader 找不到。
         // 解决：start() 时先 unregister 旧的 Scheme，再 register 新的。
-        unregisterStaleScheme("ChatLog", "ai-assistant.halo.run");
-        unregisterStaleScheme("AgentTaskRecord", "ai-assistant.halo.run");
-        unregisterStaleScheme("EvaluationDataset", "ai-assistant.halo.run");
-        unregisterStaleScheme("EvaluationRunRecord", "ai-assistant.halo.run");
+        unregisterStaleScheme("ChatLog", "ai-suite.halo.run");
+        unregisterStaleScheme("AgentTaskRecord", "ai-suite.halo.run");
+        unregisterStaleScheme("EvaluationDataset", "ai-suite.halo.run");
+        unregisterStaleScheme("EvaluationRunRecord", "ai-suite.halo.run");
 
         // 注册 ChatLog CRD + 字段索引 (timestamp/feedbackType/model)
         schemeManager.register(ChatLog.class, indexSpecs -> {
