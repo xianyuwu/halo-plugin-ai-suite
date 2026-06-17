@@ -60,6 +60,7 @@ public class LlmClient {
      */
     private String normalizeBaseUrl(String baseUrl) {
         if (baseUrl == null || baseUrl.isBlank()) return baseUrl;
+        validateBaseUrl(baseUrl);
         // 已经包含版本路径的不处理
         if (baseUrl.endsWith("/v1") || baseUrl.endsWith("/v1/")
             || baseUrl.contains("/v1/") || baseUrl.contains("/v2/")
@@ -71,6 +72,61 @@ public class LlmClient {
         String trimmed = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         log.info("[LlmClient] baseUrl 未包含版本路径，自动追加 /v1: {} → {}", baseUrl, trimmed + "/v1");
         return trimmed + "/v1";
+    }
+
+    /**
+     * SSRF 防护 — 校验 baseUrl 不指向内网/本机/云元数据地址.
+     * <p>虽然 baseUrl 由管理员配置(受信), 但防御 ConfigMap 误配或被篡改导致插件成为内网探测跳板.
+     * 拦截: localhost/127.0.0.0/8、10.0.0.0/8、172.16.0.0/12、192.168.0.0/16、169.254.0.0/16
+     * (AWS/GCP 元数据 169.254.169.254)、::1、fc00::/7.
+     * <p>注意: 域名解析后再校验 IP 会有 TOCTOU(DNS rebinding), 但本插件场景(管理员配置、
+     * 非 SSRF 高危面)可接受; 若未来要更强防护应改用自定义 DnsResolver 解析后立即连接.
+     */
+    private static void validateBaseUrl(String baseUrl) {
+        try {
+            java.net.URI uri = java.net.URI.create(baseUrl);
+            String scheme = uri.getScheme();
+            if (scheme == null || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+                throw new IllegalArgumentException("baseUrl 必须是 http/https 协议: " + baseUrl);
+            }
+            String host = uri.getHost();
+            if (host == null || host.isBlank()) {
+                throw new IllegalArgumentException("baseUrl 缺少 host: " + baseUrl);
+            }
+            if (isInternalHost(host)) {
+                throw new IllegalArgumentException("baseUrl 不允许指向内网/本机地址: " + host);
+            }
+        } catch (IllegalArgumentException e) {
+            throw e;  // 已是带清晰信息的 IllegalArgumentException, 直接抛
+        }
+    }
+
+    /** 判断 host 是否为内网/本机/元数据地址 */
+    static boolean isInternalHost(String host) {
+        String h = host.toLowerCase();
+        // 域名形式
+        if ("localhost".equals(h) || h.endsWith(".localhost")
+            || h.endsWith(".local") || h.equals("metadata.google.internal")) {
+            return true;
+        }
+        // IP 形式
+        try {
+            java.net.InetAddress addr = java.net.InetAddress.getByName(h);
+            return addr.isAnyLocalAddress()       // 0.0.0.0
+                || addr.isLoopbackAddress()       // 127.0.0.0/8, ::1
+                || addr.isSiteLocalAddress()      // 10/8, 172.16/12, 192.168/16
+                || addr.isLinkLocalAddress()      // 169.254/16 (含云元数据 169.254.169.254)
+                || isPrivateIpv6(addr);           // fc00::/7
+        } catch (java.net.UnknownHostException e) {
+            // 无法解析的域名 — 不拦截(可能是有效的公网域名, DNS 暂时不可达)
+            return false;
+        }
+    }
+
+    private static boolean isPrivateIpv6(java.net.InetAddress addr) {
+        byte[] b = addr.getAddress();
+        if (b.length != 16) return false; // 非 IPv6
+        return (b[0] & 0xFE) == 0xFC;     // fc00::/7 (含 fd00::/8)
     }
 
     // ===== Chat Completion =====
@@ -611,7 +667,7 @@ public class LlmClient {
             if (cur instanceof WebClientResponseException wce) {
                 String body = wce.getResponseBodyAsString();
                 if (body != null) {
-                    body = body.replaceAll("\\s+", " ").trim();
+                    body = sanitizeErrorBody(body).replaceAll("\\s+", " ").trim();
                     if (body.length() > 150) body = body.substring(0, 150) + "...";
                 }
                 return "HTTP " + wce.getStatusCode().value()
@@ -621,7 +677,52 @@ public class LlmClient {
         }
         String msg = e.getMessage();
         if (msg == null) msg = e.getClass().getSimpleName();
-        return msg.length() > 200 ? msg.substring(0, 200) + "..." : msg;
+        return sanitizeErrorBody(msg).length() > 200
+            ? sanitizeErrorBody(msg).substring(0, 200) + "..."
+            : sanitizeErrorBody(msg);
+    }
+
+    /**
+     * 错误信息脱敏 — 抹除疑似 API Key 的敏感片段, 防止泄漏到用量记录/日志.
+     * <p>某些 LLM 上游在 4xx 响应体或异常 message 里会回显 Authorization 头或 sk-xxx 形式的密钥,
+     * describeError 的输出会进入 UsageTracker/日志, 泄漏后等同于泄漏密钥.
+     * <p>覆盖: {@code sk-}/{@code Bearer } 后跟的 token、{@code "key":"xxx"}、
+     * {@code authorization: xxx} 头、长 hex/base64 串.
+     */
+    private static final java.util.regex.Pattern SENSITIVE_PATTERN = java.util.regex.Pattern.compile(
+        // sk-/Bearer 开头的 token, 或 "key"/"api_key"/"apiKey"/"authorization" 字段的值
+        "(?i)(sk-[a-zA-Z0-9_\\-]{8,})"
+        + "|(Bearer\\s+[a-zA-Z0-9_\\-\\.]{8,})"
+        + "|((?:api[_-]?key|apiKey|authorization|key|secret|token)[\"']?\\s*[:=]\\s*[\"']?[a-zA-Z0-9_\\-\\.]{8,})"
+    );
+
+    static String sanitizeErrorBody(String text) {
+        if (text == null || text.isEmpty()) return text;
+        java.util.regex.Matcher m = SENSITIVE_PATTERN.matcher(text);
+        StringBuilder sb = new StringBuilder();
+        while (m.find()) {
+            String prefix;
+            if (m.group(1) != null) {              // sk-xxx
+                prefix = "sk-";
+            } else if (m.group(2) != null) {        // Bearer xxx
+                prefix = "Bearer ";
+            } else {                                 // key=xxx / authorization: xxx 等
+                String g = m.group(3);
+                // 保留到值开始前的分隔符(含 : 或 = 和引号), 抹掉值
+                int sep = -1;
+                for (int i = g.length() - 1; i >= 0; i--) {
+                    char c = g.charAt(i);
+                    if (c == ':' || c == '=') { sep = i; break; }
+                    // 值部分字符(字母数字-_.), 遇到非值字符说明进入前缀
+                    if (c == '"' || c == '\'') continue;
+                    if (!(Character.isLetterOrDigit(c) || c == '-' || c == '_' || c == '.')) { sep = i; break; }
+                }
+                prefix = sep >= 0 ? g.substring(0, sep + 1) : g.substring(0, Math.min(g.length(), 12));
+            }
+            m.appendReplacement(sb, java.util.regex.Matcher.quoteReplacement(prefix + "***"));
+        }
+        m.appendTail(sb);
+        return sb.toString();
     }
 
     /**
