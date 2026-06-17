@@ -603,7 +603,7 @@
 
 <script setup lang="ts">
 import { VButton, VDialog, VSpace } from "@halo-dev/components";
-import { computed, ref } from "vue";
+import { computed, onUnmounted, ref } from "vue";
 import RiBarChartLine from "~icons/ri/bar-chart-line";
 import RiFlaskLine from "~icons/ri/flask-line";
 import MetricCard from "../components/MetricCard.vue";
@@ -686,6 +686,8 @@ type RunRecord = {
 // ===== State =====
 const activeTab = ref<TabKey>("run");
 const running = ref(false);
+/** 评测轮询取消标志 — 组件卸载时置 true, pollRunStatus 每次循环检查, 避免卸载后继续 fetch + 写已销毁状态 */
+let pollCancelled = false;
 const runProgress = ref<{ runId: string; completed: number; total: number; current: string } | null>(null);
 const errorMessage = ref("");
 const datasetMessage = ref("");
@@ -1140,6 +1142,8 @@ async function pollRunStatus(runId: string) {
   const interval = 2000; // 2 秒轮询
   const start = Date.now();
   while (Date.now() - start < maxWait) {
+    // 组件卸载后立即退出, 避免继续 fetch + 写已销毁的 ref
+    if (pollCancelled) return;
     try {
       const resp = await fetch(`${API}/runs/${runId}/status`);
       const data = await resp.json();
@@ -1178,6 +1182,11 @@ async function pollRunStatus(runId: string) {
   running.value = false;
   runProgress.value = null;
 }
+
+// 组件卸载时取消进行中的轮询, 防止 10 分钟轮询在离开页面后继续跑
+onUnmounted(() => {
+  pollCancelled = true;
+});
 
 // ===== 实验记录 =====
 async function loadRuns() {

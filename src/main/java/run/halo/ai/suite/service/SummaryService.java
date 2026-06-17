@@ -31,10 +31,12 @@ public class SummaryService {
     private final LlmClient llmClient;
     private final AIProperties aiProperties;
 
-    private static final String DEFAULT_SUMMARY_PROMPT =
+    private static final String DEFAULT_SUMMARY_PROMPT_PREFIX =
         "你是一个博客文章摘要助手。请为以下文章生成一段简洁的摘要（150 字以内），\n"
         + "涵盖文章的核心内容和主要观点。直接输出摘要，不要加任何前缀或解释。\n\n"
-        + "文章标题：%s\n\n文章内容：\n%s";
+        + "文章标题：";
+    private static final String DEFAULT_SUMMARY_PROMPT_BODY =
+        "\n\n文章内容：\n";
 
     /**
      * 为单篇文章生成摘要
@@ -59,7 +61,10 @@ public class SummaryService {
                             ? content.substring(0, 3000) + "\n...[内容已截断]"
                             : content;
 
-                        String prompt = DEFAULT_SUMMARY_PROMPT.formatted(title, truncated);
+                        // 用拼接而非 String.formatted: 文章标题含 % 字符时, formatted(内部是
+                        // String.format) 会把 title 里的 % 当作格式说明符, 抛 IllegalFormatConversionException。
+                        String prompt = DEFAULT_SUMMARY_PROMPT_PREFIX + title
+                            + DEFAULT_SUMMARY_PROMPT_BODY + truncated;
 
                         return aiProperties.getModelConfig()
                             .flatMap(modelConfig ->

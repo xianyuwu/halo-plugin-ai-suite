@@ -315,7 +315,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, onUnmounted, reactive, ref } from "vue";
 import { Toast, VDialog, VButton, VSpace } from "@halo-dev/components";
 import MetricCard from "../components/MetricCard.vue";
 import DebugTrace from "../components/DebugTrace.vue";
@@ -436,6 +436,11 @@ function debouncedReload() {
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => { reload(); }, 300);
 }
+
+// 卸载时清理防抖 timer, 否则用户输入后立即切走页面, 300ms 后仍会 fetch 并写已卸载组件状态
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer);
+});
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / size.value)));
 

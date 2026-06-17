@@ -158,7 +158,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { Toast , VButton} from "@halo-dev/components";
 import SectionCard from "../components/SectionCard.vue";
 import RiFileTextLine from "~icons/ri/file-text-line";
@@ -240,6 +240,11 @@ let searchTimer: number | undefined;
 watch(searchQuery, () => {
   if (searchTimer) window.clearTimeout(searchTimer);
   searchTimer = window.setTimeout(() => loadArticles(1), 300);
+});
+
+// 卸载时清理防抖 timer, 否则用户输入后立即切走页面, 300ms 后仍会 fetch 并写已卸载组件状态
+onUnmounted(() => {
+  if (searchTimer) window.clearTimeout(searchTimer);
 });
 
 async function loadExcerptConfig() {

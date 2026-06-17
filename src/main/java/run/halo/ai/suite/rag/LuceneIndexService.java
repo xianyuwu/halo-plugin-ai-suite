@@ -245,26 +245,24 @@ public class LuceneIndexService {
     }
 
     /**
-     * BM25 关键词搜索 — 用 SmartChinese 分词后匹配 content 和 title 字段
+     * BM25 关键词搜索 — 用 SmartChinese 分词后匹配 content 和 title 字段.
+     *
+     * <p>实现说明: title/content 在索引时被 SmartChineseAnalyzer 分词, 所以查询时必须先
+     * {@link #tokenize} 再逐词构 TermQuery, 才能命中分词后的索引. 历史实现把整个 query
+     * 当单个 TermQuery(title) / PhraseQuery(content), 这两路对多 token 的 query 几乎不可能
+     * 命中分词后的索引, 属无效查询; 且 title 完全没走分词, 标题里的词搜不到.
+     * 现改为: title/content 都走分词逐词匹配, title 加 boost 2.0 提权.
      */
     public List<SearchHit> searchKeyword(String query, int topK) throws IOException {
         ensureInitialized();
 
-        // 构建多字段查询：同时搜索 title 和 content
         BooleanQuery.Builder boolBuilder = new BooleanQuery.Builder();
-
-        // title 字段权重更高（boost = 2.0）
-        TermQuery titleTerm = new TermQuery(new Term(FIELD_TITLE, query));
-        boolBuilder.add(new BoostQuery(titleTerm, 2.0f), BooleanClause.Occur.SHOULD);
-
-        // content 字段用短语查询（精确匹配优先）
-        PhraseQuery contentPhrase = new PhraseQuery(FIELD_CONTENT, query);
-        boolBuilder.add(contentPhrase, BooleanClause.Occur.SHOULD);
-
-        // content 字段逐词匹配（召回率更高）
-        // SmartChineseAnalyzer 会把 query 分词，我们手动拆成 TermQuery
         List<String> terms = tokenize(query);
         for (String term : terms) {
+            // title 权重更高(boost 2.0): 命中标题比命中正文排序靠前
+            boolBuilder.add(new BoostQuery(
+                new TermQuery(new Term(FIELD_TITLE, term)), 2.0f), BooleanClause.Occur.SHOULD);
+            // content 逐词匹配, 召回率主力
             boolBuilder.add(new TermQuery(new Term(FIELD_CONTENT, term)),
                 BooleanClause.Occur.SHOULD);
         }
