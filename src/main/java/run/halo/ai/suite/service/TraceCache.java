@@ -52,13 +52,6 @@ public class TraceCache {
         return serializeStages(entry.trace());
     }
 
-    /** 取出 trace 的意图 */
-    public synchronized String takeIntent(String logId) {
-        // 由 takeStages 一起返回更高效，这里单独取需要再查一次
-        // 实际在 PublicChatEndpoint 里连续调用，用 takeAll 更好
-        return null;
-    }
-
     /** 一次性取出 intent + stages，取出后缓存自动移除 */
     public synchronized TraceData take(String logId) {
         Entry entry = cache.remove(logId);
@@ -68,16 +61,12 @@ public class TraceCache {
         return new TraceData(t.intent(), serializeStages(t));
     }
 
-    private boolean expired(Entry entry) {
+    private boolean isExpired(Entry entry) {
         return System.currentTimeMillis() - entry.storedAt() > TTL_MS;
     }
 
-    private boolean isExpired(Entry entry) {
-        return expired(entry);
-    }
-
     private void evictExpired() {
-        cache.entrySet().removeIf(e -> expired(e.getValue()));
+        cache.entrySet().removeIf(e -> isExpired(e.getValue()));
     }
 
     /** 把 PipelineTrace.TraceStage record 转成可序列化的 Map */

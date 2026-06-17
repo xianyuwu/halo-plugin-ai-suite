@@ -539,16 +539,6 @@ public class LlmClient {
         }
     }
 
-    private String extractOpenAiStreamContent(String sseLine) {
-        try {
-            String json = sseLine.substring(5).trim();
-            JsonNode root = objectMapper.readTree(json);
-            return root.path("choices").path(0).path("delta").path("content").asText("");
-        } catch (Exception e) {
-            return "";
-        }
-    }
-
     private float[] extractOpenAiEmbedding(String response) {
         try {
             JsonNode root = objectMapper.readTree(response);
