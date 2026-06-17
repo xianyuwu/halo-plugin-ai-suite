@@ -98,6 +98,8 @@ function normalize(data: OutlineData): OutlineData {
   return data;
 }
 
+import DOMPurify from "dompurify";
+
 /** OutlineData → 预览 HTML（与 .ai-outline-content CSS 配合） */
 export function outlineToHtml(data: OutlineData): string {
   const parts: string[] = [];
@@ -120,7 +122,12 @@ export function outlineToHtml(data: OutlineData): string {
   // 递归渲染 sections：每深一级 h 标签 +1（顶层 h1，深度 2 → h2，深度 3 → h3）
   parts.push(...renderSections(data.sections, 0, depth));
 
-  return parts.join("\n");
+  // 末尾过 DOMPurify: escapeHtml 已防住属性注入, 这里再兜底剥离任何意外标签
+  // (LLM 返回的 JSON 解析值仍属不可信输入), 纵深防御.
+  return DOMPurify.sanitize(parts.join("\n"), {
+    ALLOWED_TAGS: ["div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "span"],
+    ALLOWED_ATTR: ["class"],
+  }) as string;
 }
 
 /**

@@ -10,6 +10,7 @@
  */
 
 import { marked } from "marked";
+import DOMPurify from "dompurify";
 
 /**
  * LLM 输出常见不规范 → 预处理后再交给 marked。
@@ -25,12 +26,24 @@ function preprocess(md: string): string {
     .replace(/^(#{1,3}\s+[^：\n]+)：(.+)$/gm, "$1\n\n$2");
 }
 
+// DOMPurify 净化配置: 放行 marked 产出的常见排版标签, 剥离 script/事件处理器.
+// outline 是 LLM 输出, 必须净化后再 v-html, 原 markdownToHtml 完全没净化是 XSS 漏洞.
+const PURIFY_CONFIG: DOMPurify.Config = {
+  ALLOWED_TAGS: [
+    "h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "hr",
+    "ul", "ol", "li", "blockquote", "code", "pre",
+    "strong", "em", "del", "a", "span", "div",
+  ],
+  ALLOWED_ATTR: ["href", "title", "class"],
+};
+
 export function markdownToHtml(md: string): string {
   if (!md) return "";
   const preprocessed = preprocess(md);
   try {
-    const html = marked.parse(preprocessed);
-    return typeof html === "string" ? html : md;
+    const html = marked.parse(preprocessed, { async: false });
+    const raw = typeof html === "string" ? html : md;
+    return DOMPurify.sanitize(raw, PURIFY_CONFIG) as string;
   } catch (e) {
     console.error("[outline] marked error:", e);
     return md.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

@@ -11,6 +11,7 @@
   "dependencies": {
     "@halo-dev/console-shared": "^2.21.0",
     "@halo-dev/richtext-editor": "^2.24.0",
+    "dompurify": "^3.4.10",
     "marked": "^18.0.4",
     "vue": "^3.5.0"
   },

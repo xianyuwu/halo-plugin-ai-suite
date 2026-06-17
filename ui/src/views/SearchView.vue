@@ -219,6 +219,7 @@ import RiSearchLine from "~icons/ri/search-line";
 import SectionCard from "../components/SectionCard.vue";
 import ThemeColorPicker from "../components/ThemeColorPicker.vue";
 import { saveGroup, loadGroup } from "../utils/config";
+import { sanitizeHtml } from "../utils/sanitize";
 
 const DEFAULTS = {
   enabled: true,
@@ -342,28 +343,26 @@ const previewAnswerText = computed(() => {
 
 const previewAnswerHtml = computed(() => formatAnswerHtml(previewAnswerText.value));
 
-function escapeHtml(value: string) {
-  return value
+/**
+ * AI 回答 → HTML: 先转义, 转换 [n] 引用标记与换行, 最后统一过 DOMPurify 净化.
+ * 末尾 sanitizeHtml 是关键防线 —— 即便转义或转换引入意外标签也会被剥离.
+ */
+function formatAnswerHtml(value: string) {
+  const escaped = (value || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function formatAnswerHtml(value: string) {
-  const escaped = escapeHtml(value || "");
-  return escaped
+    .replace(/>/g, "&gt;");
+  const html = escaped
     .replace(/\[(\d{1,2})\]/g, '<sup class="ai-cite-inline" data-num="$1">$1</sup>')
     .replace(/\n{2,}/g, "</p><p>")
     .replace(/\n/g, "<br>")
     .replace(/^(.+)$/s, "<p>$1</p>");
+  return sanitizeHtml(html);
 }
 
+/** snippet 净化: 后端已插入 <mark> 高亮标签, sanitizeHtml 放行 mark, 剥离其他注入 */
 function sanitizeSnippet(value: string) {
-  return escapeHtml(value || "")
-    .replace(/&lt;mark&gt;/gi, "<mark>")
-    .replace(/&lt;\/mark&gt;/gi, "</mark>");
+  return sanitizeHtml(value || "");
 }
 
 function themeLabel(theme: string) {
