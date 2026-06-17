@@ -1,20 +1,14 @@
 /**
- * AI 写作辅助 — Halo 文章编辑器 Tiptap Extension（v4：加 outline 大纲生成器）
+ * AI 写作辅助 — Halo 文章编辑器 Tiptap Extension
  *
- * <p>注册到 {@code definePlugin} 的 {@code default:editor:extension:create} 扩展点。
- *
- * <p>功能：
- * <ul>
- *   <li>5 个 AI 动作按钮（润色/续写/扩写/简化/译英）— 选区下方气泡菜单</li>
- *   <li>chat composer 多轮对话框 — 选区下方面板</li>
- *   <li>📋 大纲生成器 — Halo 工具栏新按钮 + 居中模态</li>
- * </ul>
+ * <p>注册到 {@code definePlugin} 的 {@code default:editor:extension:create} 扩展点.
+ * 每个 editor 实例通过 {@link getStore} 获得独立的 WritingStore (per-editor 隔离),
+ * onDestroy 时 {@link disposeStore} 清理 window 监听 + Vue app 实例.
  */
 
 import { Extension } from "@halo-dev/richtext-editor";
-import { ChatComposerPlugin, disposeChatComposer } from "./ChatComposerPlugin";
-import { AIBubbleMenuPlugin, disposeAIBubbleMenu } from "./AIBubbleMenuPlugin";
 import OutlineToolbarButton from "./OutlineToolbarButton.vue";
+import { getStore, disposeStore } from "./ai-writing-store";
 import { getWritingEnabled } from "./writing-enabled";
 
 const TOOLBAR_PRIORITY = 60;
@@ -23,21 +17,20 @@ const TOOLBAR_KEY = "ai-outline-button";
 export const AiWritingExtension = Extension.create({
   name: "ai-writing-assistant",
 
-  // 挂上 ProseMirror 插件：AI 气泡菜单 + chat composer
+  // 挂上 ProseMirror 插件: 从本 editor 的 store 取 (per-editor 独立实例)
   addProseMirrorPlugins() {
-    const editor = this.editor;
-    return [AIBubbleMenuPlugin(editor), ChatComposerPlugin];
+    const store = getStore(this.editor);
+    return [store.bubblePlugin, store.composerPlugin];
+  },
+
+  // 编辑器销毁时清理本 editor 的 store (移除 window 监听 + 卸载 Vue app)
+  onDestroy() {
+    if (this.editor) disposeStore(this.editor);
   },
 
   addOptions() {
     return {
       // Halo 编辑器工具栏右侧加「📋 大纲」按钮
-      // 读 getWritingEnabled().value 动态决定是否注册；Halo 工具栏在编辑器加载
-      // 时调用此函数一次，已打开的编辑器需刷新才能让按钮消失
-      //
-      // 不使用 markRaw 包装 OutlineToolbarButton — 组件内部 computed 订阅了
-      // getWritingEnabled() ref，markRaw 会让 Halo 工具栏对组件的响应式更新失效，
-      // 导致 enabled 变化时按钮置灰样式不生效
       getToolbarItems: ({ editor }: { editor: any }) => {
         if (!getWritingEnabled().value) return null;
         return {
@@ -55,8 +48,11 @@ export const AiWritingExtension = Extension.create({
   },
 });
 
-/** 清理所有 AI 写作相关资源（plugin 卸载时调用） */
+/**
+ * 兼容旧调用方 (cleanupAiWriting) — 现已无需全局清理, 每个编辑器在 onDestroy 自行 dispose.
+ * 保留导出避免外部 import 报错.
+ * @deprecated 清理逻辑已移至 AiWritingExtension.onDestroy, 无需手动调用.
+ */
 export function cleanupAiWriting() {
-  disposeAIBubbleMenu();
-  disposeChatComposer();
+  // no-op: per-editor 清理在 onDestroy 完成
 }

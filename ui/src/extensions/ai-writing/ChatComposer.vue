@@ -14,12 +14,14 @@
 
 import { computed, nextTick, ref, watch } from "vue";
 import ChatTurn from "./ChatTurn.vue";
-import { getChatState } from "./chat-state";
 import { useAIChat } from "./useAIChat";
+import type { WritingStore } from "./ai-writing-store";
 import RiCloseLine from "~icons/ri/close-line";
 
-const cs = getChatState();
-const { close, apply, retry, sendFollowUp, setInput } = useAIChat();
+const props = defineProps<{ store: WritingStore }>();
+
+const cs = props.store.chatState;
+const { close, apply, retry, sendFollowUp, setInput } = useAIChat(props.store);
 
 const inputValue = ref("");
 const inputEl = ref<HTMLTextAreaElement | null>(null);

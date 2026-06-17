@@ -10,8 +10,8 @@
  */
 
 import { computed } from "vue";
-import { setActiveEditor } from "./editor-ref";
 import { openOutline } from "./outline-state";
+import { getStore } from "./ai-writing-store";
 import { getWritingEnabled } from "./writing-enabled";
 import RiSparkling2Line from "~icons/ri/sparkling-2-line";
 
@@ -22,7 +22,6 @@ const props = defineProps<{
 }>();
 
 const enabled = computed(() => getWritingEnabled().value);
-// 总开关关闭 + Halo 父级 disabled，任一为真则按钮不可用
 const isDisabled = computed(() => !enabled.value || props.disabled);
 const tooltip = computed(() =>
   enabled.value ? "AI 生成文章大纲" : "AI 写作辅助已关闭（请在「写作辅助」配置页开启）"
@@ -30,8 +29,8 @@ const tooltip = computed(() =>
 
 function handleClick() {
   if (isDisabled.value) return;
-  setActiveEditor(props.editor);
-  openOutline();
+  // 从 editor 拿到(或懒创建)对应 store, 打开该 editor 专属的大纲 modal
+  openOutline(getStore(props.editor));
 }
 </script>
 

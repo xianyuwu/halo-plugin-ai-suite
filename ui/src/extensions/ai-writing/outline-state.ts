@@ -1,13 +1,12 @@
 /**
- * AI 大纲生成器 — 全局状态
+ * AI 大纲 — 类型定义 + 操作函数
  *
- * <p>OutlineModal 用 createApp 挂载到 body；通过 ensureMounted() 懒挂载，
- * 不依赖 {@code definePlugin.activated} 的触发时机（修复"activated 未触发
- * 时点击按钮无反应"的 bug）。
+ * <p>原模块级单例(visible/state/app/container/mounted)已移除, 改为 store 字段
+ * (见 ai-writing-store.ts). 操作函数接收 store 参数.
  */
 
-import { createApp, ref, shallowRef, type App, type Ref } from "vue";
-import OutlineModal from "./OutlineModal.vue";
+import { createApp } from "vue";
+import type { WritingStore } from "./ai-writing-store";
 
 export interface OutlineState {
   topic: string;
@@ -16,85 +15,79 @@ export interface OutlineState {
   error: string | null;
 }
 
-const visible = ref(false);
-const state: Ref<OutlineState> = ref({
-  topic: "",
-  content: "",
-  status: "idle",
-  error: null,
-});
-
-let app: App | null = null;
-let container: HTMLDivElement | null = null;
-const mounted = shallowRef(false);
-
-/**
- * 懒挂载：第一次 openOutline() 时把 OutlineModal 渲染到 body。
- * 重复调用幂等。
- */
-export function ensureMounted() {
-  if (mounted.value) return;
-  try {
-    container = document.createElement("div");
-    container.id = "ai-outline-modal-root";
-    document.body.appendChild(container);
-    app = createApp(OutlineModal);
-    app.mount(container);
-    mounted.value = true;
-  } catch (e) {
-    console.error("[ai-writing] ensureMounted failed:", e);
+// 懒 import OutlineModal: 顶层 import 会循环 (OutlineModal → outline-controller → 本文件).
+// 运行时函数调用时再 import, 此时所有模块已加载, 无循环问题.
+let OutlineModalComp: typeof import("./OutlineModal.vue").default | null = null;
+async function getOutlineModal() {
+  if (!OutlineModalComp) {
+    OutlineModalComp = (await import("./OutlineModal.vue")).default;
   }
+  return OutlineModalComp;
 }
 
-/** 卸载（cleanup 钩子用） */
-export function disposeOutline() {
-  if (app && container) {
+/**
+ * 懒挂载 OutlineModal: 第一次 openOutline 时渲染到 body.
+ * modal DOM 全局(body 下), 但 store 每 editor 独立, 通过 props 传入.
+ */
+export function ensureOutlineMounted(store: WritingStore) {
+  if (store.outlineMounted.value) return;
+  const container = document.createElement("div");
+  container.className = "ai-outline-modal-root";
+  document.body.appendChild(container);
+  store.outlineContainer = container;
+  store.outlineMounted.value = true;
+  // 异步加载组件再挂载 (避免循环依赖)
+  getOutlineModal().then((Comp) => {
+    // 加载期间可能已被 dispose, 二次检查
+    if (!store.outlineMounted.value || store.outlineContainer !== container) return;
+    const app = createApp(Comp, { store });
+    app.mount(container);
+    store.outlineApp = app;
+  }).catch((e) => {
+    console.error("[ai-writing] 挂载 OutlineModal 失败:", e);
+  });
+}
+
+/** 卸载大纲 modal (单 editor 专属, disposeStore 会调) */
+export function disposeOutline(store: WritingStore) {
+  if (store.outlineApp && store.outlineContainer) {
     try {
-      app.unmount();
+      store.outlineApp.unmount();
     } catch {
       // 忽略
     }
-    app = null;
-    container.remove();
-    container = null;
-    mounted.value = false;
+    store.outlineApp = null;
+    store.outlineContainer.remove();
+    store.outlineContainer = null;
+    store.outlineMounted.value = false;
   }
 }
 
-export function getOutlineVisible() {
-  return visible;
+export function openOutline(store: WritingStore) {
+  ensureOutlineMounted(store);
+  store.outlineState.value = { topic: "", content: "", status: "idle", error: null };
+  store.outlineVisible.value = true;
 }
 
-export function getOutlineState() {
-  return state;
+export function closeOutline(store: WritingStore) {
+  store.outlineVisible.value = false;
 }
 
-export function openOutline() {
-  // 懒挂载：第一次被调用时才把 OutlineModal 渲染到 body
-  ensureMounted();
-  state.value = { topic: "", content: "", status: "idle", error: null };
-  visible.value = true;
+export function setOutlineTopic(store: WritingStore, topic: string) {
+  store.outlineState.value.topic = topic;
 }
 
-export function closeOutline() {
-  visible.value = false;
-}
-
-export function setTopic(topic: string) {
-  state.value.topic = topic;
-}
-
-export function setStatus(
+export function setOutlineStatus(
+  store: WritingStore,
   status: OutlineState["status"],
   content?: string,
   error?: string | null
 ) {
-  state.value.status = status;
-  if (content !== undefined) state.value.content = content;
-  if (error !== undefined) state.value.error = error;
+  store.outlineState.value.status = status;
+  if (content !== undefined) store.outlineState.value.content = content;
+  if (error !== undefined) store.outlineState.value.error = error;
 }
 
-export function appendContent(token: string) {
-  state.value.content += token;
+export function appendOutlineContent(store: WritingStore, token: string) {
+  store.outlineState.value.content += token;
 }
-

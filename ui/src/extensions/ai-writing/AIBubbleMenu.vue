@@ -6,18 +6,18 @@
  * 与 Halo 原生 bubble menu（出现在选区上方）分离，互不冲突。
  */
 
-import { setActiveEditor } from "./editor-ref";
-import { useAIChat } from "./useAIChat";
-import { ACTION_META } from "./useAIChat";
+import { useAIChat, ACTION_META } from "./useAIChat";
 import type { ActionKey } from "./chat-state";
+import type { WritingStore } from "./ai-writing-store";
 
-const { open } = useAIChat();
+const props = defineProps<{ store: WritingStore }>();
+
+const { open } = useAIChat(props.store);
 const actions = Object.keys(ACTION_META) as ActionKey[];
 
 function handleClick(action: ActionKey, e: MouseEvent) {
   e.preventDefault();
   e.stopPropagation();
-  // editor 实例需要先存好（plugin 渲染 widget 时从 setActiveEditor 取）
   open(action);
 }
 </script>

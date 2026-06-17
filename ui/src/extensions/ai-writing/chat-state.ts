@@ -1,11 +1,9 @@
 /**
- * AI 写作 chat composer 全局状态（v3：多轮对话）
+ * AI 写作 chat composer 类型定义 + 工具
  *
- * <p>每个 chatState 实例对应一次"用户点动作 → 多轮修改 → 应用"完整会话。
- * 模块级 ref 让 ChatComposerPlugin + ChatComposer.vue 共享同一份响应式状态。
+ * <p>原模块级 chatState 单例已移除 — 现在每 editor 持有独立的 chatState
+ * (见 ai-writing-store.ts 的 WritingStore.chatState). 本文件只保留类型和工具函数.
  */
-
-import { ref, type Ref } from "vue";
 
 export type ActionKey =
   | "polish"
@@ -39,16 +37,6 @@ export interface ChatState {
   input: string;
   /** 全局状态：最近一次 send 的状态 */
   status: ChatStatus;
-}
-
-const chatState: Ref<ChatState | null> = ref(null);
-
-export function getChatState() {
-  return chatState;
-}
-
-export function setChatState(next: ChatState | null) {
-  chatState.value = next;
 }
 
 export function makeTurnId() {

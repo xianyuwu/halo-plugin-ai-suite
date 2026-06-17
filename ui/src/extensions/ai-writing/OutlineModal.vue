@@ -15,25 +15,22 @@ import {
   outlineToHtml,
   countStreamingSections,
 } from "./outline-json";
-import {
-  getOutlineVisible,
-  getOutlineState,
-  setTopic,
-  closeOutline,
-} from "./outline-state";
+import { setOutlineTopic, closeOutline } from "./outline-state";
 import { startOutline, applyOutline, cancelOutline } from "./outline-controller";
+import type { WritingStore } from "./ai-writing-store";
 
-const visibleRef = getOutlineVisible();
-const state = getOutlineState();
+const props = defineProps<{ store: WritingStore }>();
+
+const visibleRef = props.store.outlineVisible;
+const state = props.store.outlineState;
 const inputEl = ref<HTMLTextAreaElement | null>(null);
 const previewEl = ref<HTMLElement | null>(null);
 
-// 关键：v-model 不能写回 module-level ref（Vue 3 模板会把 ref unwrap 成值）
-// 用 computed get/set 包一层，写时调到 closeOutline
+// v-model 不能写回 store ref, 用 computed get/set 包一层, 关闭时调 closeOutline(store)
 const visible = computed({
   get: () => visibleRef.value,
   set: (v) => {
-    if (!v) closeOutline();
+    if (!v) closeOutline(props.store);
   },
 });
 
@@ -49,7 +46,7 @@ const canApply = computed(
 
 const topicValue = computed({
   get: () => state.value.topic,
-  set: (v) => setTopic(v),
+  set: (v) => setOutlineTopic(props.store, v),
 });
 
 // 流式阶段统计已生成的章节数
@@ -97,28 +94,28 @@ function handleKeyDown(e: KeyboardEvent) {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     if (canGenerate.value) {
-      startOutline();
+      startOutline(props.store);
     }
   } else if (e.key === "Escape") {
     e.preventDefault();
     if (isStreaming.value) {
-      cancelOutline();
+      cancelOutline(props.store);
     } else {
-      closeOutline();
+      closeOutline(props.store);
     }
   }
 }
 
 function handleGenerate() {
-  if (canGenerate.value) startOutline();
+  if (canGenerate.value) startOutline(props.store);
 }
 
 function handleApply() {
-  applyOutline();
+  applyOutline(props.store);
 }
 
 function handleCancel() {
-  cancelOutline();
+  cancelOutline(props.store);
 }
 </script>
 
