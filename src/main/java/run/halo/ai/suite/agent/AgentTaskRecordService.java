@@ -2,7 +2,6 @@ package run.halo.ai.suite.agent;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PostConstruct;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -11,6 +10,8 @@ import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -40,10 +41,15 @@ public class AgentTaskRecordService {
      * 启动时扫描孤儿 running 任务 — 进程崩溃或 LLM 异常未走到 completeTask/failTask 时,
      * 任务会永久卡在 running。启动时把超过 {@link #RUNNING_TIMEOUT} 的 running 任务标记 failed,
      * 避免状态机终态泄漏(前端永远显示"运行中")。
+     *
+     * <p>时机: 用 ApplicationReadyEvent + 延迟 8 秒, 确保插件 start() 已注册完 scheme.
+     * 原 @PostConstruct 在 Spring 容器初始化时跑, 早于 Plugin.start() 的 scheme 注册,
+     * 会报 "Scheme not found"(改 GVK group 后暴露).
      */
-    @PostConstruct
+    @EventListener(ApplicationReadyEvent.class)
     public void reapStaleRunningTasks() {
-        Mono.fromRunnable(() -> {
+        Mono.delay(Duration.ofSeconds(8))
+            .then(Mono.fromRunnable(() -> {
             try {
                 List<AgentTaskRecord> all = client.listAll(AgentTaskRecord.class,
                     ListOptions.builder().build(), Sort.by(Sort.Order.desc("spec.createdAt"))).collectList().block();
@@ -77,7 +83,7 @@ public class AgentTaskRecordService {
             } catch (Exception e) {
                 log.warn("[AgentTaskRecord] 启动扫描孤儿任务失败: {}", e.getMessage());
             }
-        }).subscribeOn(Schedulers.boundedElastic()).subscribe();
+        })).subscribeOn(Schedulers.boundedElastic()).subscribe();
     }
 
     public Mono<List<Map<String, Object>>> listRecords() {
