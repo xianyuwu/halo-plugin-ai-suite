@@ -1,6 +1,6 @@
 import { definePlugin } from "@halo-dev/console-shared";
 import { markRaw } from "vue";
-import RiRobotLine from "~icons/ri/robot-line";
+import AiSuiteMenuIcon from "./components/AiSuiteMenuIcon.vue";
 import "./styles/index.css";
 
 import AISuiteLayout from "./views/AISuiteLayout.vue";
@@ -43,7 +43,7 @@ export default definePlugin({
           menu: {
             name: "AI智能套件",
             group: "tool",
-            icon: markRaw(RiRobotLine),
+            icon: markRaw(AiSuiteMenuIcon),
             priority: 0,
           },
         },
