@@ -48,6 +48,11 @@
   flex-shrink: 0;
 }
 
+.ai-logo svg {
+  width: 20px;
+  height: 20px;
+}
+
 .ai-brand-title {
   font-size: 14px;
   font-weight: 500;

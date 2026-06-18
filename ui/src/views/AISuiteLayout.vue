@@ -2,7 +2,7 @@
   <div class="ai-layout">
     <aside class="ai-sidebar">
       <div class="ai-sidebar-header">
-        <div class="ai-logo">AI</div>
+        <div class="ai-logo"><AiSuiteMenuIcon /></div>
         <div class="ai-brand">
           <div class="ai-brand-title">AI智能套件</div>
           <div class="ai-brand-subtitle">AI Suite Console</div>
@@ -79,6 +79,7 @@ import RiMindMap from "~icons/ri/mind-map";
 import RiFlaskLine from "~icons/ri/flask-line";
 import RiRobot2Line from "~icons/ri/robot-2-line";
 import PageTopbar from "../components/PageTopbar.vue";
+import AiSuiteMenuIcon from "../components/AiSuiteMenuIcon.vue";
 
 const route = useRoute();
 
