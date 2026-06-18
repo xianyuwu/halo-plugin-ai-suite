@@ -9,7 +9,7 @@ spec:
   author:
     name: rainwu
     website: https://github.com/rainwu
-  logo: /plugins/ai-suite/res/images/logo.svg
+  logo: static/images/logo.svg
   homepage: https://github.com/rainwu/plugin-ai-suite#readme
   displayName: "AI智能套件"
   description: "为 Halo 博客提供 AI 智能问答、文档智能编辑、AI 摘要等功能，支持对接主流 AI 大模型厂商"
