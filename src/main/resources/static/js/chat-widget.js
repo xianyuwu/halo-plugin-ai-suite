@@ -477,43 +477,25 @@
   }
 
   /**
-   * 构造 chat / chat-stream 的 GET URL —— 含 URL 长度守卫
+   * 构造 chat / chat-stream 的 POST 请求体。
    *
-   * 历史问题：原本 Halo Netty 默认 maxInitialLineLength = 4KB，中文一字 URL-encode 9 字节，
-   * 第二轮 history 就超限。现已要求生产环境在 application.yaml 配 `server.netty.max-initial-line-length: 64KB`，
-   * 这里的 URL_SOFT_LIMIT 留出 4KB 安全余量。万一未配置，前端仍按 60KB 兜底——超就砍最旧 history。
-   *
-   * 策略：
-   *   1. history 最多保留 12 条（约 6 轮）
-   *   2. 单条 > 2000 字符头尾截断
-   *   3. 兜底：URL > 60000 字符时按 2 条砍最旧
+   * sendMessage 会先把当前 user 消息放进 history，因此这里排除最后一条，避免当前问题
+   * 同时出现在 message 和 history 中。历史仍做数量和单条长度控制，避免无效上下文
+   * 挤占模型 token，并确保请求体稳定落在 WebFlux 解码上限以内。
    */
-  function buildChatUrl(path, text) {
+  function buildChatBody(text) {
     var MAX_HISTORY = 12;
     var MAX_MSG_LEN = 2000;
-    var URL_SOFT_LIMIT = 60000;
 
     function truncate(s) {
       if (!s || s.length <= MAX_MSG_LEN) return s;
       return s.substring(0, 1400) + "\n…[内容已截断]…\n" + s.substring(s.length - 500);
     }
 
-    var pruned = history.slice(-MAX_HISTORY).map(function (m) {
+    var pruned = history.slice(0, -1).slice(-MAX_HISTORY).map(function (m) {
       return { role: m.role, content: truncate(m.content || "") };
     });
-
-    function build() {
-      var u = config.apiBase + path + "?message=" + encodeURIComponent(text);
-      if (pruned.length > 0) u += "&history=" + encodeURIComponent(JSON.stringify(pruned));
-      return u;
-    }
-
-    var url = build();
-    while (url.length > URL_SOFT_LIMIT && pruned.length >= 2) {
-      pruned = pruned.slice(2); // 砍掉最旧的一轮（user + assistant）
-      url = build();
-    }
-    return url;
+    return { message: text, history: pruned };
   }
 
   /**
@@ -885,7 +867,7 @@
     var content = "";
     var citations = [];
     var pendingLogId = null;   // logId 可能先于 assistantEl 到达，用闭包暂存
-    var url = buildChatUrl("/chat/stream", text);
+    var requestBody = buildChatBody(text);
 
     function ensureAssistantEl() {
       if (assistantEl) return;
@@ -897,7 +879,14 @@
       }
     }
 
-    fetch(url)
+    fetch(config.apiBase + "/chat/stream", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream"
+      },
+      body: JSON.stringify(requestBody)
+    })
       .then(function (response) {
         if (!response.ok) throw new Error("服务器错误: " + response.status);
         parseSseStream(response, {
@@ -938,9 +927,18 @@
   }
 
   function normalChat(text) {
-    var url = buildChatUrl("/chat", text);
-    fetch(url)
-      .then(function (res) { return res.json(); })
+    fetch(config.apiBase + "/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify(buildChatBody(text))
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error("服务器错误: " + res.status);
+        return res.json();
+      })
       .then(function (data) {
         var reply = data.reply || "⚠️ AI 助手暂时无法回答，请稍后再试。";
         addMessage("assistant", reply);
