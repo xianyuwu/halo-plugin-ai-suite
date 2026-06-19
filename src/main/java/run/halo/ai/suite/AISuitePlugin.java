@@ -14,6 +14,7 @@ import run.halo.ai.suite.extension.ChatLog;
 import run.halo.ai.suite.extension.AgentTaskRecord;
 import run.halo.ai.suite.extension.EvaluationDataset;
 import run.halo.ai.suite.extension.EvaluationRunRecord;
+import run.halo.ai.suite.extension.IntentRoute;
 import run.halo.ai.suite.rag.LuceneIndexService;
 
 /**
@@ -56,6 +57,7 @@ public class AISuitePlugin extends BasePlugin {
         unregisterStaleScheme("AgentTaskRecord", "ai-suite.halo.run");
         unregisterStaleScheme("EvaluationDataset", "ai-suite.halo.run");
         unregisterStaleScheme("EvaluationRunRecord", "ai-suite.halo.run");
+        unregisterStaleScheme("IntentRoute", "ai-suite.halo.run");
 
         // 注册 ChatLog CRD + 字段索引 (timestamp/feedbackType/model)
         schemeManager.register(ChatLog.class, indexSpecs -> {
@@ -92,6 +94,18 @@ public class AISuitePlugin extends BasePlugin {
                 .indexFunc(record -> record.getSpec() != null ? record.getSpec().getStartedAt() : null));
             indexSpecs.add(IndexSpecs.<EvaluationRunRecord, String>single("spec.datasetId", String.class)
                 .indexFunc(record -> record.getSpec() != null ? record.getSpec().getDatasetId() : null));
+        });
+
+        // 注册 IntentRoute CRD + 字段索引 (enabled/priority/updatedAt)
+        // 用于按 enabled 过滤、按 priority 排序的意图识别查询
+        schemeManager.register(IntentRoute.class, indexSpecs -> {
+            indexSpecs.add(IndexSpecs.<IntentRoute, Boolean>single("spec.enabled", Boolean.class)
+                .indexFunc(route -> route.getSpec() != null
+                    ? Boolean.TRUE.equals(route.getSpec().getEnabled()) : false));
+            indexSpecs.add(IndexSpecs.<IntentRoute, Integer>single("spec.priority", Integer.class)
+                .indexFunc(route -> route.getSpec() != null ? route.getSpec().getPriority() : 0));
+            indexSpecs.add(IndexSpecs.<IntentRoute, Instant>single("spec.updatedAt", Instant.class)
+                .indexFunc(route -> route.getSpec() != null ? route.getSpec().getUpdatedAt() : null));
         });
     }
 

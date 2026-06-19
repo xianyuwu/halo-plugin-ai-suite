@@ -21,4 +21,6 @@ public final class UsageScenario {
     public static final String EVALUATION_ANSWER = "evaluation_answer";
     public static final String EVALUATION_JUDGE = "evaluation_judge";
     public static final String AGENT_CONTENT_GAP = "agent_content_gap";
+    public static final String INTENT_DETECT = "intent_detect";
+    public static final String INTENT_PIPELINE = "intent_pipeline";
 }

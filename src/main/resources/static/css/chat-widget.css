@@ -64,7 +64,11 @@
 /* ===== 悬浮按钮（仿 Dream 主题 .actions > div 同款规格）===== */
 #ai-chat-trigger {
   position: fixed;
-  bottom: var(--ai-chat-trigger-bottom, 120px);
+  /* 后台配置/JS 自动避让给出基线，安全区保证 iPhone 底部工具栏不会压住按钮。 */
+  bottom: max(
+    var(--ai-chat-trigger-bottom, 120px),
+    calc(12px + env(safe-area-inset-bottom, 0px))
+  );
   width: 35px;
   height: 35px;
   border-radius: var(--ai-chat-trigger-radius, 5px);
@@ -86,8 +90,18 @@
 }
 #ai-chat-trigger:hover { opacity: 1; transform: scale(1.05); }
 #ai-chat-trigger:active { transform: scale(0.95); }
-#ai-chat-trigger.position-right { right: var(--ai-chat-trigger-x, 16px); }
-#ai-chat-trigger.position-left  { left: var(--ai-chat-trigger-x, 16px); }
+#ai-chat-trigger.position-right {
+  right: max(
+    var(--ai-chat-trigger-x, 16px),
+    calc(8px + env(safe-area-inset-right, 0px))
+  );
+}
+#ai-chat-trigger.position-left {
+  left: max(
+    var(--ai-chat-trigger-x, 16px),
+    calc(8px + env(safe-area-inset-left, 0px))
+  );
+}
 #ai-chat-trigger i { font-size: 20px; line-height: 1; }
 /* SVG fallback（博客没装 Remix Icon 时用）*/
 #ai-chat-trigger svg { width: 20px; height: 20px; stroke: currentColor; }
@@ -1136,11 +1150,7 @@
     height: 100dvh !important;
     border-radius: 0;
   }
-  #ai-chat-trigger {
-    bottom: 16px;
-  }
-  #ai-chat-trigger.position-right { right: 8px; }
-  #ai-chat-trigger.position-left  { left: 8px; }
+  /* 按钮位置继续使用配置变量与自动避让结果，不在手机端写死覆盖。 */
   /* 手机端隐藏拖拽 handle —— 已经全屏没法拖了 */
   .ai-chat-resize-handle { display: none; }
 }
@@ -1240,18 +1250,25 @@
   transition: color 0.12s;
 }
 .ai-search-clear:hover { color: var(--ai-chat-text, #333); }
-/* kbd 标签（参考 PluginSearchWidget：mono 字体 + border + shadow-kbd） */
-.ai-search-kbd {
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid var(--ai-chat-border, #d1d5db);
-  background: var(--ai-chat-bg-window, #fff);
-  color: var(--ai-chat-text-muted, #6b7280);
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.06);
+/* 关闭按钮 — 桌面端低调（移动端在下方 media query 里放大，确保可触摸退出全屏弹窗） */
+.ai-search-close {
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
-  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  color: var(--ai-chat-text-muted, #6b7280);
+  cursor: pointer;
+  transition: color 0.12s, background-color 0.12s;
+}
+.ai-search-close svg { width: 18px; height: 18px; display: block; }
+.ai-search-close:hover {
+  color: var(--ai-chat-text, #333);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 /* 结果滚动区 */
@@ -1531,4 +1548,12 @@
     height: 100vh;
     height: 100dvh;
   }
+  /* 全屏弹窗无遮罩可点，关闭按钮需放大到触摸友好尺寸 */
+  .ai-search-close {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+  .ai-search-close svg { width: 22px; height: 22px; }
+  .ai-search-input-wrap { height: 56px; }
 }

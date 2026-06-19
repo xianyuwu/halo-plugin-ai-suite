@@ -19,6 +19,7 @@ import MindMapView from "./views/MindMapView.vue";
 import EvaluationView from "./views/EvaluationView.vue";
 import AgentView from "./views/AgentView.vue";
 import ChatLogsView from "./views/ChatLogsView.vue";
+import IntentRoutesView from "./views/IntentRoutesView.vue";
 import { AiWritingExtension } from "./extensions/ai-writing";
 import { disposeOutline } from "./extensions/ai-writing/outline-state";
 import { getWritingEnabled } from "./extensions/ai-writing/writing-enabled";
@@ -141,6 +142,12 @@ export default definePlugin({
             name: "AISuiteChatLogs",
             component: ChatLogsView,
             meta: { title: "问答记录", desc: "查看访客问答历史、点赞/点踩分布与模型使用情况" },
+          },
+          {
+            path: "intent-routes",
+            name: "AISuiteIntentRoutes",
+            component: IntentRoutesView,
+            meta: { title: "意图路由", desc: "配置自定义问答意图，命中后跳过 RAG 走可编排的处理器 pipeline" },
           },
         ],
       },

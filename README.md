@@ -143,6 +143,68 @@ JAVA_HOME=/path/to/jdk21 ./gradlew build
 
 > 📸 *截图位（待补）*：`docs/screenshots/config.png` · `docs/screenshots/widget.png` · `docs/screenshots/writing.png`
 
+### Nginx 反向代理与 SSE 流式输出
+
+智能问答、搜索 AI 回答和写作辅助使用 SSE 持续输出。如果 Halo 前面有 Nginx，需要关闭代理缓冲，否则可能出现模型已在生成，但页面长时间无内容，最后一次性显示的“假流式”现象。
+
+请在 **Halo 域名对应的 Nginx 虚拟主机配置文件**中，将以下配置放入代理 Halo 的 `location` 块：
+
+```nginx
+server {
+    listen 80;
+    server_name blog.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8090;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # SSE 长连接与流式输出
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+    }
+}
+```
+
+> 如果已经配置 HTTPS，不要重复新建 `server` 块；只需把示例中的 `proxy_http_version`、`Connection`、`proxy_buffering`、`proxy_cache` 和 `proxy_read_timeout` 合并到现有的 Halo `location` 中。
+
+| 配置 | 作用 |
+|---|---|
+| `proxy_buffering off` | 关闭 Nginx 响应缓冲，让每个 SSE 数据块及时到达浏览器，是保证流式效果的关键配置。 |
+| `proxy_http_version 1.1` | 使用 HTTP/1.1 连接 Halo，更适合 SSE 长连接。 |
+| `proxy_set_header Connection ""` | 清除 Nginx 默认的逐跳 `Connection` 头，避免上游连接被不必要地关闭。 |
+| `proxy_cache off` | 防止 SSE 响应被代理缓存。 |
+| `proxy_read_timeout 300s` | 允许较长的模型思考或生成间隔，避免 Nginx 过早断开连接。 |
+| `X-Forwarded-For` / `X-Real-IP` | 将访客真实 IP 传递给 Halo，供访客限流和日志记录使用。 |
+
+常见的虚拟主机配置位置：
+
+- Ubuntu / Debian：`/etc/nginx/sites-available/<domain>.conf`（通常链接到 `sites-enabled`）
+- CentOS / Rocky Linux：`/etc/nginx/conf.d/<domain>.conf`
+- 宝塔面板：`/www/server/panel/vhost/nginx/<domain>.conf`
+- 1Panel / OpenResty：在网站的“配置文件”或“反向代理”页面修改，实际路径以安装目录为准。
+
+不确定域名实际加载了哪个文件时，可以查看 Nginx 的完整生效配置：
+
+```bash
+sudo nginx -T | grep -n -B 5 -A 30 "server_name blog.example.com"
+```
+
+修改后先检查语法，再平滑重载：
+
+```bash
+sudo nginx -t
+sudo nginx -s reload
+```
+
+> **能否免配 Nginx？** 应用可以通过响应头 `X-Accel-Buffering: no` 请求 Nginx 对单次响应关闭缓冲，但它可能被 Nginx 的 `proxy_ignore_headers` 或前置 CDN / WAF 忽略。生产环境仍建议显式保留上述 Nginx 配置；如果链路前面还有 CDN，也需确认该服务没有缓冲或缓存 SSE 响应。
+
 ---
 
 ## ⚙️ 配置项一览

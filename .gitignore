@@ -33,6 +33,10 @@ docs/
 # 根目录临时测试文件
 TestSchema.java
 
+# 根目录工具产物（PDF 等生成产物）
+output/
+tmp/
+
 # IDE
 .idea/
 *.iml

@@ -107,10 +107,10 @@
               <div class="ai-form-field">
                 <label class="ai-field-label">按钮垂直位置</label>
                 <select class="ai-input ai-select" v-model="form.widgetTriggerAlign">
-                  <option value="auto">自动（距底部 80px）</option>
+                  <option value="auto">自动避让页面悬浮按钮</option>
                   <option value="manual">手动指定距底像素</option>
                 </select>
-                <div class="ai-helper-text">自动模式距底部 80px，可避让多数主题的「返回顶部」按钮</div>
+                <div class="ai-helper-text">推荐移动端使用；加载时预留稳定位置，滚动过程中不会跳动</div>
               </div>
               <div class="ai-form-field" v-if="form.widgetTriggerAlign === 'manual'">
                 <label class="ai-field-label">按钮距底部 (px)</label>
@@ -246,7 +246,7 @@ const DEFAULTS = {
   shortcutQuestions: "推荐热门文章\n关于AI的最新文章\n旅行推荐",
   widgetWidth: 400,
   widgetHeight: 600,
-  widgetTriggerAlign: "manual",
+  widgetTriggerAlign: "auto",
   widgetTriggerOffsetY: 125,
   widgetTriggerOffsetX: 17,
   widgetTriggerShape: "square",

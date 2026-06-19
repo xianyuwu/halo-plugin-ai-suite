@@ -24,7 +24,7 @@
     shortcuts: [],
     width: 400,
     height: 600,
-    triggerAlign: "manual",
+    triggerAlign: "auto",
     triggerOffsetY: 125,
     triggerOffsetX: 17,
     triggerShape: "square",
@@ -38,6 +38,8 @@
   var history = [];
   var isOpen = false;
   var isStreaming = false;
+  var triggerPlacementFrame = 0;
+  var triggerPlacementSettleTimer = 0;
 
   // ===== SVG 图标库（仅 sparkles 用作博客没装 Remix Icon 时的 fallback；其它给弹窗内部用） =====
 
@@ -257,6 +259,118 @@
     });
   }
 
+  function configuredTriggerBottom() {
+    if (config.triggerAlign === "manual" &&
+        typeof config.triggerOffsetY === "number" && config.triggerOffsetY > 0) {
+      return config.triggerOffsetY;
+    }
+    return window.matchMedia && window.matchMedia("(max-width: 480px)").matches ? 16 : 80;
+  }
+
+  /**
+   * 页面加载时扫描一次同侧的 compact fixed 控件，为 AI 按钮预留稳定槽位。
+   * 主题按钮即使暂时滑出屏幕（例如 Dream 的 right:-48px）也会被计入，
+   * 因此滚动期间无需追踪主题按钮的显示/隐藏状态，按钮不会上下跳动。
+   */
+  function detectFloatingControlsBottom(baseBottom) {
+    if (!trigger.parentNode || !document.body) return baseBottom;
+
+    var viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+    var viewportHeight = window.innerHeight;
+    if (!viewportWidth || !viewportHeight) return baseBottom;
+
+    var triggerSize = config.triggerSize || 35;
+    var bottom = baseBottom;
+    var nodes = document.body.querySelectorAll("*");
+    for (var i = 0; i < nodes.length; i++) {
+      var el = nodes[i];
+      if (el === trigger || el === chatWindow || trigger.contains(el) || chatWindow.contains(el)) {
+        continue;
+      }
+
+      var style = window.getComputedStyle(el);
+      if (style.position !== "fixed" || style.display === "none" ||
+          style.visibility === "hidden" || parseFloat(style.opacity || "1") < 0.05) continue;
+
+      var rect = el.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0 ||
+          rect.width > Math.max(180, viewportWidth * 0.5) ||
+          rect.height > Math.min(300, viewportHeight * 0.5) ||
+          rect.top < viewportHeight * 0.45 || rect.top >= viewportHeight) continue;
+
+      var sideValue = posSide === "left" ? style.left : style.right;
+      var sideOffset = sideValue === "auto" ? NaN : parseFloat(sideValue);
+      var nearSide = posSide === "left"
+        ? rect.left < 120 || (!isNaN(sideOffset) && sideOffset < 96)
+        : rect.right > viewportWidth - 120 || (!isNaN(sideOffset) && sideOffset < 96);
+      if (!nearSide) continue;
+
+      bottom = Math.max(bottom, Math.ceil(viewportHeight - rect.top + 8));
+    }
+    return Math.min(bottom, Math.max(baseBottom, viewportHeight - triggerSize - 16));
+  }
+
+  function updateTriggerPlacement() {
+    var bottom = configuredTriggerBottom();
+    if (config.triggerAlign !== "manual") {
+      bottom = detectFloatingControlsBottom(bottom);
+    }
+    trigger.style.setProperty("--ai-chat-trigger-bottom", bottom + "px");
+    chatWindow.style.setProperty(
+      "--ai-chat-window-bottom",
+      (bottom + (config.triggerSize || 35) + 8) + "px"
+    );
+  }
+
+  function updateTriggerHorizontalPlacement() {
+    var configuredOffsetX = (typeof config.triggerOffsetX === "number" &&
+      config.triggerOffsetX >= 0) ? config.triggerOffsetX : 16;
+    var isMobile = window.matchMedia && window.matchMedia("(max-width: 480px)").matches;
+    // 自动模式跟随移动端主题按钮的通用 8px 边距；手动模式始终尊重后台配置。
+    var triggerOffsetX = config.triggerAlign !== "manual" && isMobile
+      ? 8 : configuredOffsetX;
+    trigger.style.setProperty("--ai-chat-trigger-x", triggerOffsetX + "px");
+    chatWindow.style.setProperty("--ai-chat-window-x", (triggerOffsetX + 8) + "px");
+  }
+
+  function updateResponsiveTriggerPlacement() {
+    updateTriggerHorizontalPlacement();
+    updateTriggerPlacement();
+  }
+
+  function scheduleTriggerPlacement() {
+    if (isContainerMode) return;
+    if (!triggerPlacementFrame) {
+      triggerPlacementFrame = requestAnimationFrame(function () {
+        triggerPlacementFrame = 0;
+        updateResponsiveTriggerPlacement();
+      });
+    }
+    // 仅用于首次布局或横竖屏切换后的稳定校准，不绑定滚动事件。
+    clearTimeout(triggerPlacementSettleTimer);
+    triggerPlacementSettleTimer = setTimeout(updateResponsiveTriggerPlacement, 350);
+  }
+
+  function watchTriggerPlacement() {
+    if (isContainerMode) return;
+    window.addEventListener("orientationchange", scheduleTriggerPlacement);
+    if (window.matchMedia) {
+      var orientationQuery = window.matchMedia("(orientation: portrait)");
+      var mobileQuery = window.matchMedia("(max-width: 480px)");
+      if (orientationQuery.addEventListener) {
+        orientationQuery.addEventListener("change", scheduleTriggerPlacement);
+        mobileQuery.addEventListener("change", scheduleTriggerPlacement);
+      } else if (orientationQuery.addListener) {
+        orientationQuery.addListener(scheduleTriggerPlacement);
+        mobileQuery.addListener(scheduleTriggerPlacement);
+      }
+    }
+    // trigger 已挂载到 DOM，可在首次绘制前直接确定最终位置，避免加载时闪动。
+    updateResponsiveTriggerPlacement();
+    clearTimeout(triggerPlacementSettleTimer);
+    triggerPlacementSettleTimer = setTimeout(updateResponsiveTriggerPlacement, 350);
+  }
+
   /** 根据配置更新外观 */
   function applyConfig() {
     // 主题色注入 CSS 变量，整个 widget 内的紫色调（trigger/header/user 气泡/发送按钮/链接等）自动跟随
@@ -279,25 +393,7 @@
       avatars[ai].innerHTML = avatarHTML;
     }
 
-    // 悬浮按钮垂直位置：
-    //   - manual：用后台配置的 triggerOffsetY（用户手动指定）
-    //   - auto  ：固定距底 80px（可避让多数主题的「返回顶部」按钮）
-    var bottom;
-    if (config.triggerAlign === "manual" &&
-        typeof config.triggerOffsetY === "number" && config.triggerOffsetY > 0) {
-      bottom = config.triggerOffsetY;
-    } else {
-      bottom = 80;
-    }
-    trigger.style.setProperty("--ai-chat-trigger-bottom", bottom + "px");
-    // 弹窗底部 = trigger bottom + 35（按钮高）+ 8（间距）
-    chatWindow.style.setProperty("--ai-chat-window-bottom", (bottom + 43) + "px");
-
-    // 水平边距：trigger 与 chatWindow 共用同一 CSS 变量（position-right 用 right，position-left 用 left）
-    var offsetX = (typeof config.triggerOffsetX === "number" && config.triggerOffsetX >= 0)
-      ? config.triggerOffsetX : 16;
-    trigger.style.setProperty("--ai-chat-trigger-x", offsetX + "px");
-    chatWindow.style.setProperty("--ai-chat-window-x", (offsetX + 8) + "px");
+    updateTriggerHorizontalPlacement();
 
     // 按钮形状：shape 映射成 border-radius，未命中时用默认圆形
     trigger.style.setProperty(
@@ -312,6 +408,7 @@
     trigger.classList.add("position-" + posSide);
     chatWindow.classList.remove("position-left", "position-right");
     chatWindow.classList.add("position-" + posSide);
+    updateTriggerPlacement();
     chatWindow.style.width = config.width + "px";
     chatWindow.style.height = config.height + "px";
 
@@ -1381,6 +1478,7 @@
         if (oldShortcuts) oldShortcuts.remove();
         renderShortcuts(config.shortcuts);
         watchPageTheme();
+        watchTriggerPlacement();
         initResize();
         // 预览模式：URL 含 ?ai-preview=1 时自动打开浮窗
         if (!isEmbed && window.location.search.indexOf("ai-preview=1") >= 0) {
@@ -1513,7 +1611,9 @@
         '<svg class="ai-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>' +
         '<input class="ai-search-input" type="text" placeholder="搜索文章..." autofocus />' +
         '<button class="ai-search-clear" title="清空" style="display:none">&times;</button>' +
-        '<kbd class="ai-search-kbd">Esc</kbd>' +
+        '<button class="ai-search-close" type="button" title="关闭" aria-label="关闭搜索">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>' +
+        '</button>' +
       '</div>' +
       // 结果区域（滚动）
       '<div class="ai-search-results">' +
@@ -1542,6 +1642,9 @@
     var input = modal.querySelector(".ai-search-input");
     var clearBtn = modal.querySelector(".ai-search-clear");
     setTimeout(function () { input.focus(); }, 50);
+
+    // 关闭按钮（移动端全屏弹窗无遮罩可点、无 Esc 键，必须提供显式关闭入口）
+    modal.querySelector(".ai-search-close").addEventListener("click", closeSearchModal);
 
     // 遮罩点击关闭
     overlay.addEventListener("click", function (e) {

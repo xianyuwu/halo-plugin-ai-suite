@@ -3,7 +3,7 @@ kind: Plugin
 metadata:
   name: ai-suite
 spec:
-  version: "0.2.22-SNAPSHOT"
+  version: "0.2.23-SNAPSHOT"
   enabled: true
   requires: ">=2.24.0"
   author:

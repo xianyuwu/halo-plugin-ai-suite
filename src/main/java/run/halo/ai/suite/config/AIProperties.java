@@ -269,7 +269,7 @@ public class AIProperties {
         c.setShortcutQuestions(textVal(node, "shortcutQuestions", ""));
         c.setWidgetWidth(intVal(node, "widgetWidth", 400));
         c.setWidgetHeight(intVal(node, "widgetHeight", 600));
-        c.setWidgetTriggerAlign(textVal(node, "widgetTriggerAlign", "manual"));
+        c.setWidgetTriggerAlign(textVal(node, "widgetTriggerAlign", "auto"));
         c.setWidgetTriggerOffsetY(intVal(node, "widgetTriggerOffsetY", 125));
         c.setWidgetTriggerOffsetX(intVal(node, "widgetTriggerOffsetX", 17));
         c.setWidgetTriggerShape(textVal(node, "widgetTriggerShape", "square"));
@@ -450,9 +450,9 @@ public class AIProperties {
         private String shortcutQuestions;
         private int widgetWidth;
         private int widgetHeight;
-        /** 悬浮按钮对齐策略：auto（优先自动对齐博客按钮组）/ manual（强制用 widgetTriggerOffsetY） */
+        /** 悬浮按钮对齐策略：auto（自动避让页面悬浮按钮）/ manual（强制用 widgetTriggerOffsetY） */
         private String widgetTriggerAlign;
-        /** 悬浮按钮距视口底部的像素偏移，默认 24；调高可避让博客自带的「回到顶部」等按钮 */
+        /** 手动模式下悬浮按钮距视口底部的像素偏移，默认 125 */
         private int widgetTriggerOffsetY;
         /** 悬浮按钮距视口左/右边缘的像素偏移（水平边距），默认 16 */
         private int widgetTriggerOffsetX;

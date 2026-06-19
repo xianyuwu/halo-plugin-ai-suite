@@ -465,6 +465,10 @@ function formatIntent(raw: string): string {
     NORMAL_CHAT: "普通对话（RAG 问答）",
     HOT_ARTICLES: "热门文章推荐",
     LATEST_ARTICLES: "最新文章",
+    "builtin-hot-articles": "热门文章推荐",
+    "builtin-latest-posts": "最新文章",
+    "builtin-by-tag": "按标签查询",
+    "builtin-by-category": "按分类查询",
   };
   return map[raw] || raw;
 }

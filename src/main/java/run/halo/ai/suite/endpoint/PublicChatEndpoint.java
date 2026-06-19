@@ -568,7 +568,7 @@ public class PublicChatEndpoint implements CustomEndpoint {
                 body.put("width", chatConfig.getWidgetWidth());
                 body.put("height", chatConfig.getWidgetHeight());
                 String triggerAlign = chatConfig.getWidgetTriggerAlign();
-                // 归一化为 auto / manual：manual 时前端用 triggerOffsetY；auto 时前端固定距底 80px。
+                // 归一化为 auto / manual：manual 时前端用 triggerOffsetY；auto 时前端检测并避让页面悬浮按钮。
                 // 历史遗留的 fixed_right/fixed_left（与左右位置选项重复）一律归入 auto。
                 body.put("triggerAlign",
                     "manual".equals(triggerAlign) ? "manual" : "auto");

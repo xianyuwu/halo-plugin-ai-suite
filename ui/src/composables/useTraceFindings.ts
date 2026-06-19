@@ -124,20 +124,20 @@ export function computeFindings(
   }
 
   // 5. 意图是热门/最新文章（不走 RAG）
-  if (intent === "HOT_ARTICLES") {
+  if (intent === "HOT_ARTICLES" || intent === "builtin-hot-articles") {
     result.push({
       level: "info",
       title: "走热门文章路径（未走 RAG）",
       causes: ["意图识别为热门文章推荐，直接调用 LLM 包装推荐结果"],
-      suggestions: ["如误判，可在「对话设置」调整意图识别策略"],
+      suggestions: ["如误判，可在「意图路由」调整触发词和优先级"],
       relatedStages: ["chat_intent"],
     });
-  } else if (intent === "LATEST_ARTICLES") {
+  } else if (intent === "LATEST_ARTICLES" || intent === "builtin-latest-posts") {
     result.push({
       level: "info",
       title: "走最新文章路径（未走 RAG）",
       causes: ["意图识别为最新文章推荐"],
-      suggestions: ["如误判，可在「对话设置」调整意图识别策略"],
+      suggestions: ["如误判，可在「意图路由」调整触发词和优先级"],
       relatedStages: ["chat_intent"],
     });
   }

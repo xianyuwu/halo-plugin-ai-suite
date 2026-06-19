@@ -22,3 +22,8 @@ rules:
       - search/answer
       - mindmap
     verbs: ["get", "list", "create"]
+  # Halo 2.24 会把 POST /资源/名称（/chat/stream）解析为 non-resource request。
+  # 精确授权该 URL，不扩大其他公开端点权限。
+  - nonResourceURLs:
+      - /apis/api.ai-suite.halo.run/v1alpha1/chat/stream
+    verbs: ["create"]

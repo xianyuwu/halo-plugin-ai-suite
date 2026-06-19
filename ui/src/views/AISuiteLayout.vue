@@ -78,6 +78,7 @@ import RiFilter3Line from "~icons/ri/filter-3-line";
 import RiMindMap from "~icons/ri/mind-map";
 import RiFlaskLine from "~icons/ri/flask-line";
 import RiRobot2Line from "~icons/ri/robot-2-line";
+import RiRouteLine from "~icons/ri/route-line";
 import PageTopbar from "../components/PageTopbar.vue";
 import AiSuiteMenuIcon from "../components/AiSuiteMenuIcon.vue";
 
@@ -110,6 +111,7 @@ const itemsArea3 = [
   { name: "AISuiteChatLogs", icon: markRaw(RiMessage2Line), label: "问答记录" },
   { name: "AISuiteEvaluation", icon: markRaw(RiFlaskLine), label: "效果评测" },
   { name: "AISuiteAgent", icon: markRaw(RiRobot2Line), label: "运营智能体" },
+  { name: "AISuiteIntentRoutes", icon: markRaw(RiRouteLine), label: "意图路由" },
   { name: "AISuiteUsage", icon: markRaw(RiBarChartLine), label: "用量统计" },
 ];
 </script>
