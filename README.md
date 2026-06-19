@@ -1,381 +1,501 @@
 <div align="center">
 
-# AI 智能套件 · plugin-ai-suite
+# AI 智能套件
 
-为 [Halo](https://halo.run) 2.24+ 博客打造的一体化 AI 能力插件：**智能问答（RAG）· 搜索增强 · 写作辅助 · 摘要 · 脑图 · 运营智能体**。
+**把 Halo 博客变成一个能回答、会检索、可辅助创作，也懂内容运营的 AI 知识站。**
 
-对接任意 OpenAI 兼容协议的大模型（DeepSeek、通义千问、OpenAI、Moonshot、SiliconFlow、本地 Ollama……），自带混合检索引擎，无需额外数据库。
+面向 Halo 2.24+ 的一体化 AI 插件，提供 RAG 智能问答、AI 搜索、写作辅助、摘要、脑图、效果评测、意图路由与运营智能体。兼容 OpenAI API 协议，内置 Lucene 混合检索，无需额外部署向量数据库。
 
-[![Halo](https://img.shields.io/badge/Halo-%3E%3D2.24.0-1e87f0?logo=halo&logoColor=white)](https://halo.run)
+[![Halo](https://img.shields.io/badge/Halo-%E2%89%A52.24.0-1e87f0?logo=halo&logoColor=white)](https://halo.run)
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
-[![Lucene](https://img.shields.io/badge/Lucene-10.3.2-0a6f3a?logo=apachesolr&logoColor=white)](https://lucene.apache.org/)
-[![License](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.2.22--SNAPSHOT-orange)](./plugin.yaml)
+[![Lucene](https://img.shields.io/badge/Lucene-10.3.2-0a6f3a)](https://lucene.apache.org/)
+[![Version](https://img.shields.io/badge/version-0.2.23--SNAPSHOT-orange)](src/main/resources/plugin.yaml)
+[![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
+
+[快速开始](#快速开始) · [功能全景](#功能全景) · [工作原理](#工作原理) · [开发指南](#开发指南)
 
 </div>
 
----
-
-## ✨ 核心能力
-
-| 访客侧（前台主题） | 管理侧（Console 后台） |
-|:---|:---|
-| 💬 **智能问答浮窗**：基于全站文章的 RAG 多轮对话，引用溯源 | 🧪 **效果评测**：用例集 + 一键评测（命中率、回答质量多维评分） |
-| 🔍 **搜索 AI 综合回答**：搜索结果页流式综合回答卡片 | 🤖 **运营智能体**：分析访客问答与文章覆盖，产出内容缺口、选题大纲与旧文更新建议 |
-| 🧠 **文章 AI 脑图**：自动生成/缓存思维导图（markmap 可视化） | 📝 **AI 摘要**：批量或单篇生成（Halo excerpt 扩展点） |
-| 👍 **问答反馈**：访客点赞/点踩，回流分析 | ✍️ **写作辅助**：编辑器内润色/续写/扩写/简化/译英（多轮对话）+ 一键大纲生成 |
-| | 📚 **索引中心**：索引状态、单篇/全量重建、切片/关键词查看 |
-| | 📊 **用量统计**：按模型/日期的 token 用量与调用次数、限额 |
-| | 📜 **问答记录**：全量问答记录、检索链路追踪、反馈分析 |
-
-> 管理侧**加粗名称**与 Console「AI 智能套件」侧边栏菜单完全一致，便于按名定位。
+![AI 智能套件：让博客内容继续工作](assets/readme/ai-suite-hero.svg)
 
 ---
 
-## 🏗 架构总览
+## 它解决什么问题
 
-```mermaid
-flowchart LR
-  subgraph Theme["前台主题"]
-    V[访客页面]
-  end
-  subgraph Console["Console 后台"]
-    E[文章编辑器]
-    M[管理面板]
-  end
+博客通常不缺内容，缺的是让内容被重新发现、准确回答和持续复用的能力。AI 智能套件围绕文章从生产到消费的完整链路工作：
 
-  V -->|ChatWidget / SearchAnswer / MindMap| EP
-  E -->|AiWriting Extension| EP
-  M -->|Console API| EP
+- **访客找答案**：基于站内文章进行多轮问答，回答附带原文引用，而不是脱离博客自由发挥。
+- **搜索更直接**：在关键词结果之外，先给出一段可追溯的 AI 综合回答。
+- **作者写得更快**：在 Halo 编辑器内完成润色、续写、扩写、简化、翻译和大纲生成。
+- **内容更易理解**：自动生成文章摘要与可交互脑图。
+- **运营有依据**：从真实访客问题中发现内容缺口，形成选题、大纲和旧文优化建议。
+- **高频问题走捷径**：用可配置的意图路由处理“最新文章”“热门内容”“某标签文章”等确定性请求，命中后无需经过 RAG。
 
-  subgraph Plugin["AI 智能套件插件"]
-    EP[endpoint 公开/Console 端点]
-    SVC[service 编排层<br/>Chat / Writing / Summary / MindMap / Evaluation]
-    RAG[RAGPipeline 混合检索管线]
-    LUC[LuceneIndexService<br/>BM25 + HNSW 向量索引]
-    EP --> SVC --> RAG --> LUC
-  end
+## 功能全景
 
-  RAG -->|Embedding / Rerank| LLM[(OpenAI 兼容 LLM)]
-  SVC -->|Chat Completions| LLM
-  LUC <-->|索引同步| IDX[PostIndexReconciler<br/>文章变更监听]
+| 面向访客 | 面向作者与运营者 |
+| --- | --- |
+| **RAG 智能问答**：全站文章多轮对话、流式输出、引用溯源 | **写作辅助**：润色、续写、扩写、简化、译英，多轮追加要求并一键应用 |
+| **AI 搜索**：搜索页生成综合回答，并保留关键词结果 | **AI 摘要**：单篇或批量生成 Halo 文章摘要 |
+| **文章脑图**：自动生成并缓存可交互思维导图 | **索引中心**：全量/单篇重建，查看切片、关键词与索引状态 |
+| **问答反馈**：点赞、点踩结果进入后台分析 | **效果评测**：维护评测集，检查检索命中、回答质量与引用效果 |
+| **意图路由**：确定性问题进入可编排 Pipeline，响应更稳定 | **运营智能体**：分析访客需求与文章覆盖，产出可执行的内容建议 |
+| **主题无关注入**：原生 JS/CSS Widget 接入 Halo 前台 | **用量与审计**：模型 token、调用记录、失败率、限额与检索链路追踪 |
+
+### 意图路由
+
+意图路由适合处理不需要语义检索、但需要读取站内实时数据的问题。例如：
+
+```text
+“最近更新了哪些 AI 文章？”
+        ↓ 命中 builtin-latest-posts
+主题匹配 → 发布时间倒序 → LLM 组织自然语言回答
 ```
 
-## 🔎 RAG 检索管线
+后台可以配置触发规则、优先级和处理步骤。插件内置 `TOPIC_MATCH`、`TAG_MATCH`、`CATEGORY_MATCH`、`KEYWORD_MATCH`、`TIME_SORT`、`VISIT_SORT` 等处理器；未命中意图时自动回到正常 RAG 流程。
 
-每一步独立开关，单步超时即优雅降级，不拖垮整条链路：
-
-```mermaid
-flowchart LR
-  Q[用户 Query] --> RW{Query Rewrite?}
-  RW -- 是 --> Q1[LLM 结合历史改写]
-  RW -- 否 --> HY
-  Q1 --> HY{HyDE?}
-  HY -- 是 --> Q2[LLM 生成假设性回答 → 向量化]
-  HY -- 否 --> EM[Query → 向量化]
-  Q2 --> HB[BM25 + HNSW 混合检索<br/>RRF 融合排序]
-  EM --> HB
-  HB --> CL{跨语言?}
-  CL -- 是 --> TL[翻译 Query 后二次检索 → 合并去重]
-  CL -- 否 --> RR
-  TL --> RR{Rerank?}
-  RR -- 是 --> RK[Rerank 模型精排]
-  RR -- 否 --> FMT
-  RK --> FMT[Top-N 检索结果<br/>注入对话上下文]
-  FMT --> ANS[LLM 生成带引用的回答]
-```
-
----
-
-## 🧰 技术栈
-
-| 层 | 技术 |
-|---|---|
-| 后端 | Java 21 · Spring WebFlux · Halo Plugin API 2.24.0 |
-| 前端 Console | Vue 3 · TypeScript · Vite · Tiptap |
-| 前台 Widget | 原生 JS/CSS（通过 WebFilter 注入主题页面） |
-| 检索引擎 | Apache Lucene 10.3.2（BM25 关键词 + HNSW 向量混合检索，RRF 融合） |
-| 中文分词 | Lucene SmartChineseAnalyzer |
-| 构建 | Gradle 9.4 · pnpm 9 · Node 20+ |
-
-> **为什么内置 Lucene？** 复用 Halo 主程序 ClassLoader 中的 Lucene 10.3.2，避免引入外部向量数据库；`smartcn` 单独打包进插件（`transitive=false`，不重复拖入 `lucene-core`）。详见 [build.gradle](build.gradle)。
-
----
-
-## 🚀 快速开始
+## 快速开始
 
 ### 环境要求
 
-- Halo ≥ 2.24.0
-- 一个 OpenAI 兼容的 LLM 服务（支持 Chat + Embedding，Rerank / Query Rewrite 可选）
+- Halo 2.24.0 或更高版本
+- 一个兼容 OpenAI API 的模型服务
+- Chat 模型与 Embedding 模型为必需；Rerank、Query Rewrite 模型可选
 
-### 安装
+> Embedding 模型决定索引向量维度。更换模型或维度后，请在「索引中心」执行全量重建。
 
-**方式一：下载预构建产物**
+### 1. 安装插件
 
-从 [Releases](https://github.com/rainwu/plugin-ai-suite/releases) 下载 `plugin-ai-suite-*.jar`，在 Halo 后台「插件管理 → 安装 → 上传 jar」即可。
+从 [Releases](https://github.com/rainwu/plugin-ai-suite/releases) 下载 `plugin-ai-suite-*.jar`，然后在 Halo Console 中进入「插件 → 安装」，上传并启用。
 
-**方式二：源码构建**（需 JDK 21）
+也可以使用 JDK 21 从源码构建：
 
 ```bash
 git clone https://github.com/rainwu/plugin-ai-suite.git
 cd plugin-ai-suite
 JAVA_HOME=/path/to/jdk21 ./gradlew build
-# 产物：build/libs/plugin-ai-suite-<version>.jar
 ```
 
-然后在 Halo 后台上传产物并启用。
+构建产物位于 `build/libs/`。
 
-### 首次配置
+### 2. 配置模型
 
-启用后进入「AI 智能套件」菜单：
+进入「AI 智能套件 → 模型配置」：
 
-1. **模型配置** — 填写 Base URL / API Key / 模型名（Chat、Embedding 必填）
-2. **索引中心** — 点击「全量重建」，将已发布文章切片并向量化入库
-3. **检索增强** — 按需调整 Top-K、相似度阈值、HyDE、Rerank
-4. **对话与外观** — 系统提示词、浮窗主题色、访客开关
-5. **用量统计** — 每日 token 限额（按模型）、访客 IP 限流、白名单
+1. 填写 Chat 模型的 Base URL、API Key 和模型名称。
+2. 填写 Embedding 模型及向量维度。
+3. 分别执行连通性测试，确认配置可用。
+4. 按需配置 Rerank 与 Query Rewrite 模型。
 
-> 加粗名称即 Console 侧边栏菜单，照名进入即可。
+支持 DeepSeek、通义千问、智谱 GLM、Moonshot、SiliconFlow、OpenAI 等提供 OpenAI 兼容接口的服务。不同能力可以使用不同厂商。
 
-完成后即可在博客前台看到 AI 浮窗。
+### 3. 建立文章索引
 
-> 📸 *截图位（待补）*：`docs/screenshots/config.png` · `docs/screenshots/widget.png` · `docs/screenshots/writing.png`
+进入「索引中心」，点击「全量重建」。插件会读取已发布的公开文章，完成清洗、切片、关键词提取与向量化。
 
-### Nginx 反向代理与 SSE 流式输出
+索引完成后，可先在「对话与外观」中调试问答和检索链路，再开启访客浮窗、AI 搜索或文章脑图。
 
-智能问答、搜索 AI 回答和写作辅助使用 SSE 持续输出。如果 Halo 前面有 Nginx，需要关闭代理缓冲，否则可能出现模型已在生成，但页面长时间无内容，最后一次性显示的“假流式”现象。
+### 4. 配置生产环境的 SSE
 
-请在 **Halo 域名对应的 Nginx 虚拟主机配置文件**中，将以下配置放入代理 Halo 的 `location` 块：
+智能问答、AI 搜索和写作辅助使用 SSE 流式输出。如果 Halo 前面有 Nginx，请在代理 Halo 的 `location` 中关闭缓冲：
 
 ```nginx
-server {
-    listen 80;
-    server_name blog.example.com;
+location / {
+    proxy_pass http://127.0.0.1:8090;
 
-    location / {
-        proxy_pass http://127.0.0.1:8090;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
 
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # SSE 长连接与流式输出
-        proxy_http_version 1.1;
-        proxy_set_header Connection "";
-        proxy_buffering off;
-        proxy_cache off;
-        proxy_read_timeout 300s;
-    }
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 300s;
 }
 ```
 
-> 如果已经配置 HTTPS，不要重复新建 `server` 块；只需把示例中的 `proxy_http_version`、`Connection`、`proxy_buffering`、`proxy_cache` 和 `proxy_read_timeout` 合并到现有的 Halo `location` 中。
+`proxy_buffering off` 是流式输出的关键；`X-Real-IP` 和 `X-Forwarded-For` 用于访客限流和日志记录。如果前面还有 CDN 或 WAF，也需要确认它们不会缓冲 SSE 响应。
 
-| 配置 | 作用 |
-|---|---|
-| `proxy_buffering off` | 关闭 Nginx 响应缓冲，让每个 SSE 数据块及时到达浏览器，是保证流式效果的关键配置。 |
-| `proxy_http_version 1.1` | 使用 HTTP/1.1 连接 Halo，更适合 SSE 长连接。 |
-| `proxy_set_header Connection ""` | 清除 Nginx 默认的逐跳 `Connection` 头，避免上游连接被不必要地关闭。 |
-| `proxy_cache off` | 防止 SSE 响应被代理缓存。 |
-| `proxy_read_timeout 300s` | 允许较长的模型思考或生成间隔，避免 Nginx 过早断开连接。 |
-| `X-Forwarded-For` / `X-Real-IP` | 将访客真实 IP 传递给 Halo，供访客限流和日志记录使用。 |
+## 工作原理
 
-常见的虚拟主机配置位置：
+### 系统全景架构
 
-- Ubuntu / Debian：`/etc/nginx/sites-available/<domain>.conf`（通常链接到 `sites-enabled`）
-- CentOS / Rocky Linux：`/etc/nginx/conf.d/<domain>.conf`
-- 宝塔面板：`/www/server/panel/vhost/nginx/<domain>.conf`
-- 1Panel / OpenResty：在网站的“配置文件”或“反向代理”页面修改，实际路径以安装目录为准。
+这张图对应插件的真实运行边界：主题侧和 Console 是两个入口，业务编排位于 Halo 插件进程内，文章与自定义数据由 Halo 管理，检索索引由本地 Lucene 管理，模型能力通过 OpenAI 兼容接口调用。
 
-不确定域名实际加载了哪个文件时，可以查看 Nginx 的完整生效配置：
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, PingFang SC, sans-serif","primaryColor":"#eef2ff","primaryTextColor":"#172554","primaryBorderColor":"#818cf8","lineColor":"#64748b","clusterBkg":"#f8fafc","clusterBorder":"#cbd5e1"}}}%%
+flowchart TB
+  subgraph Clients["体验层"]
+    direction LR
+    Visitor["博客访客"]
+    Author["作者 / 运营者"]
+    Theme["Halo 主题页面<br/>Chat · Search · MindMap"]
+    Console["Halo Console<br/>管理页面 · Tiptap 编辑器"]
+    Visitor --> Theme
+    Author --> Console
+  end
 
-```bash
-sudo nginx -T | grep -n -B 5 -A 30 "server_name blog.example.com"
+  subgraph Access["接入层 · Spring WebFlux"]
+    direction LR
+    PublicAPI["公开端点<br/>PublicChat · PublicSearch<br/>SearchAnswer · PublicMindMap"]
+    ConsoleAPI["管理端点<br/>Config · Knowledge · Writing<br/>Evaluation · Agent · Intent · Usage"]
+    Filter["AdditionalWebFilter<br/>注入 Widget JS / CSS"]
+    RBAC["Halo RoleTemplate<br/>匿名权限 / 管理权限"]
+  end
+
+  subgraph Orchestration["业务编排层"]
+    direction LR
+    Chat["ChatService"]
+    Detector["IntentDetector"]
+    Intent["PipelineExecutor<br/>7 类 Processor"]
+    RAG["RAGPipeline<br/>改写 · HyDE · 跨语言 · Rerank"]
+    Content["内容生成服务<br/>Writing · Summary · MindMap"]
+    Ops["质量与运营<br/>Evaluation · ContentGapAgent"]
+  end
+
+  subgraph Foundation["基础能力层"]
+    direction LR
+    LLM["LlmClient<br/>Chat · Embedding · Rerank"]
+    Retriever["HybridRetriever<br/>BM25 + HNSW + RRF"]
+    Index["LuceneIndexService"]
+    Guard["LimitGuard<br/>VisitorRateLimiter"]
+    Observe["UsageTracker · ChatLogger<br/>PipelineTrace · TraceCache"]
+  end
+
+  subgraph HaloData["Halo 数据与生命周期"]
+    direction LR
+    Posts["Post · Tag · Category · Counter"]
+    GVK["自定义 Extension<br/>ChatLog · IntentRoute<br/>Evaluation · AgentTaskRecord"]
+    Config["ConfigMap + Secret"]
+    Reconciler["PostIndexReconciler"]
+  end
+
+  Models[("OpenAI 兼容模型服务")]
+  Disk[("本地 Lucene 索引")]
+
+  Theme --> PublicAPI
+  Filter --> Theme
+  Console --> ConsoleAPI
+  RBAC -.保护.-> PublicAPI
+  RBAC -.保护.-> ConsoleAPI
+  PublicAPI --> Chat
+  ConsoleAPI --> Chat
+  ConsoleAPI --> Content
+  ConsoleAPI --> Ops
+  Chat --> Detector
+  Detector -->|"命中"| Intent
+  Detector -->|"未命中"| RAG
+  Intent --> Posts
+  RAG --> Retriever
+  Retriever --> Index
+  Content --> LLM
+  Ops --> LLM
+  Intent --> LLM
+  RAG --> LLM
+  LLM --> Models
+  Guard -.调用前校验.-> LLM
+  Observe -.记录.-> Chat
+  Observe -.记录.-> LLM
+  Config --> LLM
+  Config --> RAG
+  Posts --> Reconciler --> Index
+  Index --> Disk
+  ConsoleAPI <--> GVK
+
+  classDef actor fill:#fff7ed,stroke:#fb923c,color:#7c2d12;
+  classDef entry fill:#eff6ff,stroke:#60a5fa,color:#1e3a8a;
+  classDef core fill:#eef2ff,stroke:#818cf8,color:#312e81;
+  classDef data fill:#ecfdf5,stroke:#34d399,color:#064e3b;
+  classDef external fill:#faf5ff,stroke:#c084fc,color:#581c87;
+  class Visitor,Author actor;
+  class Theme,Console,PublicAPI,ConsoleAPI,Filter,RBAC entry;
+  class Chat,Detector,Intent,RAG,Content,Ops,LLM,Retriever,Guard,Observe core;
+  class Posts,GVK,Config,Reconciler,Index,Disk data;
+  class Models external;
 ```
 
-修改后先检查语法，再平滑重载：
+### 一次访客问答如何流转
 
-```bash
-sudo nginx -t
-sudo nginx -s reload
+意图路由和 RAG 共用同一套公开 API、SSE 协议、引用结构、用量统计与问答日志，对前台 Widget 完全透明。
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, PingFang SC, sans-serif","actorBkg":"#eef2ff","actorBorder":"#818cf8","actorTextColor":"#312e81","signalColor":"#475569","noteBkgColor":"#fefce8","noteBorderColor":"#eab308"}}}%%
+sequenceDiagram
+  autonumber
+  actor V as 访客
+  participant E as PublicChatEndpoint
+  participant G as 限流 / 用量守卫
+  participant C as ChatService
+  participant D as IntentDetector
+  participant I as Intent Pipeline
+  participant R as RAGPipeline
+  participant L as LlmClient
+  participant O as 日志 / Trace
+
+  V->>E: POST /chat/stream（问题 + 历史）
+  E->>G: 校验功能开关、IP 限流和额度
+  G-->>E: 允许请求
+  E->>C: chatStreamWithCitations(...)
+  C->>D: 正则匹配，必要时 LLM 兜底分类
+
+  alt 命中 IntentRoute
+    D-->>C: 返回优先级最高的意图
+    C->>I: 加载公开文章并顺序执行 Processor
+    I-->>C: 排序 / 过滤后的 Post 列表
+    C->>L: 文章列表 + outputTemplate
+  else 未命中意图
+    D-->>C: empty
+    C->>R: retrieve(query, history)
+    R-->>C: Top-N 片段 + 检索上下文
+    C->>L: system prompt + 历史 + RAG 上下文
+  end
+
+  L-->>C: Flux&lt;token&gt;
+  C-->>E: token 流 + citations
+  E-->>V: SSE data: token / citations / [DONE]
+  E-->>O: 异步记录模型、用量、引用、反馈与检索阶段
 ```
 
-> **能否免配 Nginx？** 应用可以通过响应头 `X-Accel-Buffering: no` 请求 Nginx 对单次响应关闭缓冲，但它可能被 Nginx 的 `proxy_ignore_headers` 或前置 CDN / WAF 忽略。生产环境仍建议显式保留上述 Nginx 配置；如果链路前面还有 CDN，也需确认该服务没有缓冲或缓存 SSE 响应。
+### RAG 检索管线
 
----
+管线同时考虑了增强效果与失败降级。Query Rewrite、HyDE、跨语言检索和 Rerank 都可以独立关闭；单步超时不会拖死整条链路，调用侧还有 15 秒的整体兜底。
 
-## ⚙️ 配置项一览
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, PingFang SC, sans-serif","primaryColor":"#f8fafc","primaryBorderColor":"#94a3b8","lineColor":"#64748b"}}}%%
+flowchart LR
+  Q["原始问题 + 对话历史"] --> RW{"Query Rewrite<br/>2s 超时"}
+  RW -->|"开启"| RQ["改写后的 Query"]
+  RW -->|"关闭 / 失败"| RQ0["保留原 Query"]
+  RQ --> MODE{"检索模式"}
+  RQ0 --> MODE
 
-配置存储在 ConfigMap `ai-suite-configmap`，API Key 单独加密存储在 Secret `ai-suite-api-keys`。下表为主要可调项（默认值见 [AIProperties.java](src/main/java/run/halo/ai/suite/config/AIProperties.java)）。
+  MODE -->|"keyword"| BM["BM25 关键词召回"]
+  MODE -->|"vector / hybrid"| HYDE{"HyDE<br/>3s 超时"}
+  HYDE -->|"开启"| HE["假设性回答 → Embedding"]
+  HYDE -->|"关闭 / 失败"| QE["Query → Embedding"]
+  HE --> HR["HybridRetriever"]
+  QE --> HR
+  HR --> BM2["BM25 候选"]
+  HR --> VEC["HNSW 向量候选"]
+  BM2 --> RRF["RRF 融合"]
+  VEC --> RRF
 
-> 「分组」列是后端 `AIProperties` 的 Java 字段分组，不等于 Console 菜单名。两者大致对应：`models`→**模型配置**、`chunking`→**文档切片**、`retrieval`→**检索设置**、`enhancement`→**检索增强**、`chat`→**对话与外观**、`writing`→**写作辅助**、`excerpt`→**AI 摘要**、`mindmap`→**AI 脑图**、`search`→**AI 搜索**、`usageLimits`→**用量统计**。
+  RQ -."保留原查询".-> ORIG["原 Query 补充召回"]
+  RQ -."跨语言开启".-> CROSS["翻译 + 二次检索<br/>3s 超时"]
+  BM --> MERGE["合并 · 归一化 · 去重"]
+  RRF --> MERGE
+  ORIG --> MERGE
+  CROSS --> MERGE
+  MERGE --> RR{"Rerank<br/>2s 超时"}
+  RR -->|"成功"| TOP["阈值过滤 + Top-N"]
+  RR -->|"关闭 / 失败"| TOP
+  TOP --> CTX["构建 RAGContext"]
+  CTX --> OUT["LLM 回答 + 文章引用"]
 
-| 分组 | 关键项 | 说明 |
-|---|---|---|
-| **models** | `chatBaseUrl` / `chatModel` | 对话模型；兼容任意 OpenAI 协议厂商 |
-| | `embeddingModel` / `embeddingDimensions` | 向量化模型（默认维度 1024） |
-| | `rerankEnabled` / `rerankModel` | 可选 Rerank 精排 |
-| | `queryRewriteEnabled` / `queryRewriteModel` | 可选 LLM 查询改写 |
-| **chunking** | `chunkSize` / `chunkOverlap` | 切片大小 / 重叠（默认 500 / 50） |
-| | `markdownHeadingAware` / `sentenceAware` | 标题/句子边界感知切片 |
-| | `autoKeywords` / `autoKeywordsCount` | LLM 自动提取关键词增强召回 |
-| **retrieval** | `searchMode` | `hybrid`（默认）/ `bm25` / `semantic` |
-| | `topK` / `topN` | 召回数 / 最终返回数（默认 20 / 5） |
-| | `similarityThreshold` | 相似度阈值（默认 0.5） |
-| | `noMatchBehavior` | 无匹配时 `continue` / `reply` |
-| **enhancement** | `hydeEnabled` / `rerankToggle` / `crossLanguageEnabled` | HyDE / 精排 / 跨语言检索开关 |
-| **chat** | `systemPrompt` / `temperature` / `historyTurns` | 对话提示词、温度、历史轮数 |
-| | `widgetThemeColor` / `widgetTheme` / `widgetPosition` | 浮窗外观与位置 |
-| | `allowGuest` / `showPrivacyTip` | 访客开关、隐私提示 |
-| **writing** | `outlineDepth`（1–3）/ `outlineNumbering` | 大纲深度与编号方式 |
-| | `maxInputLength`（默认 6000） | 写作输入字符上限（超限即报错，不静默截断） |
-| **excerpt** | `maxLength` / `temperature`（默认 0.3） | 摘要长度与温度 |
-| **mindmap** | `maxDepth`（2–4）/ `maxInputLength` | 脑图深度与输入上限 |
-| **search** | `enabled` / `showAiAnswer` / `resultCount` | 搜索 AI 综合回答开关 |
-| **usageLimits** | `chatModelLimits` / `visitor.{dailyLimit,hourlyLimit,whitelist}` | Token 与访客 IP 限额 |
-
----
-
-## 📡 HTTP API
-
-所有端点统一以 `api.ai-suite.halo.run/v1alpha1`（访客）或 `console.api.ai-suite.halo.run/v1alpha1`（后台）为前缀。
-
-### 访客端（匿名 RoleTemplate 授权）
-
-| 路径 | 方法 | 说明 |
-|---|---|---|
-| `/apis/api.ai-suite.halo.run/v1alpha1/chat` | GET / POST | 非流式对话 |
-| `/apis/api.ai-suite.halo.run/v1alpha1/chat/stream` | GET / POST | SSE 流式对话 |
-| `/apis/api.ai-suite.halo.run/v1alpha1/chat/feedback` | GET / POST | 问答点赞/点踩反馈 |
-| `/apis/api.ai-suite.halo.run/v1alpha1/widget-config` | GET | 浮窗外观配置 |
-| `/apis/api.ai-suite.halo.run/v1alpha1/search/answer` | GET | 搜索页 AI 综合回答（SSE） |
-| `/apis/api.ai-suite.halo.run/v1alpha1/search/results` | GET | 搜索结果（兼容 `/search/halo-results`） |
-| `/apis/api.ai-suite.halo.run/v1alpha1/mindmap` | GET | 文章脑图缓存读取 |
-
-### Console 端（需管理员，模块名即后台侧边栏菜单）
-
-| 模块（菜单） | 代表路径 | 说明 |
-|---|---|---|
-| 模型配置 | `/config` · `/config/save` · `/config/test-connection` · `/config/test-{embedding,rerank,query-rewrite}` | 配置读写与连通性测试 |
-| 对话与外观（调试） | `/chat/debug/stream` | 带检索链路追踪的调试对话（SSE） |
-| 写作辅助 | `/writing/assist` · `/writing/assist/stream` | 非流式 / SSE 流式写作辅助 |
-| 索引中心 | `/knowledge/reindex` · `/knowledge/articles` · `/knowledge/articles/{name}/chunks` · `/knowledge/excerpts/*` | 索引重建、切片查看、摘要管理 |
-| AI 脑图 | `/mindmap/generate` · `/mindmap/batch-generate` · `/mindmap/jobs/{jobId}` | 脑图生成与批量任务 |
-| 用量统计 | `/usage/today` · `/usage/stats` · `/usage/calls` · `/usage/limits` | 用量统计与限额 |
-| 问答记录 | `/chat-logs` · `/chat-logs/{id}` · `/chat-logs/stats` · `/chat-logs/clear` | 问答日志查询 |
-| 效果评测 | `/evaluations/datasets` · `/evaluations/run` · `/evaluations/runs/{runId}/status` | 评测集与一键评测 |
-| 运营智能体 | `/agent/content-gap/run` · `/agent/tasks` · `/agent/tasks/{taskId}` | 内容缺口检测分析 |
-
-**SSE 协议**（流式接口）：
-
-```
-data: <token>            # 增量 token
-data: [DONE]             # 流结束
-event: error\n data: msg # 错误（其后仍跟 [DONE]）
+  classDef optional fill:#fefce8,stroke:#eab308,color:#713f12;
+  classDef retrieve fill:#eff6ff,stroke:#60a5fa,color:#1e3a8a;
+  classDef result fill:#ecfdf5,stroke:#34d399,color:#064e3b;
+  class RW,HYDE,RR optional;
+  class BM,HE,QE,HR,BM2,VEC,RRF,ORIG,CROSS,MERGE retrieve;
+  class TOP,CTX,OUT result;
 ```
 
----
+### 数据、索引与状态
 
-## 🔐 安全与限流
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, PingFang SC, sans-serif","primaryColor":"#f8fafc","primaryBorderColor":"#94a3b8","lineColor":"#64748b","clusterBkg":"#ffffff","clusterBorder":"#cbd5e1"}}}%%
+flowchart TB
+  subgraph Halo["Halo Extension Store"]
+    Posts["Post / Tag / Category / Counter"]
+    Logs["ChatLog"]
+    Intents["IntentRoute"]
+    Eval["EvaluationDataset<br/>EvaluationRunRecord"]
+    Tasks["AgentTaskRecord"]
+    CM["ConfigMap<br/>非敏感配置"]
+    Secret["Secret<br/>模型 API Key"]
+  end
 
-- **API Key 加密**：存于 Halo Secret（非 ConfigMap 明文）；从旧版 `ai-assistant` 升级时存量 Key 自动迁移。
-- **Token 限额**：按模型设每日 token 上限，采用「预扣对账」机制（reserve/settle）防止并发绕过。
-- **访客限流**：按 IP 的每日 + 每小时滑动窗口；hourly 超限时回退 daily 计数避免误封；支持白名单。
-- **功能开关前置校验**：访客端点在调用前校验开关，关闭后匿名调用直接拒绝。
-- **SSRF 防护**：LLM Base URL 校验禁止指向内网 / 本机 / 云元数据地址。
-- **错误脱敏**：LLM 错误信息抹除疑似 API Key 的敏感片段，避免泄漏到日志。
+  subgraph Sync["内容索引同步"]
+    Event["文章发布 / 更新 / 删除"]
+    Reconciler["PostIndexReconciler"]
+    Chunker["DocumentChunker<br/>清洗 · 切片 · 关键词"]
+    Embed["Embedding API"]
+    Lucene["LuceneIndexService<br/>文档字段 + HNSW 向量"]
+    Event --> Reconciler --> Chunker --> Embed --> Lucene
+  end
 
----
+  subgraph Runtime["运行时状态"]
+    Rate["VisitorRateLimiter<br/>IP 小时 / 每日窗口"]
+    Usage["UsageTracker<br/>reserve / settle"]
+    Trace["TraceCache<br/>短期调试链路"]
+  end
 
-## 🗂 项目结构
+  Posts --> Event
+  Lucene --> Files[("Halo 数据目录中的 Lucene 文件")]
+  CM --> Config["AIProperties"]
+  Secret --> Config
+  Config --> Chunker
+  Config --> Rate
+  Config --> Usage
+  Usage --> Calls["模型调用明细 / 统计"]
+  Logs --> Analytics["问答记录与反馈分析"]
+  Intents --> Detect["IntentDetector 30s 缓存"]
+  Eval --> Runner["EvaluationService"]
+  Tasks --> Agent["ContentGapAgentService"]
 
+  classDef halo fill:#f5f3ff,stroke:#a78bfa,color:#4c1d95;
+  classDef index fill:#eff6ff,stroke:#60a5fa,color:#1e3a8a;
+  classDef runtime fill:#fff7ed,stroke:#fb923c,color:#7c2d12;
+  class Posts,Logs,Intents,Eval,Tasks,CM,Secret halo;
+  class Event,Reconciler,Chunker,Embed,Lucene,Files index;
+  class Rate,Usage,Trace,Calls runtime;
 ```
+
+### 为什么不需要外部向量数据库
+
+插件直接使用与 Halo 2.24.0 对齐的 Lucene 10.3.2：BM25 负责关键词召回，HNSW 负责向量召回，再通过 RRF 融合结果。索引保存在 Halo 数据目录中，适合个人博客和中小型内容站点的一体化部署。
+
+> Lucene 版本必须与 Halo 内置版本严格一致。核心依赖使用 `compileOnly` 复用 Halo ClassLoader，SmartChineseAnalyzer 单独打包且不传递引入 `lucene-core`。
+
+## 配置导航
+
+| Console 页面 | 主要用途 |
+| --- | --- |
+| 模型配置 | Chat、Embedding、Rerank、Query Rewrite 模型与连通性测试 |
+| 切片设置 | 切片大小、重叠、标题/句子边界与自动关键词 |
+| 索引中心 | 索引重建、文章状态、切片与关键词检查 |
+| 检索策略 / 检索增强 | BM25/向量混合检索、Top-K、阈值、HyDE、Rerank、跨语言 |
+| 对话与外观 | 系统提示词、历史轮数、访客开关与浮窗样式 |
+| AI 搜索 / AI 脑图 / AI 摘要 | 各前台与内容生成功能的开关和参数 |
+| 写作辅助 | 编辑器写作模型、大纲深度与输入限制 |
+| 意图路由 | 触发规则、Pipeline、优先级与输出模板 |
+| 效果评测 | 评测数据集、运行记录和质量问题定位 |
+| 运营智能体 | 内容缺口、选题、大纲与旧文更新建议 |
+| 问答记录 / 用量统计 | 会话、反馈、调用明细、token 和限额 |
+
+配置保存在 ConfigMap `ai-suite-configmap`；API Key 单独保存在 Secret `ai-suite-api-keys`。
+
+## 安全与稳定性
+
+- **密钥隔离**：API Key 不以明文写入 ConfigMap；旧版配置可自动迁移。
+- **调用限额**：支持按模型设置每日 token 上限，并通过预扣与对账降低并发超额风险。
+- **访客限流**：支持按 IP 的每小时、每日限制和白名单。
+- **访问控制**：公开 API 使用独立匿名 RoleTemplate；Console API 需要管理员权限。
+- **SSRF 防护**：模型 Base URL 会拦截本机、内网和云元数据地址，避免插件成为内网探测入口。
+- **错误脱敏**：模型错误写入日志前会清理疑似 API Key。
+- **可观测性**：记录检索阶段、耗时、引用、命中意图、模型用量和访客反馈。
+
+## 技术栈
+
+| 层 | 技术 |
+| --- | --- |
+| 插件后端 | Java 21、Spring WebFlux、Halo Plugin API 2.24.0 |
+| Console | Vue 3、TypeScript、Vite、Tiptap |
+| 主题侧 | 原生 JavaScript / CSS，通过 AdditionalWebFilter 注入 |
+| 检索 | Apache Lucene 10.3.2、BM25、HNSW、RRF、SmartChineseAnalyzer |
+| 构建 | Gradle 9.4、Node.js 20+、pnpm 9+ |
+
+## 项目结构
+
+```text
 src/main/java/run/halo/ai/suite/
-├── AISuitePlugin.java            # 插件主类
-├── config/                       # 配置读取、API Key 迁移（AIProperties）
-├── llm/                          # 统一 LLM 客户端（OpenAI 兼容）+ 用量场景
-├── rag/                          # 混合检索（BM25 + HNSW + RRF + Rerank）
-│   ├── RAGPipeline.java          # 管线编排（HyDE / 改写 / 跨语言 / 精排）
-│   ├── HybridRetriever.java      # 混合检索器
-│   ├── LuceneIndexService.java   # 索引管理
-│   └── DocumentChunker.java      # 文章切片
-├── service/                      # 对话/写作/摘要/脑图/评测/日志服务
-├── endpoint/                     # 公开 + Console HTTP 端点
-├── widget/                       # 前台浮窗注入（AdditionalWebFilter）
-├── state/                        # 用量统计、访客限流
-├── agent/                        # 运营智能体（内容缺口分析 Agent）
-├── extension/                    # GVK 数据模型（ChatLog / 评测 / Agent 任务）
-└── listener/                     # 文章变更 → 索引同步（PostIndexReconciler）
+├── agent/          # 运营智能体任务
+├── config/         # 配置读取与 API Key 迁移
+├── endpoint/       # 公开 API 与 Console API
+├── extension/      # ChatLog、评测、意图路由、Agent 任务等 GVK
+├── intent/         # 意图 Pipeline 与内置处理器
+├── listener/       # 文章变更与索引同步
+├── llm/            # OpenAI 兼容客户端与用量场景
+├── rag/            # 切片、BM25/HNSW 检索与 RAG 编排
+├── service/        # 对话、写作、摘要、脑图、评测等服务
+├── state/          # 用量统计与限流
+└── widget/         # 前台资源注入
 
-ui/                               # Console 管理端（Vue 3）
-├── src/views/                    # 各管理页面
-└── src/extensions/ai-writing/    # 编辑器 AI 写作扩展（Tiptap）
+ui/src/
+├── extensions/ai-writing/  # Tiptap AI 写作扩展
+├── views/                  # Console 管理页面
+├── components/             # 通用 UI 组件
+└── utils/                  # API 与工具函数
 
 src/main/resources/
-├── plugin.yaml                   # 插件清单
-├── extensions/                   # 角色模板、扩展点注册、反向代理
-└── static/                       # 前台 widget JS/CSS
+├── extensions/     # RoleTemplate、扩展点与静态资源代理
+├── static/         # 前台 Widget JS / CSS
+└── plugin.yaml     # Halo 插件清单
 ```
 
----
+## 开发指南
 
-## 🛠 开发
+本项目要求 JDK 21，不使用 Docker，也不要运行 `./gradlew haloServer`。
 
 ```bash
-# 前端开发（watch 模式）
+# 完整构建：后端 + Console
+JAVA_HOME=~/jdk21/contents/Contents/Home ./gradlew build
+
+# 仅构建后端 jar
+JAVA_HOME=~/jdk21/contents/Contents/Home ./gradlew jar
+
+# 运行后端测试
+JAVA_HOME=~/jdk21/contents/Contents/Home ./gradlew test
+
+# Console 前端 watch 模式
 cd ui && pnpm dev
-
-# 后端 + 前端完整构建（必须 JDK 21）
-JAVA_HOME=/path/to/jdk21 ./gradlew build
-
-# 运行测试（当前 74 个，覆盖检索/分词/LLM/限流等核心算法）
-JAVA_HOME=/path/to/jdk21 ./gradlew test
 ```
 
-> **不使用 `./gradlew haloServer`**（依赖 Docker）。开发时直接以 jar 方式运行 Halo 并热部署插件，详见 [AGENTS.md](AGENTS.md)。
+### 本地联调
 
-### 兼容厂商示例
+仓库提供了开发脚本，会构建插件、检查 8090 端口并以 jar 方式运行 Halo：
 
-| 厂商 | Base URL | 备注 |
-|---|---|---|
-| DeepSeek | `https://api.deepseek.com/v1` | 对话性价比高 |
-| 通义千问 | `https://dashscope.aliyuncs.com/compatible-mode/v1` | Embedding 推荐 |
-| SiliconFlow | `https://api.siliconflow.cn/v1` | 提供 Rerank 模型 |
-| OpenAI | `https://api.openai.com/v1` | 原生兼容 |
-| 本地 Ollama | `http://localhost:11434/v1` | 注意 SSRF 校验会拦截 localhost，需放白名单 |
+```bash
+./dev-start.sh
+```
 
-> Base URL 已含 `/v1` 时无需补；不含则自动追加。
+仅重新构建并部署插件：
 
----
+```bash
+./dev-start.sh --deploy-only
+```
 
-## ❓ 常见问题
+本地地址为 `http://localhost:8090`，Halo 必须从 `dev/` 目录启动，因为开发配置位于 `dev/application.yaml`。
 
-**Q：升级插件后检索不工作了？**
-A：Lucene 版本必须与 Halo 内置版本严格对齐（当前 10.3.2）。跨 ClassLoader 会触发 Codec SPI 类型不一致错误；若更换 Halo 大版本，需同步更新本插件依赖。
+## 常见问题
 
-**Q：API Key 在哪存？会泄露吗？**
-A：存于 Halo Secret；LLM 错误信息会脱敏（抹除疑似 Key 片段）后再写日志。
+<details>
+<summary><strong>回答不是流式出现，而是最后一次性显示？</strong></summary>
 
-**Q：访客被限流了怎么办？**
-A：检查「用量统计 → 访客限流」的每日/每小时限额与白名单；hourly 超限会回退 daily 计数。
+通常是 Nginx、CDN 或 WAF 缓冲了 SSE 响应。先确认 Halo 代理配置包含 `proxy_buffering off`，再检查上游 CDN 的缓存和响应优化策略。
 
-**Q：AI 写作输入太长报错？**
-A：写作输入硬上限 6000 字符，超过会返回错误事件而非静默截断。请在编辑器内分段处理。
+</details>
 
-**Q：支持非 OpenAI 协议的模型吗？**
-A：不支持。仅兼容标准 OpenAI Chat/Embedding 协议，通过 baseUrl 切换厂商。
+<details>
+<summary><strong>更换 Embedding 模型后搜索结果异常？</strong></summary>
 
----
+确认新模型的向量维度与配置一致，然后执行一次全量索引重建。旧向量不能直接与不同模型或不同维度的新向量混用。
 
-## 📄 许可证
+</details>
 
-[GPL-3.0](LICENSE)
+<details>
+<summary><strong>本地 Ollama 的 URL 为什么被拒绝？</strong></summary>
+
+SSRF 防护默认禁止访问 `localhost` 和内网地址，当前没有 Base URL 白名单。如果需要接入 Ollama，请通过具备访问控制的 HTTPS 网关暴露模型服务，不要直接关闭这项校验。
+
+</details>
+
+<details>
+<summary><strong>升级 Halo 后插件无法加载 Lucene 索引？</strong></summary>
+
+插件依赖的 Lucene 版本必须与 Halo 内置版本一致。升级 Halo 大版本前，请先确认本插件发布版本声明的兼容范围。
+
+</details>
+
+## 许可证
+
+本项目基于 [GPL-3.0](LICENSE) 发布。欢迎提交 Issue 和 Pull Request。
 
 <div align="center">
 
-<sub>由 AI 智能套件为 Halo 社区打造 · 欢迎提 Issue / PR</sub>
+<sub>让博客里的内容继续工作，而不只是静静躺在归档页里。</sub>
 
 </div>
