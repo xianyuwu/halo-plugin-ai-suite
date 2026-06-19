@@ -42,7 +42,6 @@ public class PublicSearchEndpoint implements CustomEndpoint {
     public RouterFunction<ServerResponse> endpoint() {
         return RouterFunctions.route()
             .GET("/search/halo-results", this::handleSearchResults)
-            .GET("/search/results", this::handleSearchResults)
             .build();
     }
 
@@ -52,7 +51,7 @@ public class PublicSearchEndpoint implements CustomEndpoint {
     }
 
     /**
-     * GET /search/results?keyword=xxx — 返回 JSON 搜索结果
+     * GET /search/halo-results?keyword=xxx — 返回 JSON 搜索结果
      *
      * 直接走插件 Lucene 索引（与 RAG 共用），不调用 Halo 核心 SearchService。
      */

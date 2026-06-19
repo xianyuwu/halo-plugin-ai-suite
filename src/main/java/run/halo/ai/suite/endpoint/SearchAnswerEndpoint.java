@@ -41,11 +41,12 @@ public class SearchAnswerEndpoint implements CustomEndpoint {
     private final AIProperties aiProperties;
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final int MAX_KEYWORD_CHARS = 500;
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
         return RouterFunctions.route()
-            .GET("/search/answer", this::handleSearchAnswer)
+            .POST("/search/answer", this::handleSearchAnswer)
             .build();
     }
 
@@ -55,14 +56,26 @@ public class SearchAnswerEndpoint implements CustomEndpoint {
     }
 
     /**
-     * GET /search/answer?keyword=xxx — SSE 流式 AI 回答
+     * POST /search/answer {"keyword":"xxx"} — SSE 流式 AI 回答
      */
     private Mono<ServerResponse> handleSearchAnswer(ServerRequest request) {
-        String keyword = request.queryParam("keyword").orElse("").trim();
+        return request.bodyToMono(SearchAnswerRequest.class)
+            .defaultIfEmpty(new SearchAnswerRequest(""))
+            .flatMap(body -> handleKeyword(body.keyword()));
+    }
+
+    private Mono<ServerResponse> handleKeyword(String rawKeyword) {
+        String keyword = rawKeyword == null ? "" : rawKeyword.trim();
         if (keyword.isEmpty()) {
             return ServerResponse.ok()
                 .contentType(MediaType.TEXT_EVENT_STREAM)
                 .body(simpleErrorStream("请输入搜索关键词"), ServerSentEvent.class);
+        }
+        if (keyword.length() > MAX_KEYWORD_CHARS) {
+            return ServerResponse.badRequest()
+                .contentType(MediaType.TEXT_EVENT_STREAM)
+                .body(simpleErrorStream("搜索关键词超过 " + MAX_KEYWORD_CHARS + " 字符限制"),
+                    ServerSentEvent.class);
         }
 
         // 检查搜索配置：功能开关 + AI 回答开关
@@ -146,4 +159,6 @@ public class SearchAnswerEndpoint implements CustomEndpoint {
             return "[]";
         }
     }
+
+    record SearchAnswerRequest(String keyword) {}
 }

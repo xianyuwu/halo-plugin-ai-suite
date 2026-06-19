@@ -489,7 +489,15 @@ async function loadDebugResults(keyword: string, signal: AbortSignal) {
 
 async function loadDebugAnswer(keyword: string, signal: AbortSignal) {
   try {
-    const resp = await fetch(`/apis/api.ai-suite.halo.run/v1alpha1/search/answer?keyword=${encodeURIComponent(keyword)}`, { signal });
+    const resp = await fetch(`/apis/api.ai-suite.halo.run/v1alpha1/search/answer`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream",
+      },
+      body: JSON.stringify({ keyword }),
+      signal,
+    });
     if (!resp.ok || !resp.body) throw new Error("AI 回答请求失败");
     await readAnswerStream(resp.body, signal);
   } finally {

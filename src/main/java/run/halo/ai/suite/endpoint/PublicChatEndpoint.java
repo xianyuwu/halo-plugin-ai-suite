@@ -1,6 +1,5 @@
 package run.halo.ai.suite.endpoint;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,13 +61,10 @@ public class PublicChatEndpoint implements CustomEndpoint {
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
-        // 主用 POST（body 传 history，避开 Netty 4KB URL 上限）；GET 路由保留兼容旧前端 / 外部调用，
-        // 但中文 history 会很快超 Netty initial line 长度上限触发 TooLongHttpLineException。
+        // 对话统一使用 POST body 传递 message/history，避免 URL 泄露和请求行长度限制。
         // 匿名访问由 extensions/role-template-public.yaml 精准授权。
         return org.springframework.web.reactive.function.server.RouterFunctions.route()
-            .GET("/chat/stream", this::handleStreamChat)
             .POST("/chat/stream", this::handleStreamChatPost)
-            .GET("/chat", this::handleChat)
             .POST("/chat", this::handleChatPost)
             .POST("/chat/feedback", this::handleFeedback)
             .GET("/chat/feedback", this::handleFeedback)
@@ -92,16 +88,7 @@ public class PublicChatEndpoint implements CustomEndpoint {
      * 关键：直接桥接 LlmClient.chatStream() 的 Flux<String>，
      * 不再等大模型完整返回后再 split，避免"流式假象"。
      */
-    private Mono<ServerResponse> handleStreamChat(ServerRequest request) {
-        try {
-            ChatRequest chatReq = parseQueryRequest(request);
-            return doStreamChat(request, chatReq.message, chatReq.history);
-        } catch (IllegalArgumentException e) {
-            return validationErrorStream(e.getMessage());
-        }
-    }
-
-    /** 流式对话核心逻辑 — GET 和 POST 路由共用 */
+    /** 流式对话核心逻辑 */
     private Mono<ServerResponse> doStreamChat(ServerRequest request, String message, List<Map<String, String>> history) {
         // 前置校验: 后台关闭访客聊天(allowGuest=false)时, 拒绝匿名调用, 防止绕过前端隐藏直调 API 触发 LLM 成本
         return ensureGuestChatAllowed().flatMap(allowed -> allowed
@@ -339,17 +326,7 @@ public class PublicChatEndpoint implements CustomEndpoint {
         }
     }
 
-    private Mono<ServerResponse> handleChat(ServerRequest request) {
-        try {
-            ChatRequest chatReq = parseQueryRequest(request);
-            String clientIp = extractIp(request);
-            return doChat(chatReq.message, chatReq.history, clientIp);
-        } catch (IllegalArgumentException e) {
-            return validationErrorJson(e.getMessage());
-        }
-    }
-
-    /** 非流式对话核心逻辑 — GET 和 POST 路由共用. clientIp 走方法参数(访客限流用) */
+    /** 非流式对话核心逻辑. clientIp 走方法参数(访客限流用) */
     private Mono<ServerResponse> doChat(String message, List<Map<String, String>> history,
                                         String clientIp) {
         // 前置校验: 后台关闭访客聊天时拒绝, 防止绕过前端隐藏直调 API
@@ -529,37 +506,6 @@ public class PublicChatEndpoint implements CustomEndpoint {
             return componentColor;
         }
         return chatColor != null && !chatColor.isBlank() ? chatColor : "#4F46E5";
-    }
-
-    /**
-     * 从 GET query 参数解析请求
-     * message: 必填，用户消息
-     * history: 选填，JSON 数组格式 [{"role":"user","content":"xxx"}, ...]
-     */
-    private ChatRequest parseQueryRequest(ServerRequest request) {
-        String message = request.queryParam("message").orElse("");
-
-        List<Map<String, String>> history = new ArrayList<>();
-        String historyJson = request.queryParam("history").orElse("");
-        if (!historyJson.isBlank()) {
-            try {
-                JsonNode historyNode = objectMapper.readTree(historyJson);
-                if (historyNode.isArray()) {
-                    for (JsonNode item : historyNode) {
-                        if (history.size() >= MAX_HISTORY_ITEMS) {
-                            break;
-                        }
-                        Map<String, String> msg = new HashMap<>();
-                        msg.put("role", item.path("role").asText("user"));
-                        msg.put("content", item.path("content").asText(""));
-                        history.add(msg);
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("[PublicChatEndpoint] 解析 history 参数失败: {}", e.getMessage());
-            }
-        }
-        return normalizeChatRequest(message, history);
     }
 
     private ChatRequest normalizeChatRequest(String rawMessage, List<Map<String, String>> rawHistory) {

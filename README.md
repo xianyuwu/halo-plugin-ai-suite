@@ -119,7 +119,7 @@ location / {
 
 `proxy_buffering off` 是流式输出的关键；`X-Real-IP` 和 `X-Forwarded-For` 用于访客限流和日志记录。如果前面还有 CDN 或 WAF，也需要确认它们不会缓冲 SSE 响应。
 
-访客聊天浮窗通过 `POST /chat/stream` 在请求体中传递问题和对话历史，不依赖放宽 Halo Netty 的 HTTP 请求行长度。`SERVER_NETTY_MAX_INITIAL_LINE_LENGTH=64KB` 仅用于兼容仍通过 GET 查询参数传递历史的旧客户端；确认没有旧客户端后可以移除。请求头大小与对话历史无关，可按站点 Cookie 和代理头的实际规模决定是否保留 `SERVER_MAX_HTTP_REQUEST_HEADER_SIZE`。
+访客聊天浮窗通过 `POST /chat/stream` 在请求体中传递问题和对话历史，AI 搜索回答通过 `POST /search/answer` 传递关键词。两者都不依赖放宽 Halo Netty 的 HTTP 请求行长度，可以移除 `SERVER_NETTY_MAX_INITIAL_LINE_LENGTH=64KB`。请求头大小与对话历史无关，可按站点 Cookie 和代理头的实际规模决定是否保留 `SERVER_MAX_HTTP_REQUEST_HEADER_SIZE`。
 
 ## 工作原理
 

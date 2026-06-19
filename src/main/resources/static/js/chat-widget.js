@@ -1734,7 +1734,13 @@
 
     // 1) AI 流式回答（按配置决定是否请求）
     if (showAi) {
-    fetch(apiBase + "/search/answer?keyword=" + encodeURIComponent(keyword), {
+    fetch(apiBase + "/search/answer", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream"
+      },
+      body: JSON.stringify({ keyword: keyword }),
       signal: searchAbort.signal
     }).then(function (res) {
       if (!res.ok) throw new Error("HTTP " + res.status);

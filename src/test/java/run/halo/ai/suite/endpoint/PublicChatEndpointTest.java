@@ -45,4 +45,15 @@ class PublicChatEndpointTest {
             .expectBody()
             .jsonPath("$.error").isEqualTo("message 必填");
     }
+
+    @Test
+    void legacyGetChatRoutesAreRemoved() {
+        client.get().uri("/chat/stream?message=test")
+            .exchange()
+            .expectStatus().isNotFound();
+
+        client.get().uri("/chat?message=test")
+            .exchange()
+            .expectStatus().isNotFound();
+    }
 }
