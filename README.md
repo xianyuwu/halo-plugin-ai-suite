@@ -55,6 +55,30 @@
 
 后台可以配置触发规则、优先级和处理步骤。插件内置 `TOPIC_MATCH`、`TAG_MATCH`、`CATEGORY_MATCH`、`KEYWORD_MATCH`、`TIME_SORT`、`VISIT_SORT` 等处理器；未命中意图时自动回到正常 RAG 流程。
 
+## 实际界面
+
+以下截图来自 `dev.rainwu.cn` 测试环境，展示当前版本的真实运行效果。站点内容、统计数字和界面细节会随数据与版本变化。
+
+### 访客端
+
+<p align="center">
+  <a href="assets/readme/screenshots/visitor-chat.jpg"><img src="assets/readme/screenshots/visitor-chat.jpg" alt="访客端 RAG 智能问答与文章引用" width="42%"></a>
+  &nbsp;&nbsp;
+  <a href="assets/readme/screenshots/visitor-mindmap.jpg"><img src="assets/readme/screenshots/visitor-mindmap.jpg" alt="文章页 AI 思维导图" width="42%"></a>
+</p>
+
+<p align="center"><sub>左：RAG 智能问答、文章引用与反馈　·　右：文章页可交互 AI 思维导图</sub></p>
+
+### Console 管理端
+
+<a href="assets/readme/screenshots/console-dashboard.jpg"><img src="assets/readme/screenshots/console-dashboard.jpg" alt="AI 智能套件 Console 总览" width="100%"></a>
+
+<p align="center"><sub>Console 总览：索引健康度、访客问答、模型用量与功能开关</sub></p>
+
+<a href="assets/readme/screenshots/console-intent-routes.jpg"><img src="assets/readme/screenshots/console-intent-routes.jpg" alt="意图路由管理页面" width="100%"></a>
+
+<p align="center"><sub>意图路由：触发词、处理器 Pipeline、优先级与启用状态</sub></p>
+
 ## 快速开始
 
 ### 环境要求
@@ -125,236 +149,42 @@ location / {
 
 ### 系统全景架构
 
-这张图对应插件的真实运行边界：主题侧和 Console 是两个入口，业务编排位于 Halo 插件进程内，文章与自定义数据由 Halo 管理，检索索引由本地 Lucene 管理，模型能力通过 OpenAI 兼容接口调用。
+主图采用“体验入口 → 业务能力 → AI 编排核心 → 共享基础设施 → 数据与知识”的阅读路径。蓝色表示同步业务流，紫色表示模型调用，绿色表示内容与索引数据流；具体类级调用继续由下方专项图展开。
 
-```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, PingFang SC, sans-serif","primaryColor":"#eef2ff","primaryTextColor":"#172554","primaryBorderColor":"#818cf8","lineColor":"#64748b","clusterBkg":"#f8fafc","clusterBorder":"#cbd5e1"}}}%%
-flowchart TB
-  subgraph Clients["体验层"]
-    direction LR
-    Visitor["博客访客"]
-    Author["作者 / 运营者"]
-    Theme["Halo 主题页面<br/>Chat · Search · MindMap"]
-    Console["Halo Console<br/>管理页面 · Tiptap 编辑器"]
-    Visitor --> Theme
-    Author --> Console
-  end
+![AI 智能套件系统全景架构](assets/readme/system-architecture.svg)
 
-  subgraph Access["接入层 · Spring WebFlux"]
-    direction LR
-    PublicAPI["公开端点<br/>PublicChat · PublicSearch<br/>SearchAnswer · PublicMindMap"]
-    ConsoleAPI["管理端点<br/>Config · Knowledge · Writing<br/>Evaluation · Agent · Intent · Usage"]
-    Filter["AdditionalWebFilter<br/>注入 Widget JS / CSS"]
-    RBAC["Halo RoleTemplate<br/>匿名权限 / 管理权限"]
-  end
+<details>
+<summary><strong>查看插件内部组件映射</strong></summary>
 
-  subgraph Orchestration["业务编排层"]
-    direction LR
-    Chat["ChatService"]
-    Detector["IntentDetector"]
-    Intent["PipelineExecutor<br/>7 类 Processor"]
-    RAG["RAGPipeline<br/>改写 · HyDE · 跨语言 · Rerank"]
-    Content["内容生成服务<br/>Writing · Summary · MindMap"]
-    Ops["质量与运营<br/>Evaluation · ContentGapAgent"]
-  end
+| 架构区域 | 核心实现 |
+| --- | --- |
+| 前台体验 | `ChatWidgetFilter`、`PublicChatEndpoint`、`PublicSearchEndpoint`、`SearchAnswerEndpoint`、`PublicMindMapEndpoint` |
+| Console 与编辑器 | Vue 管理页面、`AiWritingExtension`、Console 系列 Endpoint |
+| AI 编排核心 | `ChatService`、`IntentDetector`、`PipelineExecutor`、`RAGPipeline`、`LlmClient` |
+| 检索与索引 | `DocumentChunker`、`HybridRetriever`、`LuceneIndexService`、`PostIndexReconciler` |
+| 内容与运营 | `WritingService`、`SummaryService`、`MindMapService`、`EvaluationService`、`ContentGapAgentService` |
+| 安全与观测 | `LimitGuard`、`VisitorRateLimiter`、`UsageTracker`、`ChatLogger`、`PipelineTrace`、`TraceCache` |
+| Halo 数据 | Post / Tag / Category / Counter、ConfigMap / Secret、自定义 Extension |
 
-  subgraph Foundation["基础能力层"]
-    direction LR
-    LLM["LlmClient<br/>Chat · Embedding · Rerank"]
-    Retriever["HybridRetriever<br/>BM25 + HNSW + RRF"]
-    Index["LuceneIndexService"]
-    Guard["LimitGuard<br/>VisitorRateLimiter"]
-    Observe["UsageTracker · ChatLogger<br/>PipelineTrace · TraceCache"]
-  end
-
-  subgraph HaloData["Halo 数据与生命周期"]
-    direction LR
-    Posts["Post · Tag · Category · Counter"]
-    GVK["自定义 Extension<br/>ChatLog · IntentRoute<br/>Evaluation · AgentTaskRecord"]
-    Config["ConfigMap + Secret"]
-    Reconciler["PostIndexReconciler"]
-  end
-
-  Models[("OpenAI 兼容模型服务")]
-  Disk[("本地 Lucene 索引")]
-
-  Theme --> PublicAPI
-  Filter --> Theme
-  Console --> ConsoleAPI
-  RBAC -.保护.-> PublicAPI
-  RBAC -.保护.-> ConsoleAPI
-  PublicAPI --> Chat
-  ConsoleAPI --> Chat
-  ConsoleAPI --> Content
-  ConsoleAPI --> Ops
-  Chat --> Detector
-  Detector -->|"命中"| Intent
-  Detector -->|"未命中"| RAG
-  Intent --> Posts
-  RAG --> Retriever
-  Retriever --> Index
-  Content --> LLM
-  Ops --> LLM
-  Intent --> LLM
-  RAG --> LLM
-  LLM --> Models
-  Guard -.调用前校验.-> LLM
-  Observe -.记录.-> Chat
-  Observe -.记录.-> LLM
-  Config --> LLM
-  Config --> RAG
-  Posts --> Reconciler --> Index
-  Index --> Disk
-  ConsoleAPI <--> GVK
-
-  classDef actor fill:#fff7ed,stroke:#fb923c,color:#7c2d12;
-  classDef entry fill:#eff6ff,stroke:#60a5fa,color:#1e3a8a;
-  classDef core fill:#eef2ff,stroke:#818cf8,color:#312e81;
-  classDef data fill:#ecfdf5,stroke:#34d399,color:#064e3b;
-  classDef external fill:#faf5ff,stroke:#c084fc,color:#581c87;
-  class Visitor,Author actor;
-  class Theme,Console,PublicAPI,ConsoleAPI,Filter,RBAC entry;
-  class Chat,Detector,Intent,RAG,Content,Ops,LLM,Retriever,Guard,Observe core;
-  class Posts,GVK,Config,Reconciler,Index,Disk data;
-  class Models external;
-```
+</details>
 
 ### 一次访客问答如何流转
 
 意图路由和 RAG 共用同一套公开 API、SSE 协议、引用结构、用量统计与问答日志，对前台 Widget 完全透明。
 
-```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, PingFang SC, sans-serif","actorBkg":"#eef2ff","actorBorder":"#818cf8","actorTextColor":"#312e81","signalColor":"#475569","noteBkgColor":"#fefce8","noteBorderColor":"#eab308"}}}%%
-sequenceDiagram
-  autonumber
-  actor V as 访客
-  participant E as PublicChatEndpoint
-  participant G as 限流 / 用量守卫
-  participant C as ChatService
-  participant D as IntentDetector
-  participant I as Intent Pipeline
-  participant R as RAGPipeline
-  participant L as LlmClient
-  participant O as 日志 / Trace
-
-  V->>E: POST /chat/stream（问题 + 历史）
-  E->>G: 校验功能开关、IP 限流和额度
-  G-->>E: 允许请求
-  E->>C: chatStreamWithCitations(...)
-  C->>D: 正则匹配，必要时 LLM 兜底分类
-
-  alt 命中 IntentRoute
-    D-->>C: 返回优先级最高的意图
-    C->>I: 加载公开文章并顺序执行 Processor
-    I-->>C: 排序 / 过滤后的 Post 列表
-    C->>L: 文章列表 + outputTemplate
-  else 未命中意图
-    D-->>C: empty
-    C->>R: retrieve(query, history)
-    R-->>C: Top-N 片段 + 检索上下文
-    C->>L: system prompt + 历史 + RAG 上下文
-  end
-
-  L-->>C: Flux&lt;token&gt;
-  C-->>E: token 流 + citations
-  E-->>V: SSE data: token / citations / [DONE]
-  E-->>O: 异步记录模型、用量、引用、反馈与检索阶段
-```
+![AI 智能套件访客问答时序](assets/readme/visitor-chat-sequence.svg)
 
 ### RAG 检索管线
 
 管线同时考虑了增强效果与失败降级。Query Rewrite、HyDE、跨语言检索和 Rerank 都可以独立关闭；单步超时不会拖死整条链路，调用侧还有 15 秒的整体兜底。
 
-```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, PingFang SC, sans-serif","primaryColor":"#f8fafc","primaryBorderColor":"#94a3b8","lineColor":"#64748b"}}}%%
-flowchart LR
-  Q["原始问题 + 对话历史"] --> RW{"Query Rewrite<br/>2s 超时"}
-  RW -->|"开启"| RQ["改写后的 Query"]
-  RW -->|"关闭 / 失败"| RQ0["保留原 Query"]
-  RQ --> MODE{"检索模式"}
-  RQ0 --> MODE
-
-  MODE -->|"keyword"| BM["BM25 关键词召回"]
-  MODE -->|"vector / hybrid"| HYDE{"HyDE<br/>3s 超时"}
-  HYDE -->|"开启"| HE["假设性回答 → Embedding"]
-  HYDE -->|"关闭 / 失败"| QE["Query → Embedding"]
-  HE --> HR["HybridRetriever"]
-  QE --> HR
-  HR --> BM2["BM25 候选"]
-  HR --> VEC["HNSW 向量候选"]
-  BM2 --> RRF["RRF 融合"]
-  VEC --> RRF
-
-  RQ -."保留原查询".-> ORIG["原 Query 补充召回"]
-  RQ -."跨语言开启".-> CROSS["翻译 + 二次检索<br/>3s 超时"]
-  BM --> MERGE["合并 · 归一化 · 去重"]
-  RRF --> MERGE
-  ORIG --> MERGE
-  CROSS --> MERGE
-  MERGE --> RR{"Rerank<br/>2s 超时"}
-  RR -->|"成功"| TOP["阈值过滤 + Top-N"]
-  RR -->|"关闭 / 失败"| TOP
-  TOP --> CTX["构建 RAGContext"]
-  CTX --> OUT["LLM 回答 + 文章引用"]
-
-  classDef optional fill:#fefce8,stroke:#eab308,color:#713f12;
-  classDef retrieve fill:#eff6ff,stroke:#60a5fa,color:#1e3a8a;
-  classDef result fill:#ecfdf5,stroke:#34d399,color:#064e3b;
-  class RW,HYDE,RR optional;
-  class BM,HE,QE,HR,BM2,VEC,RRF,ORIG,CROSS,MERGE retrieve;
-  class TOP,CTX,OUT result;
-```
+![AI 智能套件 RAG 检索管线](assets/readme/rag-pipeline.svg)
 
 ### 数据、索引与状态
 
-```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontFamily":"Inter, PingFang SC, sans-serif","primaryColor":"#f8fafc","primaryBorderColor":"#94a3b8","lineColor":"#64748b","clusterBkg":"#ffffff","clusterBorder":"#cbd5e1"}}}%%
-flowchart TB
-  subgraph Halo["Halo Extension Store"]
-    Posts["Post / Tag / Category / Counter"]
-    Logs["ChatLog"]
-    Intents["IntentRoute"]
-    Eval["EvaluationDataset<br/>EvaluationRunRecord"]
-    Tasks["AgentTaskRecord"]
-    CM["ConfigMap<br/>非敏感配置"]
-    Secret["Secret<br/>模型 API Key"]
-  end
+数据层分为三类：Halo Extension Store 保存业务数据和配置，文章变更通过 Reconciler 同步到 Lucene，本地运行状态负责限流、用量与调试链路。三者生命周期不同，避免把短期状态误当成持久化数据。
 
-  subgraph Sync["内容索引同步"]
-    Event["文章发布 / 更新 / 删除"]
-    Reconciler["PostIndexReconciler"]
-    Chunker["DocumentChunker<br/>清洗 · 切片 · 关键词"]
-    Embed["Embedding API"]
-    Lucene["LuceneIndexService<br/>文档字段 + HNSW 向量"]
-    Event --> Reconciler --> Chunker --> Embed --> Lucene
-  end
-
-  subgraph Runtime["运行时状态"]
-    Rate["VisitorRateLimiter<br/>IP 小时 / 每日窗口"]
-    Usage["UsageTracker<br/>reserve / settle"]
-    Trace["TraceCache<br/>短期调试链路"]
-  end
-
-  Posts --> Event
-  Lucene --> Files[("Halo 数据目录中的 Lucene 文件")]
-  CM --> Config["AIProperties"]
-  Secret --> Config
-  Config --> Chunker
-  Config --> Rate
-  Config --> Usage
-  Usage --> Calls["模型调用明细 / 统计"]
-  Logs --> Analytics["问答记录与反馈分析"]
-  Intents --> Detect["IntentDetector 30s 缓存"]
-  Eval --> Runner["EvaluationService"]
-  Tasks --> Agent["ContentGapAgentService"]
-
-  classDef halo fill:#f5f3ff,stroke:#a78bfa,color:#4c1d95;
-  classDef index fill:#eff6ff,stroke:#60a5fa,color:#1e3a8a;
-  classDef runtime fill:#fff7ed,stroke:#fb923c,color:#7c2d12;
-  class Posts,Logs,Intents,Eval,Tasks,CM,Secret halo;
-  class Event,Reconciler,Chunker,Embed,Lucene,Files index;
-  class Rate,Usage,Trace,Calls runtime;
-```
+![AI 智能套件数据、索引与运行状态](assets/readme/data-index-state.svg)
 
 ### 为什么不需要外部向量数据库
 
