@@ -61,23 +61,41 @@
 
 ### 访客端
 
+#### RAG 智能问答
+
+[![访客端 RAG 智能问答与文章引用](assets/readme/screenshots/visitor-chat.jpg)](assets/readme/screenshots/visitor-chat.jpg)
+
+基于博客内容回答，展示文章引用与反馈操作。
+
+#### 文章 AI 脑图
+
 <p align="center">
-  <a href="assets/readme/screenshots/visitor-chat.jpg"><img src="assets/readme/screenshots/visitor-chat.jpg" alt="访客端 RAG 智能问答与文章引用" width="42%"></a>
-  &nbsp;&nbsp;
-  <a href="assets/readme/screenshots/visitor-mindmap.jpg"><img src="assets/readme/screenshots/visitor-mindmap.jpg" alt="文章页 AI 思维导图" width="42%"></a>
+  <a href="assets/readme/screenshots/visitor-mindmap.jpg"><img src="assets/readme/screenshots/visitor-mindmap.jpg" alt="文章页 AI 思维导图" width="90%"></a>
 </p>
 
-<p align="center"><sub>左：RAG 智能问答、文章引用与反馈　·　右：文章页可交互 AI 思维导图</sub></p>
+<p align="center"><sub>聚焦显示文章结构，支持节点折叠、展开与原文跳转。</sub></p>
 
 ### Console 管理端
 
-<a href="assets/readme/screenshots/console-dashboard.jpg"><img src="assets/readme/screenshots/console-dashboard.jpg" alt="AI 智能套件 Console 总览" width="100%"></a>
+| 索引中心 | 意图路由 |
+| --- | --- |
+| [![AI 智能套件索引中心](assets/readme/screenshots/console-knowledge.jpg)](assets/readme/screenshots/console-knowledge.jpg) | [![意图路由管理页面](assets/readme/screenshots/console-intent-routes.jpg)](assets/readme/screenshots/console-intent-routes.jpg) |
+| 查看索引健康度、切片、关键词覆盖与维护建议 | 管理触发词、处理器 Pipeline、优先级与启用状态 |
 
-<p align="center"><sub>Console 总览：索引健康度、访客问答、模型用量与功能开关</sub></p>
+| 检索增强 | AI 搜索 |
+| --- | --- |
+| [![检索增强配置页面](assets/readme/screenshots/console-enhance.jpg)](assets/readme/screenshots/console-enhance.jpg) | [![AI 搜索配置与实时预览](assets/readme/screenshots/console-search.jpg)](assets/readme/screenshots/console-search.jpg) |
+| 配置 Query Rewrite、HyDE、Rerank 与跨语言检索 | 调整回答策略、界面主题，并实时预览搜索卡片 |
 
-<a href="assets/readme/screenshots/console-intent-routes.jpg"><img src="assets/readme/screenshots/console-intent-routes.jpg" alt="意图路由管理页面" width="100%"></a>
+| AI 脑图 | 写作辅助 |
+| --- | --- |
+| [![AI 脑图配置与管理页面](assets/readme/screenshots/console-mindmap.jpg)](assets/readme/screenshots/console-mindmap.jpg) | [![编辑器 AI 写作辅助配置页面](assets/readme/screenshots/console-writing.jpg)](assets/readme/screenshots/console-writing.jpg) |
+| 设置生成参数、独立主题，并管理文章脑图 | 配置编辑器 AI 动作、写作模型与大纲生成 |
 
-<p align="center"><sub>意图路由：触发词、处理器 Pipeline、优先级与启用状态</sub></p>
+| 效果评测 | 运营智能体 |
+| --- | --- |
+| [![RAG 效果评测页面](assets/readme/screenshots/console-evaluation.jpg)](assets/readme/screenshots/console-evaluation.jpg) | [![内容缺口运营智能体页面](assets/readme/screenshots/console-agent.jpg)](assets/readme/screenshots/console-agent.jpg) |
+| 管理评测集、运行范围与回答质量指标 | 分析站内内容缺口，生成选题与旧文更新建议 |
 
 ## 快速开始
 
