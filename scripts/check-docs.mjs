@@ -10,6 +10,7 @@ const read = path => readFileSync(path, "utf8");
 
 function walk(dir, suffix) {
   return readdirSync(dir).flatMap(name => {
+    if (name === "node_modules" || name === "dist" || name === "cache") return [];
     const path = join(dir, name);
     return statSync(path).isDirectory() ? walk(path, suffix) : path.endsWith(suffix) ? [path] : [];
   });

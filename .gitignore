@@ -5,6 +5,9 @@ build/
 # Frontend
 ui/node_modules/
 ui/dist/
+docs/node_modules/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
 
 # Console 构建产物（由 :ui:assemble 用 Vite 重新生成, 不应入库）
 src/main/resources/console/

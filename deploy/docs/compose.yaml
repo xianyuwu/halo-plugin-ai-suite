@@ -1,0 +1,10 @@
+services:
+  docs:
+    build:
+      context: ../..
+      dockerfile: deploy/docs/Dockerfile
+    image: ai-suite-docs:0.2.23
+    container_name: ai-suite-docs
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:18088:80"
