@@ -1,0 +1,65 @@
+<svg width="1400" height="520" viewBox="0 0 1400 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08111F"/><stop offset=".55" stop-color="#111C35"/><stop offset="1" stop-color="#17143A"/></linearGradient>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#C7D2FE" stroke-opacity=".045"/></pattern>
+    <filter id="shadow" x="-25%" y="-30%" width="150%" height="170%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#020617" flood-opacity=".38"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#60A5FA"/></marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#34D399"/></marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#FB923C"/></marker>
+  </defs>
+  <rect width="1400" height="520" rx="28" fill="url(#bg)"/>
+  <rect width="1400" height="520" rx="28" fill="url(#grid)"/>
+  <text x="52" y="58" fill="#F8FAFC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="28" font-weight="760">SSE 客户端状态机</text>
+  <text x="52" y="88" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="14">网络关闭不等同于正常结束；只有 DONE 才进入 Completed</text>
+  <path d="M200 238 C237.5 238,237.5 238,275 238" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  
+<path d="M485 238 C527.5 238,527.5 238,570 238" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  <rect x="488" y="214" width="79" height="22" rx="11" fill="#0B1220" stroke="#60A5FA" stroke-opacity=".35"/><text x="527.5" y="229" text-anchor="middle" fill="#93C5FD" font-family="Inter, PingFang SC, sans-serif" font-size="11">2xx + SSE</text>
+<path d="M485 238 C712.5 238,712.5 338,940 338" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
+  <rect x="684.5" y="264" width="56" height="22" rx="11" fill="#0B1220" stroke="#FB923C" stroke-opacity=".35"/><text x="712.5" y="279" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, sans-serif" font-size="11">失败</text>
+<path d="M780 238 C860 238,860 163,940 163" stroke="#34D399" stroke-width="2.2" fill="none" marker-end="url(#arrowGreen)"/>
+  <rect x="831" y="176.5" width="58" height="22" rx="11" fill="#0B1220" stroke="#34D399" stroke-opacity=".35"/><text x="860" y="191.5" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, sans-serif" font-size="11">[DONE]</text>
+<path d="M780 238 C860 238,860 338,940 338" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
+  <rect x="832" y="264" width="56" height="22" rx="11" fill="#0B1220" stroke="#FB923C" stroke-opacity=".35"/><text x="860" y="279" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, sans-serif" font-size="11">中断</text>
+<path d="M1150 163 C1190 163,1190 238,1230 238" stroke="#34D399" stroke-width="2.2" fill="none" marker-end="url(#arrowGreen)"/>
+  
+<path d="M1150 338 C1190 338,1190 238,1230 238" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
+  
+<g filter="url(#shadow)">
+    <rect x="55" y="200" width="145" height="76" rx="18" fill="#172033" stroke="#64748B" stroke-opacity=".68"/>
+    
+    <text x="127.5" y="236" text-anchor="middle" fill="#F1F5F9" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">开始</text>
+    <text x="127.5" y="262" text-anchor="middle" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">发起 POST</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="275" y="200" width="210" height="76" rx="18" fill="#0D2A47" stroke="#38BDF8" stroke-opacity=".68"/>
+    
+    <text x="380" y="236" text-anchor="middle" fill="#E0F2FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Connecting</text>
+    <text x="380" y="262" text-anchor="middle" fill="#7DD3FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">等待响应头</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="570" y="200" width="210" height="76" rx="18" fill="#1E2455" stroke="#818CF8" stroke-opacity=".68"/>
+    
+    <text x="675" y="236" text-anchor="middle" fill="#EEF2FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Streaming</text>
+    <text x="675" y="262" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">解析事件并增量渲染</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="940" y="125" width="210" height="76" rx="18" fill="#0B352F" stroke="#34D399" stroke-opacity=".68"/>
+    
+    <text x="1045" y="161" text-anchor="middle" fill="#ECFDF5" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Completed</text>
+    <text x="1045" y="187" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">收到 [DONE]</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="940" y="300" width="210" height="76" rx="18" fill="#3B1A27" stroke="#FB7185" stroke-opacity=".68"/>
+    
+    <text x="1045" y="336" text-anchor="middle" fill="#FFF1F2" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Failed</text>
+    <text x="1045" y="362" text-anchor="middle" fill="#FDA4AF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">HTTP / 网络 / 解析错误</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="1230" y="200" width="115" height="76" rx="18" fill="#172033" stroke="#64748B" stroke-opacity=".68"/>
+    
+    <text x="1287.5" y="236" text-anchor="middle" fill="#F1F5F9" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">结束</text>
+    <text x="1287.5" y="262" text-anchor="middle" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">恢复输入</text>
+  </g>
+  <text x="1348" y="495" text-anchor="end" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="11">AI 智能套件 · 0.2.23</text>
+</svg>

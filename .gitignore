@@ -27,8 +27,9 @@ AGENTS.md
 .claude/
 .DS_Store
 
-# 开发文档
-docs/
+# 项目文档位于 docs/，属于版本化交付内容，不应忽略
+# 仅保留原有的内部 UI 分析稿为本地文件
+docs/ui-analysis-and-optimization.md
 
 # 根目录临时测试文件
 TestSchema.java

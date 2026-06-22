@@ -1,0 +1,109 @@
+<svg width="1400" height="900" viewBox="0 0 1400 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08111F"/><stop offset=".55" stop-color="#111C35"/><stop offset="1" stop-color="#17143A"/></linearGradient>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#C7D2FE" stroke-opacity=".045"/></pattern>
+    <filter id="shadow" x="-25%" y="-30%" width="150%" height="170%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#020617" flood-opacity=".38"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#60A5FA"/></marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#34D399"/></marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#FB923C"/></marker>
+  </defs>
+  <rect width="1400" height="900" rx="28" fill="url(#bg)"/>
+  <rect width="1400" height="900" rx="28" fill="url(#grid)"/>
+  <text x="52" y="58" fill="#F8FAFC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="28" font-weight="760">故障排查决策树</text>
+  <text x="52" y="88" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="14">从插件状态开始逐层缩小范围，不要一上来同时修改所有参数</text>
+  <path d="M700 187 C700 206,700 206,700 225" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  
+<path d="M555 264 C462.5 264,462.5 381,370 381" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
+  <rect x="434.5" y="298.5" width="56" height="22" rx="11" fill="#0B1220" stroke="#FB923C" stroke-opacity=".35"/><text x="462.5" y="313.5" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, sans-serif" font-size="11">否</text>
+<path d="M700 303 C700 321.5,700 321.5,700 340" stroke="#34D399" stroke-width="2.2" fill="none" marker-end="url(#arrowGreen)"/>
+  <rect x="672" y="298.5" width="56" height="22" rx="11" fill="#0B1220" stroke="#34D399" stroke-opacity=".35"/><text x="700" y="313.5" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, sans-serif" font-size="11">是</text>
+<path d="M845 379 C937.5 379,937.5 381,1030 381" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
+  <rect x="909.5" y="356" width="56" height="22" rx="11" fill="#0B1220" stroke="#FB923C" stroke-opacity=".35"/><text x="937.5" y="371" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, sans-serif" font-size="11">否</text>
+<path d="M700 418 C700 436.5,700 436.5,700 455" stroke="#34D399" stroke-width="2.2" fill="none" marker-end="url(#arrowGreen)"/>
+  <rect x="672" y="413.5" width="56" height="22" rx="11" fill="#0B1220" stroke="#34D399" stroke-opacity=".35"/><text x="700" y="428.5" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, sans-serif" font-size="11">是</text>
+<path d="M555 494 C462.5 494,462.5 601,370 601" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
+  <rect x="434.5" y="523.5" width="56" height="22" rx="11" fill="#0B1220" stroke="#FB923C" stroke-opacity=".35"/><text x="462.5" y="538.5" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, sans-serif" font-size="11">否</text>
+<path d="M700 533 C700 546.5,700 546.5,700 560" stroke="#34D399" stroke-width="2.2" fill="none" marker-end="url(#arrowGreen)"/>
+  <rect x="672" y="523.5" width="56" height="22" rx="11" fill="#0B1220" stroke="#34D399" stroke-opacity=".35"/><text x="700" y="538.5" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, sans-serif" font-size="11">是</text>
+<path d="M845 599 C937.5 599,937.5 601,1030 601" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  <rect x="909.5" y="576" width="56" height="22" rx="11" fill="#0B1220" stroke="#60A5FA" stroke-opacity=".35"/><text x="937.5" y="591" text-anchor="middle" fill="#93C5FD" font-family="Inter, PingFang SC, sans-serif" font-size="11">否</text>
+<path d="M700 638 C700 659,700 659,700 680" stroke="#34D399" stroke-width="2.2" fill="none" marker-end="url(#arrowGreen)"/>
+  <rect x="672" y="636" width="56" height="22" rx="11" fill="#0B1220" stroke="#34D399" stroke-opacity=".35"/><text x="700" y="651" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, sans-serif" font-size="11">是</text>
+<path d="M555 719 C462.5 719,462.5 826,370 826" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
+  <rect x="434.5" y="748.5" width="56" height="22" rx="11" fill="#0B1220" stroke="#FB923C" stroke-opacity=".35"/><text x="462.5" y="763.5" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, sans-serif" font-size="11">是</text>
+<path d="M845 719 C937.5 719,937.5 826,1030 826" stroke="#34D399" stroke-width="2.2" fill="none" marker-end="url(#arrowGreen)"/>
+  <rect x="909.5" y="748.5" width="56" height="22" rx="11" fill="#0B1220" stroke="#34D399" stroke-opacity=".35"/><text x="937.5" y="763.5" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, sans-serif" font-size="11">否</text>
+<g filter="url(#shadow)">
+    <rect x="570" y="115" width="260" height="72" rx="18" fill="#3B1A27" stroke="#FB7185" stroke-opacity=".68"/>
+    
+    <text x="700" y="149" text-anchor="middle" fill="#FFF1F2" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">功能异常</text>
+    <text x="700" y="175" text-anchor="middle" fill="#FDA4AF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">先确认故障边界</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="555" y="225" width="290" height="78" rx="22" fill="#1E2455" stroke="#818CF8" stroke-opacity=".68"/>
+    
+    <text x="700" y="262" text-anchor="middle" fill="#EEF2FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">插件是否 STARTED？</text>
+    <text x="700" y="288" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">Halo Plugin 状态</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="70" y="340" width="300" height="82" rx="18" fill="#3A2416" stroke="#FB923C" stroke-opacity=".68"/>
+    
+    <text x="220" y="379" text-anchor="middle" fill="#FFF7ED" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">检查插件加载</text>
+    <text x="220" y="405" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">版本 · JAR · Scheme · Lucene</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="555" y="340" width="290" height="78" rx="22" fill="#1E2455" stroke="#818CF8" stroke-opacity=".68"/>
+    
+    <text x="700" y="377" text-anchor="middle" fill="#EEF2FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">模型测试是否通过？</text>
+    <text x="700" y="403" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">Chat 与 Embedding</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="1030" y="340" width="300" height="82" rx="18" fill="#3A2416" stroke="#FB923C" stroke-opacity=".68"/>
+    
+    <text x="1180" y="379" text-anchor="middle" fill="#FFF7ED" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">检查模型连接</text>
+    <text x="1180" y="405" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">URL · Key · 模型名 · 网络</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="555" y="455" width="290" height="78" rx="22" fill="#1E2455" stroke="#818CF8" stroke-opacity=".68"/>
+    
+    <text x="700" y="492" text-anchor="middle" fill="#EEF2FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">索引是否有文章？</text>
+    <text x="700" y="518" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">公开文章数与切片</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="70" y="560" width="300" height="82" rx="18" fill="#3A2416" stroke="#FB923C" stroke-opacity=".68"/>
+    
+    <text x="220" y="599" text-anchor="middle" fill="#FFF7ED" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">检查索引构建</text>
+    <text x="220" y="625" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">文章状态 · 维度 · 写权限</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="555" y="560" width="290" height="78" rx="22" fill="#1E2455" stroke="#818CF8" stroke-opacity=".68"/>
+    
+    <text x="700" y="597" text-anchor="middle" fill="#EEF2FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">后台调试是否正常？</text>
+    <text x="700" y="623" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">回答、引用与 Trace</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="1030" y="560" width="300" height="82" rx="18" fill="#2D1D46" stroke="#C084FC" stroke-opacity=".68"/>
+    
+    <text x="1180" y="599" text-anchor="middle" fill="#FAF5FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">检查 RAG Trace</text>
+    <text x="1180" y="625" text-anchor="middle" fill="#D8B4FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">阈值 · 候选 · Prompt</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="555" y="680" width="290" height="78" rx="22" fill="#1E2455" stroke="#818CF8" stroke-opacity=".68"/>
+    
+    <text x="700" y="717" text-anchor="middle" fill="#EEF2FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">只有访客端失败？</text>
+    <text x="700" y="743" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">后台正常，公网异常</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="70" y="785" width="300" height="82" rx="18" fill="#3A2416" stroke="#FB923C" stroke-opacity=".68"/>
+    
+    <text x="220" y="824" text-anchor="middle" fill="#FFF7ED" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">检查公开链路</text>
+    <text x="220" y="850" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">开关 · RBAC · Nginx · CDN</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="1030" y="785" width="300" height="82" rx="18" fill="#0B352F" stroke="#34D399" stroke-opacity=".68"/>
+    
+    <text x="1180" y="824" text-anchor="middle" fill="#ECFDF5" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">检查具体业务</text>
+    <text x="1180" y="850" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">限流 · 日志 · 功能配置</text>
+  </g>
+  <text x="1348" y="875" text-anchor="end" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="11">AI 智能套件 · 0.2.23</text>
+</svg>

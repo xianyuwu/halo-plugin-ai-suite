@@ -1,0 +1,61 @@
+<svg width="1400" height="430" viewBox="0 0 1400 430" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08111F"/><stop offset=".55" stop-color="#111C35"/><stop offset="1" stop-color="#17143A"/></linearGradient>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#C7D2FE" stroke-opacity=".045"/></pattern>
+    <filter id="shadow" x="-25%" y="-30%" width="150%" height="170%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#020617" flood-opacity=".38"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#60A5FA"/></marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#34D399"/></marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#FB923C"/></marker>
+  </defs>
+  <rect width="1400" height="430" rx="28" fill="url(#bg)"/>
+  <rect width="1400" height="430" rx="28" fill="url(#grid)"/>
+  <text x="52" y="58" fill="#F8FAFC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="28" font-weight="760">新增 Pipeline Processor</text>
+  <text x="52" y="88" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="14">处理器不是只加一个 Java 类，还需要同步校验、Console、测试和文档</text>
+  <path d="M245 210 C260 210,260 210,275 210" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  
+<path d="M465 210 C480 210,480 210,495 210" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  
+<path d="M685 210 C700 210,700 210,715 210" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
+  
+<path d="M905 210 C920 210,920 210,935 210" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  
+<path d="M1125 210 C1140 210,1140 210,1155 210" stroke="#34D399" stroke-width="2.2" fill="none" marker-end="url(#arrowGreen)"/>
+  
+<g filter="url(#shadow)">
+    <rect x="45" y="165" width="200" height="90" rx="18" fill="#0D2A47" stroke="#38BDF8" stroke-opacity=".68"/>
+    <rect x="63" y="179" width="62" height="22" rx="11" fill="#38BDF8" fill-opacity=".16"/><text x="74" y="195" fill="#7DD3FC" font-family="Inter, PingFang SC, sans-serif" font-size="10" font-weight="750" letter-spacing=".7">JAVA</text>
+    <text x="145" y="220" text-anchor="middle" fill="#E0F2FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">实现接口</text>
+    <text x="145" y="246" text-anchor="middle" fill="#7DD3FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">PipelineProcessor</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="275" y="165" width="190" height="90" rx="18" fill="#1E2455" stroke="#818CF8" stroke-opacity=".68"/>
+    
+    <text x="370" y="208" text-anchor="middle" fill="#EEF2FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">声明 type()</text>
+    <text x="370" y="234" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">全局唯一标识</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="495" y="165" width="190" height="90" rx="18" fill="#2D1D46" stroke="#C084FC" stroke-opacity=".68"/>
+    
+    <text x="590" y="208" text-anchor="middle" fill="#FAF5FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Spring Bean</text>
+    <text x="590" y="234" text-anchor="middle" fill="#D8B4FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">自动注入 Executor</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="715" y="165" width="190" height="90" rx="18" fill="#3A2416" stroke="#FB923C" stroke-opacity=".68"/>
+    
+    <text x="810" y="208" text-anchor="middle" fill="#FFF7ED" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">保存校验</text>
+    <text x="810" y="234" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">白名单与参数规则</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="935" y="165" width="190" height="90" rx="18" fill="#0D2A47" stroke="#38BDF8" stroke-opacity=".68"/>
+    
+    <text x="1030" y="208" text-anchor="middle" fill="#E0F2FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Console 表单</text>
+    <text x="1030" y="234" text-anchor="middle" fill="#7DD3FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">动态参数编辑</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="1155" y="165" width="190" height="90" rx="18" fill="#0B352F" stroke="#34D399" stroke-opacity=".68"/>
+    
+    <text x="1250" y="208" text-anchor="middle" fill="#ECFDF5" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">测试与文档</text>
+    <text x="1250" y="234" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">试跑 · 单测 · 参考</text>
+  </g>
+  <text x="1348" y="405" text-anchor="end" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="11">AI 智能套件 · 0.2.23</text>
+</svg>
