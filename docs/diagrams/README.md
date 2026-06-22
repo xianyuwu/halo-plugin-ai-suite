@@ -37,3 +37,11 @@ find docs/diagrams/exported -name '*.svg' -print0 \
 5. 转换成 PNG 抽查文字、箭头、分组和留白。
 
 核心品牌图仍保存在 `assets/readme/`。真实界面操作继续使用 `assets/readme/screenshots/` 中的截图。
+
+文档提交前运行统一检查：
+
+```bash
+node scripts/check-docs.mjs
+```
+
+该检查会重新生成到临时目录并对比导出文件，同时验证版本、链接、API 路由覆盖、SVG 无障碍信息和可点击放大。

@@ -10,6 +10,8 @@
 | `/chat/stream` | POST | 匿名 | 访客流式问答 |
 | `/search/answer` | POST | 匿名 | 搜索页 AI 综合回答 |
 | `/apis/console.api.ai-suite.halo.run/v1alpha1/writing/assist/stream` | POST | 管理员 | 编辑器写作辅助 |
+| `/apis/console.api.ai-suite.halo.run/v1alpha1/chat/debug/stream` | POST | 管理员 | 调试问答、Trace 与引用 |
+| `/apis/console.api.ai-suite.halo.run/v1alpha1/knowledge/reindex/progress` | GET | 管理员 | 全量索引进度 |
 
 公开聊天和搜索使用 `fetch` 发送 POST JSON，再通过 `ReadableStream` 解析响应，不使用只能发送 GET 的 `EventSource`。
 
@@ -51,7 +53,7 @@ Accept: text/event-stream
 
 ## 聊天事件顺序
 
-![访客聊天 SSE 事件顺序](../diagrams/exported/sse-event-sequence.svg)
+[![访客聊天 SSE 事件顺序](../diagrams/exported/sse-event-sequence.svg)](../diagrams/exported/sse-event-sequence.svg)
 
 ### citations
 
@@ -107,7 +109,7 @@ data:[DONE]
 
 ## 客户端解析状态机
 
-![SSE 客户端状态机](../diagrams/exported/sse-client-state.svg)
+[![SSE 客户端状态机](../diagrams/exported/sse-client-state.svg)](../diagrams/exported/sse-client-state.svg)
 
 ## curl 验证
 
@@ -129,3 +131,5 @@ POST /apis/api.ai-suite.halo.run/v1alpha1/chat/feedback?logId=...&type=like&comm
 ```
 
 为兼容旧前端，目前反馈接口同时保留 GET 和 POST；新调用方应优先使用 POST。
+
+完整路由见 [API 总览](overview.md)、[Public API](public-api.md) 和 [Console API](console-api.md)。

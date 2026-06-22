@@ -19,7 +19,7 @@
 
 ## 一次命中会发生什么
 
-![意图路由示例](../diagrams/exported/intent-example-flow.svg)
+[![意图路由示例](../diagrams/exported/intent-example-flow.svg)](../diagrams/exported/intent-example-flow.svg)
 
 ## 路由字段
 
@@ -144,7 +144,7 @@ TIME_SORT
 
 ## 优先级设计
 
-![意图优先级设计](../diagrams/exported/intent-priority.svg)
+[![意图优先级设计](../diagrams/exported/intent-priority.svg)](../diagrams/exported/intent-priority.svg)
 
 如果两个路由都能匹配同一句话，只会返回排序后的第一个。优先级设计错误可能让通用意图“截胡”具体意图。
 

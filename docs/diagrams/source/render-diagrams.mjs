@@ -1,9 +1,15 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const outputDir = resolve(here, "../exported");
+const outputDir = process.argv[2]
+  ? resolve(process.cwd(), process.argv[2])
+  : resolve(here, "../exported");
+const projectRoot = resolve(here, "../../..");
+const version = readFileSync(resolve(projectRoot, "gradle.properties"), "utf8")
+  .match(/^version=(.+)$/m)?.[1]?.trim();
+if (!version) throw new Error("Cannot read version from gradle.properties");
 mkdirSync(outputDir, { recursive: true });
 
 const tones = {
@@ -32,14 +38,16 @@ function defs() {
 }
 
 function shell(title, subtitle, width, height, body) {
-  return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg">
+  return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="diagram-title diagram-desc" preserveAspectRatio="xMidYMid meet">
+  <title id="diagram-title">${esc(title)}</title>
+  <desc id="diagram-desc">${esc(subtitle)}</desc>
   ${defs()}
   <rect width="${width}" height="${height}" rx="28" fill="url(#bg)"/>
   <rect width="${width}" height="${height}" rx="28" fill="url(#grid)"/>
   <text x="52" y="58" fill="#F8FAFC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="28" font-weight="760">${esc(title)}</text>
   <text x="52" y="88" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="14">${esc(subtitle)}</text>
   ${body}
-  <text x="${width - 52}" y="${height - 25}" text-anchor="end" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="11">AI 智能套件 · 0.2.23</text>
+  <text x="${width - 52}" y="${height - 25}" text-anchor="end" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="11">AI 智能套件 · ${esc(version)}</text>
 </svg>`;
 }
 

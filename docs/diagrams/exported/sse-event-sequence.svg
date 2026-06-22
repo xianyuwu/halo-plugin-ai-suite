@@ -1,4 +1,6 @@
-<svg width="1400" height="620" viewBox="0 0 1400 620" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="1400" height="620" viewBox="0 0 1400 620" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="diagram-title diagram-desc" preserveAspectRatio="xMidYMid meet">
+  <title id="diagram-title">访客聊天 SSE 事件顺序</title>
+  <desc id="diagram-desc">引用和 logId 是命名事件，token 与 DONE 使用默认 data 事件</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08111F"/><stop offset=".55" stop-color="#111C35"/><stop offset="1" stop-color="#17143A"/></linearGradient>
     <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#C7D2FE" stroke-opacity=".045"/></pattern>

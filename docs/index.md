@@ -4,7 +4,7 @@
 
 这里是 AI 智能套件的完整文档入口。根目录的 `README.md` 用于介绍产品和帮助第一次安装；本目录负责操作手册、生产运维、系统架构、API 和二次开发。
 
-![AI 智能套件系统架构](../assets/readme/system-architecture.svg)
+[![AI 智能套件系统架构](../assets/readme/system-architecture.svg)](../assets/readme/system-architecture.svg)
 
 ## 按你的目标开始
 
@@ -22,7 +22,7 @@
 
 ## 文档地图
 
-![文档体系地图](diagrams/exported/documentation-map.svg)
+[![文档体系地图](diagrams/exported/documentation-map.svg)](diagrams/exported/documentation-map.svg)
 
 ## 已完成文档
 
@@ -33,34 +33,61 @@
 
 ### 用户手册
 
+- [模型、切片与检索配置](user-guide/models-and-retrieval.md)
+- [访客问答与浮窗](user-guide/rag-chat.md)
+- [AI 搜索](user-guide/ai-search.md)
+- [索引中心](user-guide/knowledge-index.md)
+- [AI 脑图](user-guide/mindmap.md)
+- [AI 摘要](user-guide/excerpt.md)
+- [编辑器 AI 写作辅助](user-guide/writing-assistant.md)
 - [意图路由使用手册](user-guide/intent-routing.md)
+- [RAG 效果评测](user-guide/evaluation.md)
+- [运营智能体](user-guide/content-agent.md)
+- [用量统计与限流](user-guide/usage-and-limits.md)
+- [问答记录与反馈](user-guide/chat-logs.md)
 
 ### 生产运维
 
 - [生产部署](operations/production-deployment.md)
 - [故障排查](operations/troubleshooting.md)
+- [升级与迁移](operations/upgrade-and-migration.md)
+- [备份与恢复](operations/backup-and-restore.md)
+- [监控与安全](operations/monitoring-and-security.md)
 
 ### 系统架构
 
 - [系统架构总览](architecture/overview.md)
 - [RAG 管线](architecture/rag-pipeline.md)
 - [意图路由架构](architecture/intent-routing.md)
+- [数据存储与生命周期](architecture/data-storage.md)
 
 ### API 与参考资料
 
+- [API 总览](api/overview.md)
+- [Public API](api/public-api.md)
+- [Console API](api/console-api.md)
 - [SSE 协议](api/sse-protocol.md)
 - [配置参考](reference/configuration-reference.md)
+- [用量场景参考](reference/usage-scenarios.md)
+- [兼容矩阵](reference/compatibility-matrix.md)
+- [自定义 Extension 参考](reference/extension-resources.md)
+
+### 开发指南
+
+- [本地开发](development/local-development.md)
+- [测试指南](development/testing.md)
+- [Widget 开发](development/widget-development.md)
+- [新增意图处理器](development/adding-intent-processor.md)
+- [发布流程](development/release-process.md)
 
 ## 后续文档路线
 
-以下内容会在后续批次继续补齐：
+核心产品、运维、架构、API 和开发文档已经建立。重要架构决策记录在 `docs/adr/`：
 
-- AI 搜索、脑图、摘要、写作辅助、效果评测和运营智能体使用手册
-- 索引生命周期、数据存储、安全与限流架构
-- 完整 Public API 与 Console API 参考
-- 本地开发、测试、Widget 开发和新增 Pipeline Processor 教程
-- 升级迁移、备份恢复、监控与发布流程
-- 架构决策记录（ADR）
+- [ADR-001：使用 Halo 内置 Lucene](adr/001-use-lucene.md)
+- [ADR-002：ConfigMap 与 Secret 分离配置](adr/002-configmap-secret-storage.md)
+- [ADR-003：访客 SSE 使用 POST](adr/003-post-sse-api.md)
+- [ADR-004：可配置意图路由](adr/004-configurable-intent-routing.md)
 
 ## 文档事实来源
 

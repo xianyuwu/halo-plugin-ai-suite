@@ -6,7 +6,7 @@
 
 ## 安装完成后的目标状态
 
-![安装到首次成功](../diagrams/exported/installation-journey.svg)
+[![安装到首次成功](../diagrams/exported/installation-journey.svg)](../diagrams/exported/installation-journey.svg)
 
 ## 环境要求
 
@@ -70,7 +70,7 @@ curl -u admin:admin123 \
 
 进入“索引中心”，点击“全量重建”。插件会处理已发布的公开文章：
 
-![文章索引构建流程](../diagrams/exported/index-build-flow.svg)
+[![文章索引构建流程](../diagrams/exported/index-build-flow.svg)](../diagrams/exported/index-build-flow.svg)
 
 ![索引中心](../../assets/readme/screenshots/console-knowledge.jpg)
 
@@ -97,7 +97,7 @@ curl -u admin:admin123 \
 
 ## 配置保存在哪里
 
-![配置与密钥存储](../diagrams/exported/config-storage.svg)
+[![配置与密钥存储](../diagrams/exported/config-storage.svg)](../diagrams/exported/config-storage.svg)
 
 普通配置保存在 ConfigMap `ai-suite-configmap`，API Key 保存在 Secret `ai-suite-api-keys`。插件能够兼容读取旧名称 `ai-assistant-configmap` 和 `ai-assistant-api-keys`，用于升级迁移。
 

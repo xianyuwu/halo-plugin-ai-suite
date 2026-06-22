@@ -10,14 +10,14 @@
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Lucene](https://img.shields.io/badge/Lucene-10.3.2-0a6f3a)](https://lucene.apache.org/)
-[![Version](https://img.shields.io/badge/version-0.2.23--SNAPSHOT-orange)](src/main/resources/plugin.yaml)
+[![Version](https://img.shields.io/badge/version-0.2.23-blue)](src/main/resources/plugin.yaml)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
 [快速开始](#快速开始) · [功能全景](#功能全景) · [完整文档](docs/index.md) · [工作原理](#工作原理) · [开发指南](#开发指南)
 
 </div>
 
-![AI 智能套件：让博客内容继续工作](assets/readme/ai-suite-hero.svg)
+[![AI 智能套件：让博客内容继续工作](assets/readme/ai-suite-hero.svg)](assets/readme/ai-suite-hero.svg)
 
 ---
 
@@ -171,7 +171,7 @@ location / {
 
 主图采用“体验入口 → 业务能力 → AI 编排核心 → 共享基础设施 → 数据与知识”的阅读路径。蓝色表示同步业务流，紫色表示模型调用，绿色表示内容与索引数据流；具体类级调用继续由下方专项图展开。
 
-![AI 智能套件系统全景架构](assets/readme/system-architecture.svg)
+[![AI 智能套件系统全景架构](assets/readme/system-architecture.svg)](assets/readme/system-architecture.svg)
 
 <details>
 <summary><strong>查看插件内部组件映射</strong></summary>
@@ -192,19 +192,19 @@ location / {
 
 意图路由和 RAG 共用同一套公开 API、SSE 协议、引用结构、用量统计与问答日志，对前台 Widget 完全透明。
 
-![AI 智能套件访客问答时序](assets/readme/visitor-chat-sequence.svg)
+[![AI 智能套件访客问答时序](assets/readme/visitor-chat-sequence.svg)](assets/readme/visitor-chat-sequence.svg)
 
 ### RAG 检索管线
 
 管线同时考虑了增强效果与失败降级。Query Rewrite、HyDE、跨语言检索和 Rerank 都可以独立关闭；单步超时不会拖死整条链路，调用侧还有 15 秒的整体兜底。
 
-![AI 智能套件 RAG 检索管线](assets/readme/rag-pipeline.svg)
+[![AI 智能套件 RAG 检索管线](assets/readme/rag-pipeline.svg)](assets/readme/rag-pipeline.svg)
 
 ### 数据、索引与状态
 
 数据层分为三类：Halo Extension Store 保存业务数据和配置，文章变更通过 Reconciler 同步到 Lucene，本地运行状态负责限流、用量与调试链路。三者生命周期不同，避免把短期状态误当成持久化数据。
 
-![AI 智能套件数据、索引与运行状态](assets/readme/data-index-state.svg)
+[![AI 智能套件数据、索引与运行状态](assets/readme/data-index-state.svg)](assets/readme/data-index-state.svg)
 
 ### 为什么不需要外部向量数据库
 

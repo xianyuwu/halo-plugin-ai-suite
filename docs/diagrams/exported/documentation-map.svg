@@ -1,4 +1,6 @@
-<svg width="1400" height="650" viewBox="0 0 1400 650" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="1400" height="650" viewBox="0 0 1400 650" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="diagram-title diagram-desc" preserveAspectRatio="xMidYMid meet">
+  <title id="diagram-title">文档体系地图</title>
+  <desc id="diagram-desc">从产品入口进入不同读者路径，每个页面只解决一个主要问题</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08111F"/><stop offset=".55" stop-color="#111C35"/><stop offset="1" stop-color="#17143A"/></linearGradient>
     <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#C7D2FE" stroke-opacity=".045"/></pattern>
