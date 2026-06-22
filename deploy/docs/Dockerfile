@@ -6,6 +6,7 @@ RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 COPY docs/package.json docs/pnpm-lock.yaml ./docs/
 RUN pnpm --dir docs install --frozen-lockfile
 
+COPY gradle.properties ./gradle.properties
 COPY docs ./docs
 COPY assets ./assets
 

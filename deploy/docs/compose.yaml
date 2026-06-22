@@ -3,8 +3,10 @@ services:
     build:
       context: ../..
       dockerfile: deploy/docs/Dockerfile
-    image: ai-suite-docs:0.2.23
+    image: ai-suite-docs:latest
     container_name: ai-suite-docs
     restart: unless-stopped
     ports:
       - "127.0.0.1:18088:80"
+    volumes:
+      - /opt/ai-suite-docs-versions:/usr/share/nginx/html/versions:ro

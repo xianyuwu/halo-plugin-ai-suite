@@ -1,4 +1,19 @@
 import { defineConfig } from "vitepress";
+import { readFileSync } from "node:fs";
+
+const projectProperties = readFileSync(new URL("../../gradle.properties", import.meta.url), "utf8");
+const projectVersion = projectProperties.match(/^version=(.+)$/m)?.[1]?.trim();
+
+if (!projectVersion) {
+  throw new Error("Unable to read project version from gradle.properties");
+}
+
+const siteOrigin = "https://ai-suite-docs.rainwu.cn";
+const siteBase = process.env.DOCS_BASE || "/";
+const historicalVersion = process.env.DOCS_HISTORICAL_VERSION || "";
+const publishedVersions = JSON.parse(
+  readFileSync(new URL("../versions.json", import.meta.url), "utf8"),
+) as string[];
 
 const userGuide = [
   { text: "模型、切片与检索", link: "/user-guide/models-and-retrieval" },
@@ -19,7 +34,7 @@ export default defineConfig({
   lang: "zh-CN",
   title: "AI 智能套件",
   description: "Halo AI 智能套件完整文档",
-  base: "/",
+  base: siteBase,
   cleanUrls: true,
   lastUpdated: process.env.DOCS_LAST_UPDATED !== "false",
   ignoreDeadLinks: false,
@@ -36,6 +51,17 @@ export default defineConfig({
       { text: "用户手册", link: "/user-guide/rag-chat" },
       { text: "架构", link: "/architecture/overview" },
       { text: "API", link: "/api/overview" },
+      {
+        text: historicalVersion ? `版本 ${historicalVersion}` : `版本 ${projectVersion}`,
+        items: [
+          { text: `最新版 (${projectVersion})`, link: `${siteOrigin}/`, target: "_self" },
+          ...publishedVersions.map(version => ({
+            text: version === historicalVersion ? `${version}（当前）` : version,
+            link: `${siteOrigin}/versions/${version}/`,
+            target: "_self",
+          })),
+        ],
+      },
       { text: "GitHub", link: "https://github.com/rainwu/plugin-ai-suite" },
     ],
     sidebar: [
@@ -133,6 +159,11 @@ export default defineConfig({
     footer: {
       message: "基于 GPL-3.0 许可发布",
       copyright: "AI 智能套件",
+    },
+    versionMeta: {
+      current: projectVersion,
+      historical: historicalVersion || null,
+      latestUrl: `${siteOrigin}/`,
     },
   },
 });
