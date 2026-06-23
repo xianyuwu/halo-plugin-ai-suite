@@ -7,6 +7,8 @@
 
 [![RAG 检索管线](../../assets/readme/rag-pipeline.svg)](../../assets/readme/rag-pipeline.svg)
 
+![模型配置](../../assets/readme/screenshots/console-models.jpg)
+
 | 页面 | 决定什么 | 典型变更影响 |
 | --- | --- | --- |
 | 模型配置 | Chat、Embedding、Rerank、Query Rewrite 服务 | Embedding 变化需重建索引 |

@@ -54,6 +54,8 @@ curl -u admin:admin123 \
 
 进入“AI 智能套件 → 模型配置”，填写：
 
+![模型配置](../../assets/readme/screenshots/console-models.jpg)
+
 - Base URL，例如 `https://api.deepseek.com/v1`
 - API Key
 - 模型名称，例如 `deepseek-chat`

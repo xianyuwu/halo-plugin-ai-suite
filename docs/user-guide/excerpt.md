@@ -4,6 +4,8 @@
 
 AI 摘要通过 Halo 摘要扩展点或后台批量操作生成文章摘要。
 
+![AI 摘要管理](../../assets/readme/screenshots/console-excerpt.jpg)
+
 ## 两种使用方式
 
 ### 编辑器自动摘要

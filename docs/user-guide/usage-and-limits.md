@@ -4,6 +4,8 @@
 
 用量页面展示调用次数、token、失败率、活跃模型、调用明细和每日限额；访客限流按客户端 IP 控制小时和每日频率。
 
+![用量统计与限流](../../assets/readme/screenshots/console-usage.jpg)
+
 ## 两类限制
 
 | 类型 | 目的 | 维度 |
