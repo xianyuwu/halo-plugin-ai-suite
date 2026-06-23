@@ -4,7 +4,7 @@
 
 这里是 AI 智能套件的完整文档入口。根目录的 `README.md` 用于介绍产品和帮助第一次安装；本目录负责操作手册、生产运维、系统架构、API 和二次开发。
 
-[![AI 智能套件系统架构](../assets/readme/system-architecture.svg)](../assets/readme/system-architecture.svg)
+[![AI 智能套件系统架构](../assets/readme/system-architecture.svg)](/readme/system-architecture.svg)
 
 ## 按你的目标开始
 
@@ -22,7 +22,7 @@
 
 ## 文档地图
 
-[![文档体系地图](diagrams/exported/documentation-map.svg)](diagrams/exported/documentation-map.svg)
+[![文档体系地图](diagrams/exported/documentation-map.svg)](/diagrams/exported/documentation-map.svg)
 
 ## 已完成文档
 

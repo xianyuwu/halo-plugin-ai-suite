@@ -5,7 +5,7 @@
 
 ## 配置存储
 
-[![配置与密钥存储](../diagrams/exported/config-storage.svg)](../diagrams/exported/config-storage.svg)
+[![配置与密钥存储](../diagrams/exported/config-storage.svg)](/diagrams/exported/config-storage.svg)
 
 ConfigMap 的每个 `data.<group>` 是一段 JSON 字符串。以下密钥单独存入 Secret：`chatApiKey`、`embeddingApiKey`、`rerankApiKey`、`queryRewriteApiKey`、`writingApiKey`。
 

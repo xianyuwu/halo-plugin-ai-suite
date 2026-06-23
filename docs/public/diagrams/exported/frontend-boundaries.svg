@@ -1,0 +1,67 @@
+<svg width="1400" height="560" viewBox="0 0 1400 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="diagram-title diagram-desc" preserveAspectRatio="xMidYMid meet">
+  <title id="diagram-title">前后端与权限边界</title>
+  <desc id="diagram-desc">三种浏览器入口分别进入公开或管理 API，再汇入同一服务层</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08111F"/><stop offset=".55" stop-color="#111C35"/><stop offset="1" stop-color="#17143A"/></linearGradient>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#C7D2FE" stroke-opacity=".045"/></pattern>
+    <filter id="shadow" x="-25%" y="-30%" width="150%" height="170%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#020617" flood-opacity=".38"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#60A5FA"/></marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#34D399"/></marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#FB923C"/></marker>
+  </defs>
+  <rect width="1400" height="560" rx="28" fill="url(#bg)"/>
+  <rect width="1400" height="560" rx="28" fill="url(#grid)"/>
+  <text x="52" y="58" fill="#F8FAFC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="28" font-weight="760">前后端与权限边界</text>
+  <text x="52" y="88" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="14">三种浏览器入口分别进入公开或管理 API，再汇入同一服务层</text>
+  <rect x="45" y="125" width="550" height="330" rx="22" fill="#0F172A" fill-opacity=".52" stroke="#475569" stroke-opacity=".8"/>
+  <text x="65" y="153" fill="#A5B4FC" font-family="Inter, PingFang SC, sans-serif" font-size="11" font-weight="750" letter-spacing="1.5">BROWSER</text>
+<rect x="650" y="125" width="705" height="330" rx="22" fill="#0F172A" fill-opacity=".52" stroke="#475569" stroke-opacity=".8"/>
+  <text x="670" y="153" fill="#A5B4FC" font-family="Inter, PingFang SC, sans-serif" font-size="11" font-weight="750" letter-spacing="1.5">HALO JVM</text>
+<path d="M290 204 C495 204,495 204,700 204" stroke="#34D399" stroke-width="2.2" fill="none" marker-end="url(#arrowGreen)"/>
+  
+<path d="M290 309 C495 309,495 339,700 339" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
+  
+<path d="M540 309 C620 309,620 339,700 339" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
+  
+<path d="M940 204 C990 204,990 275,1040 275" stroke="#34D399" stroke-width="2.2" fill="none" marker-end="url(#arrowGreen)"/>
+  
+<path d="M940 339 C990 339,990 275,1040 275" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  
+<g filter="url(#shadow)">
+    <rect x="80" y="165" width="210" height="78" rx="18" fill="#0D2A47" stroke="#38BDF8" stroke-opacity=".68"/>
+    
+    <text x="185" y="202" text-anchor="middle" fill="#E0F2FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">访客 Widget</text>
+    <text x="185" y="228" text-anchor="middle" fill="#7DD3FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">原生 JS / CSS</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="80" y="270" width="210" height="78" rx="18" fill="#1E2455" stroke="#818CF8" stroke-opacity=".68"/>
+    
+    <text x="185" y="307" text-anchor="middle" fill="#EEF2FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Vue Console</text>
+    <text x="185" y="333" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">管理员页面</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="330" y="270" width="210" height="78" rx="18" fill="#2D1D46" stroke="#C084FC" stroke-opacity=".68"/>
+    
+    <text x="435" y="307" text-anchor="middle" fill="#FAF5FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Tiptap 扩展</text>
+    <text x="435" y="333" text-anchor="middle" fill="#D8B4FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">编辑器写作辅助</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="700" y="165" width="240" height="78" rx="18" fill="#0B352F" stroke="#34D399" stroke-opacity=".68"/>
+    
+    <text x="820" y="202" text-anchor="middle" fill="#ECFDF5" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">公开 Endpoint</text>
+    <text x="820" y="228" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">匿名 RoleTemplate</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="700" y="300" width="240" height="78" rx="18" fill="#3A2416" stroke="#FB923C" stroke-opacity=".68"/>
+    
+    <text x="820" y="337" text-anchor="middle" fill="#FFF7ED" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Console Endpoint</text>
+    <text x="820" y="363" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">管理员认证</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="1040" y="230" width="260" height="90" rx="18" fill="#2D1D46" stroke="#C084FC" stroke-opacity=".68"/>
+    
+    <text x="1170" y="273" text-anchor="middle" fill="#FAF5FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">业务服务层</text>
+    <text x="1170" y="299" text-anchor="middle" fill="#D8B4FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">Chat · RAG · Intent · Writing</text>
+  </g>
+  <text x="1348" y="535" text-anchor="end" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="11">AI 智能套件 · 0.2.23</text>
+</svg>

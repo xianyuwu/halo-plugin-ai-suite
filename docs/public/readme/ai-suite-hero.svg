@@ -1,0 +1,44 @@
+<svg width="1600" height="560" viewBox="0 0 1600 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="112" y1="32" x2="1480" y2="560" gradientUnits="userSpaceOnUse"><stop stop-color="#111827"/><stop offset="0.55" stop-color="#172554"/><stop offset="1" stop-color="#312E81"/></linearGradient>
+    <linearGradient id="accent" x1="942" y1="126" x2="1332" y2="442" gradientUnits="userSpaceOnUse"><stop stop-color="#38BDF8"/><stop offset="0.5" stop-color="#818CF8"/><stop offset="1" stop-color="#C084FC"/></linearGradient>
+    <linearGradient id="logoBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3B82F6"/><stop offset="1" stop-color="#7C3AED"/></linearGradient>
+    <linearGradient id="logoFace" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#EEF2FF"/></linearGradient>
+    <linearGradient id="line" x1="882" y1="280" x2="1452" y2="280" gradientUnits="userSpaceOnUse"><stop stop-color="#38BDF8" stop-opacity="0.25"/><stop offset="0.5" stop-color="#A5B4FC" stop-opacity="0.95"/><stop offset="1" stop-color="#C084FC" stop-opacity="0.35"/></linearGradient>
+    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="16" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="14" stdDeviation="20" flood-color="#020617" flood-opacity="0.35"/></filter>
+    <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse"><path d="M44 0H0V44" stroke="#C7D2FE" stroke-opacity="0.055"/></pattern>
+  </defs>
+  <rect width="1600" height="560" rx="32" fill="url(#bg)"/><rect width="1600" height="560" rx="32" fill="url(#grid)"/>
+  <circle cx="1440" cy="60" r="250" fill="#7C3AED" fill-opacity="0.12" filter="url(#glow)"/><circle cx="960" cy="540" r="210" fill="#0EA5E9" fill-opacity="0.1" filter="url(#glow)"/>
+  <g transform="translate(112 105)">
+    <g transform="scale(.546875)">
+      <rect width="128" height="128" rx="28" fill="url(#logoBg)"/>
+      <line x1="64" y1="30" x2="64" y2="42" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="64" cy="27" r="5.5" fill="#FDE047"/>
+      <rect x="36" y="42" width="56" height="46" rx="13" fill="url(#logoFace)"/>
+      <circle cx="54" cy="62" r="5.5" fill="#3B82F6"/><circle cx="74" cy="62" r="5.5" fill="#3B82F6"/>
+      <circle cx="54" cy="76" r="2.6" fill="#7C3AED"/><circle cx="64" cy="76" r="2.6" fill="#7C3AED"/><circle cx="74" cy="76" r="2.6" fill="#7C3AED"/>
+      <rect x="60" y="88" width="8" height="6" fill="#FFFFFF" opacity="0.9"/><rect x="46" y="94" width="36" height="10" rx="5" fill="#FFFFFF" opacity="0.92"/>
+      <path d="M28 30l2.2 5.8 5.8 2.2-5.8 2.2L28 46l-2.2-5.8L20 38l5.8-2.2L28 30Z" fill="#FDE047"/>
+      <path d="M102 44l1.6 4.2 4.2 1.6-4.2 1.6-1.6 4.2-1.6-4.2-4.2-1.6 4.2-1.6L102 44Z" fill="#FDE047" opacity="0.85"/>
+      <path d="M104 96l1.3 3.4 3.4 1.3-3.4 1.3-1.3 3.4-1.3-3.4-3.4-1.3 3.4-1.3L104 96Z" fill="#FFFFFF" opacity="0.7"/>
+    </g>
+    <text x="94" y="22" fill="#A5B4FC" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700" letter-spacing="4">AI SUITE FOR HALO</text>
+    <text x="0" y="145" fill="white" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="68" font-weight="760">让博客内容继续工作</text>
+    <text x="0" y="202" fill="#CBD5E1" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="27">检索 · 回答 · 创作 · 理解 · 运营</text>
+    <g transform="translate(0 250)">
+      <rect width="170" height="46" rx="23" fill="#0EA5E9" fill-opacity="0.13" stroke="#38BDF8" stroke-opacity="0.5"/><circle cx="25" cy="23" r="5" fill="#38BDF8"/><text x="42" y="30" fill="#BAE6FD" font-family="Inter, PingFang SC, sans-serif" font-size="17" font-weight="600">RAG 智能问答</text>
+      <g transform="translate(186)"><rect width="156" height="46" rx="23" fill="#6366F1" fill-opacity="0.14" stroke="#818CF8" stroke-opacity="0.5"/><circle cx="25" cy="23" r="5" fill="#818CF8"/><text x="42" y="30" fill="#C7D2FE" font-family="Inter, PingFang SC, sans-serif" font-size="17" font-weight="600">意图 Pipeline</text></g>
+      <g transform="translate(358)"><rect width="158" height="46" rx="23" fill="#A855F7" fill-opacity="0.13" stroke="#C084FC" stroke-opacity="0.5"/><circle cx="25" cy="23" r="5" fill="#C084FC"/><text x="42" y="30" fill="#E9D5FF" font-family="Inter, PingFang SC, sans-serif" font-size="17" font-weight="600">运营智能体</text></g>
+    </g>
+  </g>
+  <g filter="url(#shadow)">
+    <path d="M965 182C1030 182 1038 280 1100 280" stroke="url(#line)" stroke-width="3"/><path d="M965 378C1030 378 1038 280 1100 280" stroke="url(#line)" stroke-width="3"/><path d="M1240 280C1300 280 1312 158 1382 158" stroke="url(#line)" stroke-width="3"/><path d="M1240 280C1300 280 1312 402 1382 402" stroke="url(#line)" stroke-width="3"/>
+    <g transform="translate(850 128)"><rect width="116" height="108" rx="24" fill="#0F172A" stroke="#38BDF8" stroke-opacity="0.55"/><path d="M35 33H81V69H54L43 80V69H35V33Z" stroke="#7DD3FC" stroke-width="3" stroke-linejoin="round"/><circle cx="49" cy="51" r="3" fill="#7DD3FC"/><circle cx="59" cy="51" r="3" fill="#7DD3FC"/><circle cx="69" cy="51" r="3" fill="#7DD3FC"/><text x="58" y="98" text-anchor="middle" fill="#BAE6FD" font-family="Inter, PingFang SC, sans-serif" font-size="15" font-weight="600">访客问题</text></g>
+    <g transform="translate(850 324)"><rect width="116" height="108" rx="24" fill="#0F172A" stroke="#818CF8" stroke-opacity="0.55"/><path d="M37 31H69L81 43V76H37V31Z" stroke="#A5B4FC" stroke-width="3" stroke-linejoin="round"/><path d="M69 31V43H81M47 54H70M47 64H66" stroke="#A5B4FC" stroke-width="3" stroke-linecap="round"/><text x="58" y="98" text-anchor="middle" fill="#C7D2FE" font-family="Inter, PingFang SC, sans-serif" font-size="15" font-weight="600">博客文章</text></g>
+    <g transform="translate(1098 210)"><rect width="144" height="140" rx="34" fill="#111827" stroke="url(#accent)" stroke-width="2"/><circle cx="72" cy="61" r="31" fill="url(#accent)" fill-opacity="0.18"/><path d="M55 62L65 72L89 48" stroke="white" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><text x="72" y="114" text-anchor="middle" fill="white" font-family="Inter, PingFang SC, sans-serif" font-size="18" font-weight="700">AI 编排层</text></g>
+    <g transform="translate(1380 104)"><rect width="116" height="108" rx="24" fill="#0F172A" stroke="#C084FC" stroke-opacity="0.55"/><circle cx="58" cy="50" r="24" stroke="#D8B4FE" stroke-width="3"/><path d="M46 51L55 60L72 40" stroke="#D8B4FE" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><text x="58" y="98" text-anchor="middle" fill="#E9D5FF" font-family="Inter, PingFang SC, sans-serif" font-size="15" font-weight="600">可信回答</text></g>
+    <g transform="translate(1380 348)"><rect width="116" height="108" rx="24" fill="#0F172A" stroke="#A78BFA" stroke-opacity="0.55"/><path d="M37 67L50 53L61 61L79 39" stroke="#C4B5FD" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="50" cy="53" r="4" fill="#C4B5FD"/><circle cx="61" cy="61" r="4" fill="#C4B5FD"/><circle cx="79" cy="39" r="4" fill="#C4B5FD"/><text x="58" y="98" text-anchor="middle" fill="#DDD6FE" font-family="Inter, PingFang SC, sans-serif" font-size="15" font-weight="600">运营洞察</text></g>
+  </g>
+</svg>

@@ -29,7 +29,10 @@ for (const file of markdown) {
     const target = match[1];
     if (/^(https?:|mailto:|#)/.test(target)) continue;
     const local = target.split("#", 1)[0];
-    if (local && !statExists(resolve(dirname(file), local))) {
+    const resolved = local.startsWith("/")
+      ? resolve(join(root, "docs/public"), `.${local}`)
+      : resolve(dirname(file), local);
+    if (local && !statExists(resolved)) {
       failures.push(`${label}: missing link target ${target}`);
     }
   }

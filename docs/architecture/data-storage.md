@@ -1,6 +1,6 @@
 # 数据存储与生命周期
 
-[![数据、索引与运行状态](../../assets/readme/data-index-state.svg)](../../assets/readme/data-index-state.svg)
+[![数据、索引与运行状态](../../assets/readme/data-index-state.svg)](/readme/data-index-state.svg)
 
 ## 三类数据
 

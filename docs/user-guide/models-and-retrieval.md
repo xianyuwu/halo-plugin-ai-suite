@@ -5,7 +5,7 @@
 
 ## 四层配置关系
 
-[![RAG 检索管线](../../assets/readme/rag-pipeline.svg)](../../assets/readme/rag-pipeline.svg)
+[![RAG 检索管线](../../assets/readme/rag-pipeline.svg)](/readme/rag-pipeline.svg)
 
 ![模型配置](../../assets/readme/screenshots/console-models.jpg)
 

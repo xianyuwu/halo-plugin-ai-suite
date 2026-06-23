@@ -4,7 +4,7 @@
 
 ## 工作流程
 
-[![访客问答时序](../../assets/readme/visitor-chat-sequence.svg)](../../assets/readme/visitor-chat-sequence.svg)
+[![访客问答时序](../../assets/readme/visitor-chat-sequence.svg)](/readme/visitor-chat-sequence.svg)
 
 访客问答会先检测意图；未命中时进入 RAG。两条路径最终都返回相同的 SSE、引用、日志和反馈结构。
 

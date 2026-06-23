@@ -1,0 +1,73 @@
+<svg width="1400" height="500" viewBox="0 0 1400 500" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="diagram-title diagram-desc" preserveAspectRatio="xMidYMid meet">
+  <title id="diagram-title">文章索引构建</title>
+  <desc id="diagram-desc">文章是事实来源，Lucene 是可以重建的派生知识索引</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08111F"/><stop offset=".55" stop-color="#111C35"/><stop offset="1" stop-color="#17143A"/></linearGradient>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#C7D2FE" stroke-opacity=".045"/></pattern>
+    <filter id="shadow" x="-25%" y="-30%" width="150%" height="170%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#020617" flood-opacity=".38"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#60A5FA"/></marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#34D399"/></marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#FB923C"/></marker>
+  </defs>
+  <rect width="1400" height="500" rx="28" fill="url(#bg)"/>
+  <rect width="1400" height="500" rx="28" fill="url(#grid)"/>
+  <text x="52" y="58" fill="#F8FAFC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="28" font-weight="760">文章索引构建</text>
+  <text x="52" y="88" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="14">文章是事实来源，Lucene 是可以重建的派生知识索引</text>
+  <path d="M245 235 C267.5 235,267.5 235,290 235" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  
+<path d="M465 235 C487.5 235,487.5 235,510 235" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  
+<path d="M685 235 C717.5 235,717.5 171,750 171" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  
+<path d="M685 235 C717.5 235,717.5 301,750 301" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  
+<path d="M940 171 C975 171,975 235,1010 235" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  
+<path d="M940 301 C975 301,975 235,1010 235" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  
+<path d="M1220 235 C1240 235,1240 235,1260 235" stroke="#34D399" stroke-width="2.2" fill="none" marker-end="url(#arrowGreen)"/>
+  
+<g filter="url(#shadow)">
+    <rect x="55" y="190" width="190" height="90" rx="18" fill="#0D2A47" stroke="#38BDF8" stroke-opacity=".68"/>
+    
+    <text x="150" y="233" text-anchor="middle" fill="#E0F2FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Halo 公开文章</text>
+    <text x="150" y="259" text-anchor="middle" fill="#7DD3FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">已发布 · 公开 · 未删除</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="290" y="190" width="175" height="90" rx="18" fill="#172033" stroke="#64748B" stroke-opacity=".68"/>
+    
+    <text x="377.5" y="233" text-anchor="middle" fill="#F1F5F9" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">内容清洗</text>
+    <text x="377.5" y="259" text-anchor="middle" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">HTML / 空白 / 元数据</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="510" y="190" width="175" height="90" rx="18" fill="#1E2455" stroke="#818CF8" stroke-opacity=".68"/>
+    
+    <text x="597.5" y="233" text-anchor="middle" fill="#EEF2FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">文档切片</text>
+    <text x="597.5" y="259" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">标题与句子边界</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="750" y="130" width="190" height="82" rx="18" fill="#0D2A47" stroke="#38BDF8" stroke-opacity=".68"/>
+    
+    <text x="845" y="169" text-anchor="middle" fill="#E0F2FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">BM25 字段</text>
+    <text x="845" y="195" text-anchor="middle" fill="#7DD3FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">关键词召回</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="750" y="260" width="190" height="82" rx="18" fill="#2D1D46" stroke="#C084FC" stroke-opacity=".68"/>
+    
+    <text x="845" y="299" text-anchor="middle" fill="#FAF5FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Embedding</text>
+    <text x="845" y="325" text-anchor="middle" fill="#D8B4FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">HNSW 向量召回</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="1010" y="190" width="210" height="90" rx="18" fill="#3A2416" stroke="#FB923C" stroke-opacity=".68"/>
+    
+    <text x="1115" y="233" text-anchor="middle" fill="#FFF7ED" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Lucene 索引</text>
+    <text x="1115" y="259" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">BM25 + HNSW</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="1260" y="190" width="100" height="90" rx="18" fill="#0B352F" stroke="#34D399" stroke-opacity=".68"/>
+    
+    <text x="1310" y="233" text-anchor="middle" fill="#ECFDF5" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">可检索</text>
+    <text x="1310" y="259" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">RAG</text>
+  </g>
+  <text x="1348" y="475" text-anchor="end" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="11">AI 智能套件 · 0.2.23</text>
+</svg>

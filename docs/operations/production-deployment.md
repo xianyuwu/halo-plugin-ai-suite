@@ -5,7 +5,7 @@
 
 ## 推荐部署拓扑
 
-[![生产部署拓扑](../diagrams/exported/production-topology.svg)](../diagrams/exported/production-topology.svg)
+[![生产部署拓扑](../diagrams/exported/production-topology.svg)](/diagrams/exported/production-topology.svg)
 
 生产部署需要同时保证普通 HTTP、SSE 长连接、真实客户端 IP 和模型服务访问正常。
 
@@ -52,7 +52,7 @@ location / {
 
 ## SSE 流量路径
 
-[![SSE 穿过反向代理](../diagrams/exported/sse-proxy-flow.svg)](../diagrams/exported/sse-proxy-flow.svg)
+[![SSE 穿过反向代理](../diagrams/exported/sse-proxy-flow.svg)](/diagrams/exported/sse-proxy-flow.svg)
 
 ## 验证配置
 

@@ -53,7 +53,7 @@ Accept: text/event-stream
 
 ## 聊天事件顺序
 
-[![访客聊天 SSE 事件顺序](../diagrams/exported/sse-event-sequence.svg)](../diagrams/exported/sse-event-sequence.svg)
+[![访客聊天 SSE 事件顺序](../diagrams/exported/sse-event-sequence.svg)](/diagrams/exported/sse-event-sequence.svg)
 
 ### citations
 
@@ -109,7 +109,7 @@ data:[DONE]
 
 ## 客户端解析状态机
 
-[![SSE 客户端状态机](../diagrams/exported/sse-client-state.svg)](../diagrams/exported/sse-client-state.svg)
+[![SSE 客户端状态机](../diagrams/exported/sse-client-state.svg)](/diagrams/exported/sse-client-state.svg)
 
 ## curl 验证
 

@@ -4,7 +4,7 @@
 
 ## 总体排查路径
 
-[![故障排查决策树](../diagrams/exported/troubleshooting-tree.svg)](../diagrams/exported/troubleshooting-tree.svg)
+[![故障排查决策树](../diagrams/exported/troubleshooting-tree.svg)](/diagrams/exported/troubleshooting-tree.svg)
 
 ## 插件无法启动
 

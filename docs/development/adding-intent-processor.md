@@ -2,7 +2,7 @@
 
 > 适用读者：后端与 Console 开发者
 
-[![新增 Pipeline Processor](../diagrams/exported/processor-extension.svg)](../diagrams/exported/processor-extension.svg)
+[![新增 Pipeline Processor](../diagrams/exported/processor-extension.svg)](/diagrams/exported/processor-extension.svg)
 
 ## 1. 实现接口
 

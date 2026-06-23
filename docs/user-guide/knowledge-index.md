@@ -8,7 +8,7 @@
 
 ## 状态流转
 
-[![索引生命周期](../diagrams/exported/index-lifecycle.svg)](../diagrams/exported/index-lifecycle.svg)
+[![索引生命周期](../diagrams/exported/index-lifecycle.svg)](/diagrams/exported/index-lifecycle.svg)
 
 ## 什么时候全量重建
 

@@ -28,7 +28,7 @@
 
 ## 执行路径
 
-[![第一次 RAG 问答验证时序](../diagrams/exported/first-rag-sequence.svg)](../diagrams/exported/first-rag-sequence.svg)
+[![第一次 RAG 问答验证时序](../diagrams/exported/first-rag-sequence.svg)](/diagrams/exported/first-rag-sequence.svg)
 
 ## 检查四个结果
 

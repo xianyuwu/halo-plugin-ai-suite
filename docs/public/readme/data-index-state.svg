@@ -1,0 +1,69 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="70" y1="20" x2="1530" y2="880" gradientUnits="userSpaceOnUse"><stop stop-color="#0B1220"/><stop offset=".55" stop-color="#111C35"/><stop offset="1" stop-color="#17143A"/></linearGradient>
+    <linearGradient id="sync" x1="455" y1="250" x2="1050" y2="650" gradientUnits="userSpaceOnUse"><stop stop-color="#0C4A6E" stop-opacity=".62"/><stop offset="1" stop-color="#312E81" stop-opacity=".55"/></linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" stroke="#C7D2FE" stroke-opacity=".04"/></pattern>
+    <filter id="shadow" x="-25%" y="-35%" width="150%" height="180%"><feDropShadow dx="0" dy="12" stdDeviation="15" flood-color="#020617" flood-opacity=".35"/></filter>
+    <marker id="green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#34D399"/></marker>
+    <marker id="blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#60A5FA"/></marker>
+    <marker id="purple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#A78BFA"/></marker>
+    <marker id="orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#FB923C"/></marker>
+  </defs>
+  <rect width="1600" height="900" rx="32" fill="url(#bg)"/><rect width="1600" height="900" rx="32" fill="url(#grid)"/>
+  <text x="64" y="66" fill="#F8FAFC" font-family="Inter, PingFang SC, sans-serif" font-size="30" font-weight="760">数据、索引与运行状态</text>
+  <text x="64" y="94" fill="#94A3B8" font-family="Inter, PingFang SC, sans-serif" font-size="15">Halo Extension 持久化 · 文章变更驱动索引同步 · 运行时限流、用量与 Trace 分离管理</text>
+  <g transform="translate(1152 55)" font-family="Inter, PingFang SC, sans-serif"><circle cx="5" cy="5" r="5" fill="#34D399"/><text x="18" y="10" fill="#CBD5E1" font-size="13">持久数据</text><circle cx="111" cy="5" r="5" fill="#60A5FA"/><text x="124" y="10" fill="#CBD5E1" font-size="13">索引流</text><circle cx="217" cy="5" r="5" fill="#FB923C"/><text x="230" y="10" fill="#CBD5E1" font-size="13">运行状态</text></g>
+
+  <!-- Halo store -->
+  <rect x="64" y="132" width="430" height="620" rx="25" fill="#082C2A" fill-opacity=".68" stroke="#10B981" stroke-opacity=".58"/>
+  <text x="92" y="170" fill="#6EE7B7" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="750" letter-spacing="2">HALO DATA PLANE</text>
+  <text x="92" y="201" fill="#ECFDF5" font-family="Inter, PingFang SC, sans-serif" font-size="21" font-weight="750">Extension Store</text>
+  <g font-family="Inter, PingFang SC, sans-serif" filter="url(#shadow)">
+    <rect x="92" y="228" width="374" height="92" rx="18" fill="#0B3B36" stroke="#34D399" stroke-opacity=".5"/><text x="116" y="261" fill="#D1FAE5" font-size="17" font-weight="700">Halo 内容模型</text><text x="116" y="288" fill="#6EE7B7" font-size="13">Post · Tag · Category · Counter</text>
+    <rect x="92" y="340" width="178" height="90" rx="17" fill="#12372E" stroke="#34D399" stroke-opacity=".42"/><text x="114" y="373" fill="#D1FAE5" font-size="16" font-weight="700">ChatLog</text><text x="114" y="399" fill="#6EE7B7" font-size="13">问答 · 引用 · 反馈</text>
+    <rect x="288" y="340" width="178" height="90" rx="17" fill="#12372E" stroke="#34D399" stroke-opacity=".42"/><text x="310" y="373" fill="#D1FAE5" font-size="16" font-weight="700">IntentRoute</text><text x="310" y="399" fill="#6EE7B7" font-size="13">规则 · Pipeline</text>
+    <rect x="92" y="450" width="178" height="90" rx="17" fill="#12372E" stroke="#34D399" stroke-opacity=".42"/><text x="114" y="483" fill="#D1FAE5" font-size="16" font-weight="700">Evaluation</text><text x="114" y="509" fill="#6EE7B7" font-size="13">数据集 · 运行记录</text>
+    <rect x="288" y="450" width="178" height="90" rx="17" fill="#12372E" stroke="#34D399" stroke-opacity=".42"/><text x="310" y="483" fill="#D1FAE5" font-size="16" font-weight="700">AgentTask</text><text x="310" y="509" fill="#6EE7B7" font-size="13">状态 · 结果 · 步骤</text>
+    <rect x="92" y="570" width="178" height="104" rx="17" fill="#1E1B4B" stroke="#818CF8" stroke-opacity=".5"/><text x="114" y="605" fill="#EEF2FF" font-size="16" font-weight="700">ConfigMap</text><text x="114" y="631" fill="#A5B4FC" font-size="13">模型、检索、外观</text><text x="114" y="652" fill="#A5B4FC" font-size="13">非敏感配置</text>
+    <rect x="288" y="570" width="178" height="104" rx="17" fill="#332044" stroke="#C084FC" stroke-opacity=".5"/><text x="310" y="605" fill="#FAF5FF" font-size="16" font-weight="700">Secret</text><text x="310" y="631" fill="#D8B4FE" font-size="13">Chat / Embedding</text><text x="310" y="652" fill="#D8B4FE" font-size="13">Rerank API Key</text>
+  </g>
+  <rect x="92" y="697" width="374" height="34" rx="17" fill="#064E3B"/><text x="279" y="719" text-anchor="middle" fill="#A7F3D0" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700">ReactiveExtensionClient · SchemeManager</text>
+
+  <!-- Index synchronization -->
+  <rect x="530" y="132" width="570" height="620" rx="25" fill="url(#sync)" stroke="#60A5FA" stroke-opacity=".55"/>
+  <text x="558" y="170" fill="#7DD3FC" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="750" letter-spacing="2">CONTENT INDEX LIFECYCLE</text>
+  <text x="558" y="201" fill="#F0F9FF" font-family="Inter, PingFang SC, sans-serif" font-size="21" font-weight="750">文章变更 → 本地知识索引</text>
+  <g font-family="Inter, PingFang SC, sans-serif" filter="url(#shadow)">
+    <rect x="564" y="236" width="500" height="76" rx="18" fill="#102A43" stroke="#38BDF8" stroke-opacity=".5"/><circle cx="592" cy="274" r="13" fill="#38BDF8" fill-opacity=".18"/><path d="M586 274h12M592 268v12" stroke="#7DD3FC" stroke-width="2"/><text x="619" y="269" fill="#E0F2FE" font-size="17" font-weight="700">文章发布 / 更新 / 删除</text><text x="619" y="292" fill="#7DD3FC" font-size="13">Halo Reconciler 事件触发</text>
+    <rect x="564" y="340" width="500" height="76" rx="18" fill="#17234D" stroke="#818CF8" stroke-opacity=".52"/><text x="590" y="370" fill="#EEF2FF" font-size="17" font-weight="700">PostIndexReconciler</text><text x="590" y="394" fill="#A5B4FC" font-size="13">判断公开状态 · 协调新增、更新和删除</text>
+    <rect x="564" y="444" width="500" height="88" rx="18" fill="#251B4B" stroke="#A78BFA" stroke-opacity=".52"/><text x="590" y="475" fill="#F5F3FF" font-size="17" font-weight="700">DocumentChunker</text><text x="590" y="500" fill="#C4B5FD" font-size="13">Markdown 清洗 · 标题/句子感知切片 · 重叠</text><text x="590" y="520" fill="#C4B5FD" font-size="13">可选：LLM 自动关键词提取</text>
+    <rect x="564" y="560" width="238" height="94" rx="18" fill="#332044" stroke="#C084FC" stroke-opacity=".52"/><text x="588" y="593" fill="#FAF5FF" font-size="16" font-weight="700">Embedding API</text><text x="588" y="619" fill="#D8B4FE" font-size="13">批量生成文章向量</text>
+    <rect x="826" y="560" width="238" height="94" rx="18" fill="#0B3B36" stroke="#34D399" stroke-opacity=".55"/><text x="850" y="593" fill="#ECFDF5" font-size="16" font-weight="700">LuceneIndexService</text><text x="850" y="619" fill="#6EE7B7" font-size="13">文档字段 · BM25 · HNSW</text>
+  </g>
+  <path d="M814 312V338M814 416V442M814 532V558" stroke="#60A5FA" stroke-width="2.2" marker-end="url(#blue)"/><path d="M802 607H824" stroke="#A78BFA" stroke-width="2.2" marker-end="url(#purple)"/>
+  <rect x="564" y="684" width="500" height="42" rx="14" fill="#064E3B"/><text x="814" y="711" text-anchor="middle" fill="#A7F3D0" font-family="Inter, PingFang SC, sans-serif" font-size="14" font-weight="700">Halo 数据目录 · Lucene 索引文件</text>
+  <path d="M945 654V682" stroke="#34D399" stroke-width="2.2" marker-end="url(#green)"/>
+  <path d="M494 274H562" stroke="#34D399" stroke-width="2.2" marker-end="url(#green)"/>
+  <path d="M270 674V780H683V656" stroke="#A78BFA" stroke-width="1.8" stroke-dasharray="7 6" marker-end="url(#purple)"/>
+
+  <!-- Runtime state -->
+  <rect x="1136" y="132" width="400" height="620" rx="25" fill="#2B1E18" fill-opacity=".7" stroke="#FB923C" stroke-opacity=".55"/>
+  <text x="1164" y="170" fill="#FDBA74" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="750" letter-spacing="2">RUNTIME STATE &amp; OBSERVABILITY</text>
+  <text x="1164" y="201" fill="#FFF7ED" font-family="Inter, PingFang SC, sans-serif" font-size="21" font-weight="750">调用治理与运行观测</text>
+  <g font-family="Inter, PingFang SC, sans-serif" filter="url(#shadow)">
+    <rect x="1164" y="236" width="344" height="96" rx="18" fill="#3B2518" stroke="#FB923C" stroke-opacity=".48"/><text x="1188" y="269" fill="#FFF7ED" font-size="17" font-weight="700">VisitorRateLimiter</text><text x="1188" y="295" fill="#FDBA74" font-size="13">IP 每小时 / 每日窗口 · 白名单</text><text x="1188" y="315" fill="#FED7AA" font-size="12">请求入口快速拒绝</text>
+    <rect x="1164" y="352" width="344" height="96" rx="18" fill="#3B2518" stroke="#FB923C" stroke-opacity=".48"/><text x="1188" y="385" fill="#FFF7ED" font-size="17" font-weight="700">UsageTracker + LimitGuard</text><text x="1188" y="411" fill="#FDBA74" font-size="13">token reserve / settle · 每日模型额度</text><text x="1188" y="431" fill="#FED7AA" font-size="12">调用明细、失败率与用量统计</text>
+    <rect x="1164" y="468" width="344" height="96" rx="18" fill="#17234D" stroke="#818CF8" stroke-opacity=".5"/><text x="1188" y="501" fill="#EEF2FF" font-size="17" font-weight="700">PipelineTrace + TraceCache</text><text x="1188" y="527" fill="#A5B4FC" font-size="13">检索阶段 · 耗时 · 降级 · 候选结果</text><text x="1188" y="547" fill="#C7D2FE" font-size="12">短期调试状态</text>
+    <rect x="1164" y="584" width="344" height="96" rx="18" fill="#12372E" stroke="#34D399" stroke-opacity=".48"/><text x="1188" y="617" fill="#ECFDF5" font-size="17" font-weight="700">ChatLogger</text><text x="1188" y="643" fill="#6EE7B7" font-size="13">问题 · 回答 · 引用 · 模型 · 反馈</text><text x="1188" y="663" fill="#A7F3D0" font-size="12">持久化为 ChatLog Extension</text>
+  </g>
+  <path d="M1164 632H494" stroke="#34D399" stroke-width="1.8" stroke-dasharray="7 6" marker-end="url(#green)"/>
+
+  <!-- Consumers -->
+  <text x="64" y="807" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700" letter-spacing="2">READ MODELS &amp; CONSUMERS</text>
+  <g font-family="Inter, PingFang SC, sans-serif">
+    <rect x="64" y="824" width="350" height="46" rx="15" fill="#0F172A" stroke="#34D399" stroke-opacity=".42"/><text x="239" y="853" text-anchor="middle" fill="#A7F3D0" font-size="14" font-weight="650">问答记录 · 反馈分析</text>
+    <rect x="434" y="824" width="350" height="46" rx="15" fill="#0F172A" stroke="#818CF8" stroke-opacity=".42"/><text x="609" y="853" text-anchor="middle" fill="#C7D2FE" font-size="14" font-weight="650">IntentDetector · 30s 路由缓存</text>
+    <rect x="804" y="824" width="350" height="46" rx="15" fill="#0F172A" stroke="#C084FC" stroke-opacity=".42"/><text x="979" y="853" text-anchor="middle" fill="#E9D5FF" font-size="14" font-weight="650">EvaluationService · 质量评测</text>
+    <rect x="1174" y="824" width="362" height="46" rx="15" fill="#0F172A" stroke="#FB923C" stroke-opacity=".42"/><text x="1355" y="853" text-anchor="middle" fill="#FED7AA" font-size="14" font-weight="650">ContentGapAgent · 运营洞察</text>
+  </g>
+</svg>

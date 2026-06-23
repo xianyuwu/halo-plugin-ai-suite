@@ -1,0 +1,75 @@
+<svg width="1400" height="600" viewBox="0 0 1400 600" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="diagram-title diagram-desc" preserveAspectRatio="xMidYMid meet">
+  <title id="diagram-title">生产部署拓扑</title>
+  <desc id="diagram-desc">SSE、真实客户端 IP、模型网络与数据持久化必须同时成立</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08111F"/><stop offset=".55" stop-color="#111C35"/><stop offset="1" stop-color="#17143A"/></linearGradient>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#C7D2FE" stroke-opacity=".045"/></pattern>
+    <filter id="shadow" x="-25%" y="-30%" width="150%" height="170%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#020617" flood-opacity=".38"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#60A5FA"/></marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#34D399"/></marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#FB923C"/></marker>
+  </defs>
+  <rect width="1400" height="600" rx="28" fill="url(#bg)"/>
+  <rect width="1400" height="600" rx="28" fill="url(#grid)"/>
+  <text x="52" y="58" fill="#F8FAFC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="28" font-weight="760">生产部署拓扑</text>
+  <text x="52" y="88" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="14">SSE、真实客户端 IP、模型网络与数据持久化必须同时成立</text>
+  <rect x="45" y="125" width="880" height="350" rx="22" fill="#0F172A" fill-opacity=".52" stroke="#475569" stroke-opacity=".8"/>
+  <text x="65" y="153" fill="#A5B4FC" font-family="Inter, PingFang SC, sans-serif" font-size="11" font-weight="750" letter-spacing="1.5">REQUEST PATH</text>
+<rect x="980" y="125" width="375" height="350" rx="22" fill="#0F172A" fill-opacity=".52" stroke="#475569" stroke-opacity=".8"/>
+  <text x="1000" y="153" fill="#A5B4FC" font-family="Inter, PingFang SC, sans-serif" font-size="11" font-weight="750" letter-spacing="1.5">PLUGIN DEPENDENCIES</text>
+<path d="M250 289 C272.5 289,272.5 289,295 289" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  
+<path d="M465 289 C487.5 289,487.5 289,510 289" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
+  
+<path d="M680 289 C702.5 289,702.5 289,725 289" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
+  
+<path d="M895 289 C962.5 289,962.5 206,1030 206" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  
+<path d="M895 289 C962.5 289,962.5 311,1030 311" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  
+<path d="M895 289 C962.5 289,962.5 416,1030 416" stroke="#34D399" stroke-width="2.2" fill="none" marker-end="url(#arrowGreen)"/>
+  
+<g filter="url(#shadow)">
+    <rect x="80" y="245" width="170" height="88" rx="18" fill="#0D2A47" stroke="#38BDF8" stroke-opacity=".68"/>
+    
+    <text x="165" y="287" text-anchor="middle" fill="#E0F2FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">访客浏览器</text>
+    <text x="165" y="313" text-anchor="middle" fill="#7DD3FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">fetch + ReadableStream</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="295" y="245" width="170" height="88" rx="18" fill="#172033" stroke="#64748B" stroke-opacity=".68"/>
+    
+    <text x="380" y="287" text-anchor="middle" fill="#F1F5F9" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">CDN / WAF</text>
+    <text x="380" y="313" text-anchor="middle" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">可选 · 禁止缓冲</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="510" y="245" width="170" height="88" rx="18" fill="#3A2416" stroke="#FB923C" stroke-opacity=".68"/>
+    
+    <text x="595" y="287" text-anchor="middle" fill="#FFF7ED" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Nginx</text>
+    <text x="595" y="313" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">proxy_buffering off</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="725" y="245" width="170" height="88" rx="18" fill="#1E2455" stroke="#818CF8" stroke-opacity=".68"/>
+    
+    <text x="810" y="287" text-anchor="middle" fill="#EEF2FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Halo :8090</text>
+    <text x="810" y="313" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">插件运行时</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="1030" y="165" width="270" height="82" rx="18" fill="#2D1D46" stroke="#C084FC" stroke-opacity=".68"/>
+    
+    <text x="1165" y="204" text-anchor="middle" fill="#FAF5FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">模型服务</text>
+    <text x="1165" y="230" text-anchor="middle" fill="#D8B4FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">OpenAI 兼容 API</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="1030" y="270" width="270" height="82" rx="18" fill="#172033" stroke="#64748B" stroke-opacity=".68"/>
+    
+    <text x="1165" y="309" text-anchor="middle" fill="#F1F5F9" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Extension Store</text>
+    <text x="1165" y="335" text-anchor="middle" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">配置与业务记录</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="1030" y="375" width="270" height="82" rx="18" fill="#0B352F" stroke="#34D399" stroke-opacity=".68"/>
+    
+    <text x="1165" y="414" text-anchor="middle" fill="#ECFDF5" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Lucene 索引</text>
+    <text x="1165" y="440" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">Halo 数据目录</text>
+  </g>
+  <text x="1348" y="575" text-anchor="end" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="11">AI 智能套件 · 0.2.23</text>
+</svg>
