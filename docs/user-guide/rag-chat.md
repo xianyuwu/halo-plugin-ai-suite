@@ -17,6 +17,8 @@
 5. 根据隐私策略开启提示。
 6. 开启访客使用，并在无痕窗口验证。
 
+![对话与外观配置](../../assets/readme/screenshots/console-chat.png)
+
 ![访客端 RAG 问答](../../assets/readme/screenshots/visitor-chat.jpg)
 
 ## 对话配置建议
@@ -33,7 +35,11 @@
 
 ## 外观与主题
 
-浮窗可以独立配置深浅色、主题色、尺寸、按钮形状和偏移。移动端会尽量保留阅读上下文，不建议做强制全屏覆盖。
+浮窗可以独立配置深浅色、主题色、尺寸、按钮形状和偏移。上线前建议同时检查入口状态和打开状态，确认它不会遮挡博客主体内容。
+
+![访客浮窗入口](../../assets/readme/screenshots/visitor-chat-trigger.png)
+
+![访客浮窗打开状态](../../assets/readme/screenshots/visitor-chat-open.png)
 
 ## 验证清单
 
