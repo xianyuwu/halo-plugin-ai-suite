@@ -13,13 +13,18 @@
 [![Version](https://img.shields.io/badge/version-0.2.23-blue)](src/main/resources/plugin.yaml)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
-[快速开始](#快速开始) · [功能全景](#功能全景) · [完整文档](docs/index.md) · [工作原理](#工作原理) · [开发指南](#开发指南)
+[快速开始](#快速开始) · [功能全景](#功能全景) · [完整文档](https://ai-suite-docs.rainwu.cn) · [工作原理](#工作原理) · [开发指南](#开发指南)
 
 </div>
 
 [![AI 智能套件：让博客内容继续工作](assets/readme/ai-suite-hero.svg)](assets/readme/ai-suite-hero.svg)
 
 ---
+
+## 项目文档
+
+- 在线文档：[AI 智能套件文档中心](https://ai-suite-docs.rainwu.cn)
+- 文档源码：[docs/](docs/)
 
 ## 它解决什么问题
 
@@ -32,7 +37,7 @@
 - **运营有依据**：从真实访客问题中发现内容缺口，形成选题、大纲和旧文优化建议。
 - **高频问题走捷径**：用可配置的意图路由处理“最新文章”“热门内容”“某标签文章”等确定性请求，命中后无需经过 RAG。
 
-> 需要完整的安装、配置、运维、架构和 API 说明？进入 [AI 智能套件文档中心](docs/index.md)。
+> 需要完整的安装、配置、运维、架构和 API 说明？进入 [AI 智能套件文档中心](https://ai-suite-docs.rainwu.cn)。
 
 ## 功能全景
 
