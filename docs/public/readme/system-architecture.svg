@@ -20,7 +20,7 @@
   <g transform="translate(60 44)">
     <g transform="scale(.43)"><rect width="128" height="128" rx="28" fill="url(#brand)"/><line x1="64" y1="30" x2="64" y2="42" stroke="white" stroke-width="4" stroke-linecap="round"/><circle cx="64" cy="27" r="5.5" fill="#FDE047"/><rect x="36" y="42" width="56" height="46" rx="13" fill="url(#face)"/><circle cx="54" cy="62" r="5.5" fill="#3B82F6"/><circle cx="74" cy="62" r="5.5" fill="#3B82F6"/><circle cx="54" cy="76" r="2.6" fill="#7C3AED"/><circle cx="64" cy="76" r="2.6" fill="#7C3AED"/><circle cx="74" cy="76" r="2.6" fill="#7C3AED"/><rect x="60" y="88" width="8" height="6" fill="white"/><rect x="46" y="94" width="36" height="10" rx="5" fill="white" opacity=".92"/></g>
     <text x="76" y="24" fill="#F8FAFC" font-family="Inter, PingFang SC, sans-serif" font-size="28" font-weight="750">AI 智能套件 · 系统架构</text>
-    <text x="76" y="50" fill="#94A3B8" font-family="Inter, PingFang SC, sans-serif" font-size="15">Halo 2.24+ · Reactive WebFlux · RAG + Intent Routing + Content Operations</text>
+    <text x="76" y="50" fill="#94A3B8" font-family="Inter, PingFang SC, sans-serif" font-size="15">Halo 2.25+ · Reactive WebFlux · RAG + Intent Routing + Content Operations</text>
   </g>
   <g transform="translate(1270 54)"><circle cx="5" cy="5" r="5" fill="#60A5FA"/><text x="18" y="10" fill="#CBD5E1" font-family="Inter, PingFang SC, sans-serif" font-size="13">同步调用</text><circle cx="106" cy="5" r="5" fill="#A78BFA"/><text x="119" y="10" fill="#CBD5E1" font-family="Inter, PingFang SC, sans-serif" font-size="13">AI 调用</text><circle cx="198" cy="5" r="5" fill="#34D399"/><text x="211" y="10" fill="#CBD5E1" font-family="Inter, PingFang SC, sans-serif" font-size="13">数据流</text></g>
 
@@ -70,7 +70,7 @@
   <g font-family="Inter, PingFang SC, sans-serif">
     <rect x="94" y="740" width="230" height="76" rx="16" fill="#0F223A" stroke="#38BDF8" stroke-opacity=".45"/><text x="116" y="770" fill="#E0F2FE" font-size="16" font-weight="700">混合检索</text><text x="116" y="795" fill="#7DD3FC" font-size="13">BM25 · HNSW · RRF</text>
     <rect x="344" y="740" width="230" height="76" rx="16" fill="#1B2048" stroke="#818CF8" stroke-opacity=".45"/><text x="366" y="770" fill="#EEF2FF" font-size="16" font-weight="700">模型治理</text><text x="366" y="795" fill="#A5B4FC" font-size="13">Chat · Embed · Rerank</text>
-    <rect x="594" y="740" width="230" height="76" rx="16" fill="#332044" stroke="#C084FC" stroke-opacity=".45"/><text x="616" y="770" fill="#FAF5FF" font-size="16" font-weight="700">安全与配额</text><text x="616" y="795" fill="#D8B4FE" font-size="13">RBAC · 限流 · SSRF</text>
+    <rect x="594" y="740" width="230" height="76" rx="16" fill="#332044" stroke="#C084FC" stroke-opacity=".45"/><text x="616" y="770" fill="#FAF5FF" font-size="16" font-weight="700">安全与配额</text><text x="616" y="795" fill="#D8B4FE" font-size="13">RBAC · 限流 · 权限</text>
     <rect x="844" y="740" width="260" height="76" rx="16" fill="#3B2518" stroke="#FB923C" stroke-opacity=".5"/><text x="866" y="770" fill="#FFF7ED" font-size="16" font-weight="700">观测与质量</text><text x="866" y="795" fill="#FDBA74" font-size="13">Usage · Trace · Log · Eval</text>
   </g>
 
@@ -82,7 +82,7 @@
     <rect x="1210" y="410" width="296" height="98" rx="18" fill="#132D40" stroke="#0EA5E9" stroke-opacity=".55"/><circle cx="1244" cy="445" r="17" fill="#0EA5E9" fill-opacity=".18"/><path d="M1236 445h16M1240 439v12M1248 439v12" stroke="#7DD3FC" stroke-width="2"/><text x="1273" y="444" fill="#F0F9FF" font-size="17" font-weight="700">Embedding</text><text x="1273" y="470" fill="#7DD3FC" font-size="13">文章向量 · 查询向量</text>
     <rect x="1210" y="530" width="296" height="98" rx="18" fill="#34203A" stroke="#D946EF" stroke-opacity=".5"/><circle cx="1244" cy="565" r="17" fill="#D946EF" fill-opacity=".17"/><path d="M1237 571l5-7 5 3 5-9" stroke="#F0ABFC" stroke-width="2" stroke-linecap="round"/><text x="1273" y="564" fill="#FDF4FF" font-size="17" font-weight="700">Rerank</text><text x="1273" y="590" fill="#F0ABFC" font-size="13">候选文档语义精排</text>
   </g>
-  <rect x="1210" y="660" width="296" height="120" rx="18" fill="#0F172A" stroke="#64748B"/><text x="1234" y="695" fill="#E2E8F0" font-family="Inter, PingFang SC, sans-serif" font-size="15" font-weight="700">OpenAI 兼容协议</text><text x="1234" y="723" fill="#94A3B8" font-family="Inter, PingFang SC, sans-serif" font-size="13">DeepSeek · 通义 · OpenAI</text><text x="1234" y="746" fill="#94A3B8" font-family="Inter, PingFang SC, sans-serif" font-size="13">Moonshot · SiliconFlow · GLM</text>
+  <rect x="1210" y="660" width="296" height="120" rx="18" fill="#0F172A" stroke="#64748B"/><text x="1234" y="695" fill="#E2E8F0" font-family="Inter, PingFang SC, sans-serif" font-size="15" font-weight="700">Halo AI Foundation</text><text x="1234" y="723" fill="#94A3B8" font-family="Inter, PingFang SC, sans-serif" font-size="13">语言模型 · Embedding</text><text x="1234" y="746" fill="#94A3B8" font-family="Inter, PingFang SC, sans-serif" font-size="13">Rerank · 供应商密钥</text>
   <path d="M1104 630H1178" stroke="#A78BFA" stroke-width="2.5" marker-end="url(#arrowPurple)"/>
 
   <!-- Data plane -->

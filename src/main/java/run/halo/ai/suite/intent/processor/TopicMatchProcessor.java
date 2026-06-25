@@ -117,10 +117,6 @@ public class TopicMatchProcessor implements PipelineProcessor {
 
         return aiProperties.getModelConfig()
             .flatMap(modelConfig -> {
-                if (modelConfig.getChatApiKey() == null
-                    || modelConfig.getChatApiKey().isBlank()) {
-                    return Mono.just(select(pool, metadataMatches, limit));
-                }
                 String systemPrompt = """
                     你是博客文章主题分类器。用户问题可能同时含有“最新”、“文章”等结构词，
                     请识别其真正主题，综合文章的标题、摘要、标签和分类判断相关性。
@@ -132,8 +128,7 @@ public class TopicMatchProcessor implements PipelineProcessor {
                 Map<String, Object> responseFormat = new LinkedHashMap<>();
                 responseFormat.put("type", "json_object");
                 return llmClient.chat(
-                        modelConfig.getChatBaseUrl(), modelConfig.getChatApiKey(),
-                        modelConfig.getChatModel(),
+                        modelConfig.getEffectiveChatModel(),
                         List.of(
                             Map.of("role", "system", "content", systemPrompt),
                             Map.of("role", "user", "content", prompt)),

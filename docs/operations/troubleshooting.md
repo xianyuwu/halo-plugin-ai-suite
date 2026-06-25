@@ -83,7 +83,7 @@ Console API 本来就需要管理员认证，不应匿名访问。
 - 触发正则使用部分匹配，但仍应检查大小写、转义和边界。
 - 多个路由都能命中时，优先级高的先返回。
 - 配置修改后最多可能受 30 秒启用路由缓存影响。
-- LLM 兜底只有在 `llmFallback=true` 且 Chat API Key 可用时执行。
+- LLM 兜底只有在 `llmFallback=true` 且 AI Foundation 语言模型可用时执行。
 
 ## 意图命中但没有文章
 

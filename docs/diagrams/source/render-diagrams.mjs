@@ -171,16 +171,16 @@ const diagrams = {
     ],edges:[{from:"post",to:"clean"},{from:"clean",to:"chunk"},{from:"chunk",to:"bm25"},{from:"chunk",to:"embed"},{from:"bm25",to:"lucene"},{from:"embed",to:"lucene"},{from:"lucene",to:"ready",tone:"green"}]
   },
   "config-storage": {
-    title:"配置与密钥存储",subtitle:"普通配置与敏感凭据分离，读取时由 AIProperties 统一组装",height:560,
+    title:"配置与模型能力",subtitle:"AI Suite 保存业务配置，模型凭据由 Halo AI Foundation 管理",height:560,
     groups:[{x:420,y:120,w:540,h:320,title:"HALO EXTENSION STORE"}],
     nodes:[
       {id:"ui",x:55,y:225,w:220,h:90,title:"Console 配置页面",subtitle:"管理员编辑与测试",tone:"blue"},
-      {id:"api",x:315,y:225,w:210,h:90,title:"配置 Endpoint",subtitle:"校验 · 拆分 · 保存",tone:"indigo"},
+      {id:"api",x:315,y:225,w:210,h:90,title:"配置 Endpoint",subtitle:"校验 · 保存",tone:"indigo"},
       {id:"cm",x:590,y:155,w:300,h:95,title:"ConfigMap",subtitle:"ai-suite-configmap · 普通 JSON",tone:"slate"},
-      {id:"secret",x:590,y:315,w:300,h:95,title:"Secret",subtitle:"ai-suite-api-keys · API Key",tone:"orange"},
+      {id:"foundation",x:590,y:315,w:300,h:95,title:"AI Foundation",subtitle:"模型供应商 · API Key",tone:"orange"},
       {id:"props",x:1015,y:225,w:210,h:90,title:"AIProperties",subtitle:"统一读取与默认值",tone:"purple"},
       {id:"services",x:1260,y:225,w:100,h:90,title:"服务",subtitle:"RAG / AI",tone:"green"},
-    ],edges:[{from:"ui",to:"api"},{from:"api",to:"cm"},{from:"api",to:"secret",tone:"orange"},{from:"cm",to:"props"},{from:"secret",to:"props",tone:"orange"},{from:"props",to:"services",tone:"green"}]
+    ],edges:[{from:"ui",to:"api"},{from:"api",to:"cm"},{from:"cm",to:"props"},{from:"foundation",to:"services",tone:"orange"},{from:"props",to:"services",tone:"green"}]
   },
   "production-topology": {
     title:"生产部署拓扑",subtitle:"SSE、真实客户端 IP、模型网络与数据持久化必须同时成立",height:600,
@@ -190,7 +190,7 @@ const diagrams = {
       {id:"cdn",x:295,y:245,w:170,h:88,title:"CDN / WAF",subtitle:"可选 · 禁止缓冲",tone:"slate"},
       {id:"nginx",x:510,y:245,w:170,h:88,title:"Nginx",subtitle:"proxy_buffering off",tone:"orange"},
       {id:"halo",x:725,y:245,w:170,h:88,title:"Halo :8090",subtitle:"插件运行时",tone:"indigo"},
-      {id:"model",x:1030,y:165,w:270,h:82,title:"模型服务",subtitle:"OpenAI 兼容 API",tone:"purple"},
+      {id:"model",x:1030,y:165,w:270,h:82,title:"AI Foundation",subtitle:"统一模型能力",tone:"purple"},
       {id:"store",x:1030,y:270,w:270,h:82,title:"Extension Store",subtitle:"配置与业务记录",tone:"slate"},
       {id:"lucene",x:1030,y:375,w:270,h:82,title:"Lucene 索引",subtitle:"Halo 数据目录",tone:"green"},
     ],edges:[{from:"browser",to:"cdn"},{from:"cdn",to:"nginx",tone:"orange"},{from:"nginx",to:"halo",tone:"orange"},{from:"halo",to:"model"},{from:"halo",to:"store"},{from:"halo",to:"lucene",tone:"green"}]

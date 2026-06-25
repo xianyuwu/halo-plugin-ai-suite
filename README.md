@@ -4,13 +4,13 @@
 
 **把 Halo 博客变成一个能回答、会检索、可辅助创作，也懂内容运营的 AI 知识站。**
 
-面向 Halo 2.24+ 的一体化 AI 插件，提供 RAG 智能问答、AI 搜索、写作辅助、摘要、脑图、效果评测、意图路由与运营智能体。兼容 OpenAI API 协议，内置 Lucene 混合检索，无需额外部署向量数据库。
+面向 Halo 2.25+ 的一体化 AI 插件，提供 RAG 智能问答、AI 搜索、写作辅助、摘要、脑图、效果评测、意图路由与运营智能体。基于 Halo AI Foundation 统一管理模型能力，内置 Lucene 混合检索，无需额外部署向量数据库。
 
-[![Halo](https://img.shields.io/badge/Halo-%E2%89%A52.24.0-1e87f0?logo=halo&logoColor=white)](https://halo.run)
+[![Halo](https://img.shields.io/badge/Halo-%E2%89%A52.25.0-1e87f0?logo=halo&logoColor=white)](https://halo.run)
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Lucene](https://img.shields.io/badge/Lucene-10.3.2-0a6f3a)](https://lucene.apache.org/)
-[![Version](https://img.shields.io/badge/version-0.2.23-blue)](src/main/resources/plugin.yaml)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue)](src/main/resources/plugin.yaml)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
 [快速开始](#快速开始) · [功能全景](#功能全景) · [完整文档](https://ai-suite-docs.rainwu.cn) · [工作原理](#工作原理) · [开发指南](#开发指南)
@@ -50,7 +50,7 @@
 | **意图路由**：确定性问题进入可编排 Pipeline，响应更稳定 | **运营智能体**：分析访客需求与文章覆盖，产出可执行的内容建议 |
 | **主题无关注入**：原生 JS/CSS Widget 接入 Halo 前台 | **用量与审计**：模型 token、调用记录、失败率、限额与检索链路追踪 |
 
-> 插件不要求额外安装其他 Halo 插件。AI 搜索的检索能力由本插件提供；页面搜索按钮则依赖主题、官方搜索插件或自定义入口，未提供按钮时仍可通过快捷键唤起。
+> 插件依赖 Halo AI Foundation 提供模型能力。AI 搜索的检索能力由本插件提供；页面搜索按钮则依赖主题、官方搜索插件或自定义入口，未提供按钮时仍可通过快捷键唤起。
 
 ### 意图路由
 
@@ -110,8 +110,8 @@
 
 ### 环境要求
 
-- Halo 2.24.0 或更高版本
-- 一个兼容 OpenAI API 的模型服务
+- Halo 2.25.0 或更高版本
+- 已安装并配置 Halo AI Foundation 插件
 - Chat 模型与 Embedding 模型为必需；Rerank、Query Rewrite 模型可选
 
 > Embedding 模型决定索引向量维度。更换模型或维度后，请在「索引中心」执行全量重建。
@@ -134,12 +134,12 @@ JAVA_HOME=/path/to/jdk21 ./gradlew build
 
 进入「AI 智能套件 → 模型配置」：
 
-1. 填写 Chat 模型的 Base URL、API Key 和模型名称。
-2. 填写 Embedding 模型及向量维度。
+1. 先在 Halo AI Foundation 中配置模型供应商、密钥和默认模型。
+2. 在 AI 智能套件中选择或填写 Chat、Embedding、Rerank、Query Rewrite 等 AI Foundation 模型资源名。
 3. 分别执行连通性测试，确认配置可用。
-4. 按需配置 Rerank 与 Query Rewrite 模型。
+4. 确认 Embedding 模型向量维度后，进入「索引中心」重建索引。
 
-支持 DeepSeek、通义千问、智谱 GLM、Moonshot、SiliconFlow、OpenAI 等提供 OpenAI 兼容接口的服务。不同能力可以使用不同厂商。
+模型供应商、Base URL、API Key 和默认模型均由 Halo AI Foundation 统一维护。AI 智能套件只保存各业务使用的模型资源名与生成参数。
 
 ### 3. 建立文章索引
 
@@ -215,7 +215,7 @@ location / {
 
 ### 为什么不需要外部向量数据库
 
-插件直接使用与 Halo 2.24.0 对齐的 Lucene 10.3.2：BM25 负责关键词召回，HNSW 负责向量召回，再通过 RRF 融合结果。索引保存在 Halo 数据目录中，适合个人博客和中小型内容站点的一体化部署。
+插件直接使用与 Halo 2.25.0 对齐的 Lucene 10.3.2：BM25 负责关键词召回，HNSW 负责向量召回，再通过 RRF 融合结果。索引保存在 Halo 数据目录中，适合个人博客和中小型内容站点的一体化部署。
 
 > Lucene 版本必须与 Halo 内置版本严格一致。核心依赖使用 `compileOnly` 复用 Halo ClassLoader，SmartChineseAnalyzer 单独打包且不传递引入 `lucene-core`。
 
@@ -235,23 +235,21 @@ location / {
 | 运营智能体 | 内容缺口、选题、大纲与旧文更新建议 |
 | 问答记录 / 用量统计 | 会话、反馈、调用明细、token 和限额 |
 
-配置保存在 ConfigMap `ai-suite-configmap`；API Key 单独保存在 Secret `ai-suite-api-keys`。
+配置保存在 ConfigMap `ai-suite-configmap`。模型供应商、Base URL、API Key 和默认模型由 Halo AI Foundation 保存和管理。
 
 ## 安全与稳定性
 
-- **密钥隔离**：API Key 不以明文写入 ConfigMap；旧版配置可自动迁移。
+- **密钥托管**：模型密钥由 Halo AI Foundation 统一管理，AI 智能套件不再读取或保存模型 API Key。
 - **调用限额**：支持按模型设置每日 token 上限，并通过预扣与对账降低并发超额风险。
 - **访客限流**：支持按 IP 的每小时、每日限制和白名单。
 - **访问控制**：公开 API 使用独立匿名 RoleTemplate；Console API 需要管理员权限。
-- **SSRF 防护**：模型 Base URL 会拦截本机、内网和云元数据地址，避免插件成为内网探测入口。
-- **错误脱敏**：模型错误写入日志前会清理疑似 API Key。
 - **可观测性**：记录检索阶段、耗时、引用、命中意图、模型用量和访客反馈。
 
 ## 技术栈
 
 | 层 | 技术 |
 | --- | --- |
-| 插件后端 | Java 21、Spring WebFlux、Halo Plugin API 2.24.0 |
+| 插件后端 | Java 21、Spring WebFlux、Halo Plugin API 2.25.0 |
 | Console | Vue 3、TypeScript、Vite、Tiptap |
 | 主题侧 | 原生 JavaScript / CSS，通过 AdditionalWebFilter 注入 |
 | 检索 | Apache Lucene 10.3.2、BM25、HNSW、RRF、SmartChineseAnalyzer |
@@ -262,12 +260,12 @@ location / {
 ```text
 src/main/java/run/halo/ai/suite/
 ├── agent/          # 运营智能体任务
-├── config/         # 配置读取与 API Key 迁移
+├── config/         # 配置读取
 ├── endpoint/       # 公开 API 与 Console API
 ├── extension/      # ChatLog、评测、意图路由、Agent 任务等 GVK
 ├── intent/         # 意图 Pipeline 与内置处理器
 ├── listener/       # 文章变更与索引同步
-├── llm/            # OpenAI 兼容客户端与用量场景
+├── llm/            # AI Foundation 适配客户端与用量场景
 ├── rag/            # 切片、BM25/HNSW 检索与 RAG 编排
 ├── service/        # 对话、写作、摘要、脑图、评测等服务
 ├── state/          # 用量统计与限流
@@ -336,9 +334,9 @@ cd ui && pnpm dev
 </details>
 
 <details>
-<summary><strong>本地 Ollama 的 URL 为什么被拒绝？</strong></summary>
+<summary><strong>如何接入本地 Ollama？</strong></summary>
 
-SSRF 防护默认禁止访问 `localhost` 和内网地址，当前没有 Base URL 白名单。如果需要接入 Ollama，请通过具备访问控制的 HTTPS 网关暴露模型服务，不要直接关闭这项校验。
+请先在 Halo AI Foundation 中配置可访问的 Ollama 兼容服务。AI 智能套件不直接保存模型 Base URL 或 API Key，只引用 AI Foundation 中的模型资源。
 
 </details>
 

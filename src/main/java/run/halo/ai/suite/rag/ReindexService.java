@@ -59,8 +59,7 @@ public class ReindexService {
     private static final int EMBED_BATCH_SIZE = 5;
 
     // 跨文章并发上限 — 同时最多 4 篇文章在调 embedding。
-    // Reactor flatMap 默认并发是 256，对几乎所有 embedding 厂商都会触发限流，
-    // 调到 4 在主流 OpenAI 兼容厂商（智谱/通义等 60~300 RPM）下也基本安全。
+    // Reactor flatMap 默认并发是 256，容易触发 AI Foundation 背后的模型服务限流。
     private static final int POST_CONCURRENCY = 4;
 
     // 失败重试延迟 — 主轮完成后等 2 秒再重试，给 LLM 限流恢复的时间
@@ -84,11 +83,6 @@ public class ReindexService {
             return Mono.error(new IllegalStateException("索引正在重建中"));
         }
         return aiProperties.getModelConfig().flatMap(modelConfig -> {
-            if (modelConfig.getEmbeddingApiKey() == null
-                || modelConfig.getEmbeddingApiKey().isBlank()) {
-                return Mono.error(new IllegalStateException("Embedding API Key 未配置"));
-            }
-
             return aiProperties.getChunkConfig().flatMap(chunkConfig -> {
                 log.info("[ReindexService] 开始全量重建索引...");
                 failedPosts.clear();
@@ -125,7 +119,7 @@ public class ReindexService {
                         }
                         return Mono.fromCallable(() -> {
                                 luceneIndexService.replaceAll(indexedChunks,
-                                    modelConfig.getEmbeddingModel(), modelConfig.getEmbeddingDimensions());
+                                    modelConfig.getEffectiveEmbeddingModel(), modelConfig.getEmbeddingDimensions());
                                 return totalChunks;
                             })
                             .subscribeOn(Schedulers.boundedElastic());
@@ -209,10 +203,6 @@ public class ReindexService {
             return Mono.error(new IllegalStateException("索引正在重建中"));
         }
         return aiProperties.getModelConfig().flatMap(modelConfig -> {
-            if (modelConfig.getEmbeddingApiKey() == null
-                || modelConfig.getEmbeddingApiKey().isBlank()) {
-                return Mono.error(new IllegalStateException("Embedding API Key 未配置"));
-            }
             return aiProperties.getChunkConfig().flatMap(chunkConfig -> {
                 log.info("[ReindexService] 开始全量重建索引（异步）...");
                 failedPosts.clear();
@@ -365,7 +355,7 @@ public class ReindexService {
                                 return Mono.fromRunnable(() -> {
                                     try {
                                         luceneIndexService.replaceAll(allChunks,
-                                            modelConfig.getEmbeddingModel(),
+                                            modelConfig.getEffectiveEmbeddingModel(),
                                             modelConfig.getEmbeddingDimensions());
                                     } catch (Exception e) {
                                         throw new IllegalStateException(e.getMessage(), e);
@@ -497,10 +487,6 @@ public class ReindexService {
         }
 
         aiProperties.getModelConfig().flatMap(modelConfig -> {
-            if (modelConfig.getEmbeddingApiKey() == null
-                || modelConfig.getEmbeddingApiKey().isBlank()) {
-                return Mono.error(new IllegalStateException("Embedding API Key 未配置"));
-            }
             return aiProperties.getChunkConfig().flatMap(chunkConfig ->
                 extensionClient.fetch(Post.class, postName)
                     .flatMap(post -> {
@@ -600,7 +586,7 @@ public class ReindexService {
                     return embedChunks(enrichedChunks, modelConfig)
                         .flatMap(indexedChunks -> Mono.fromCallable(() -> {
                                 luceneIndexService.replacePost(indexedChunks,
-                                    modelConfig.getEmbeddingModel(),
+                                    modelConfig.getEffectiveEmbeddingModel(),
                                     modelConfig.getEmbeddingDimensions());
                                 return indexedChunks.size();
                             })
@@ -646,7 +632,7 @@ public class ReindexService {
         return preparePostIndex(post, modelConfig, chunkConfig, truncatedKeywords, keywordsFailed)
             .flatMap(data -> Mono.fromCallable(() -> {
                     luceneIndexService.replacePost(data.chunks(),
-                        modelConfig.getEmbeddingModel(), modelConfig.getEmbeddingDimensions());
+                        modelConfig.getEffectiveEmbeddingModel(), modelConfig.getEmbeddingDimensions());
                     return data.totalChunks();
                 })
                 .subscribeOn(Schedulers.boundedElastic()));
@@ -721,7 +707,7 @@ public class ReindexService {
         return embedChunks(chunks, modelConfig)
             .flatMap(indexedChunks -> Mono.fromCallable(() -> {
                     luceneIndexService.replacePost(indexedChunks,
-                        modelConfig.getEmbeddingModel(), modelConfig.getEmbeddingDimensions());
+                        modelConfig.getEffectiveEmbeddingModel(), modelConfig.getEmbeddingDimensions());
                     return indexedChunks.size();
                 })
                 .subscribeOn(Schedulers.boundedElastic()));
@@ -765,9 +751,7 @@ public class ReindexService {
             .toList();
 
         return llmClient.embedBatch(
-            modelConfig.getEmbeddingBaseUrl(),
-            modelConfig.getEmbeddingApiKey(),
-            modelConfig.getEmbeddingModel(),
+            modelConfig.getEffectiveEmbeddingModel(),
             texts,
             modelConfig.getEmbeddingDimensions(),
             UsageScenario.INDEX_EMBEDDING
@@ -811,30 +795,30 @@ public class ReindexService {
                                 .append(batch.get(i).content()).append("\n\n");
                         }
 
-                        return llmClient.chatInternal(
-                            modelConfig.getChatBaseUrl(),
-                            modelConfig.getChatApiKey(),
-                            modelConfig.getChatModel(),
+                        return llmClient.chatStreamInternal(
+                            modelConfig.getEffectiveChatModel(),
                             List.of(Map.of("role", "user", "content", sb.toString())),
                             0.1f,
                             maxTokens,
                             null,
                             UsageScenario.KEYWORD_EXTRACT
                         )
+                        .collectList()
+                        .map(tokens -> String.join("", tokens))
                         .map(response -> {
-                            String[] lines = response.trim().split("\n");
-                            int truncated = Math.max(0, batch.size() - lines.length);
+                            List<String> lines = parseKeywordLines(response);
+                            int truncated = Math.max(0, batch.size() - lines.size());
                             truncatedTotal.addAndGet(truncated);
                             if (truncated > 0) {
                                 log.warn("[ReindexService] 关键词响应截断: {}/{} 个切片获取到关键词",
-                                    lines.length, batch.size());
+                                    lines.size(), batch.size());
                             }
                             List<TextChunk> result = new ArrayList<>();
                             for (int i = 0; i < batch.size(); i++) {
                                 TextChunk original = batch.get(i);
                                 List<String> keywords;
-                                if (i < lines.length) {
-                                    String line = lines[i].replaceAll("[,，、；;]", ",").trim();
+                                if (i < lines.size()) {
+                                    String line = lines.get(i).replaceAll("[,，、；;]", ",").trim();
                                     keywords = java.util.Arrays.stream(line.split(","))
                                         .map(String::trim)
                                         .filter(k -> !k.isEmpty())
@@ -865,6 +849,22 @@ public class ReindexService {
                 log.warn("[ReindexService] 关键词提取失败，跳过: {}", e.getMessage());
                 return Mono.just(new KeywordExtractResult(chunks, 0, true));
             });
+    }
+
+    private List<String> parseKeywordLines(String response) {
+        if (response == null || response.isBlank()) {
+            return List.of();
+        }
+        return response.lines()
+            .map(String::trim)
+            .filter(line -> !line.isBlank())
+            .filter(line -> !line.startsWith("```"))
+            .map(line -> line.replaceFirst("^[-*•]\\s*", ""))
+            .map(line -> line.replaceFirst("^(文本\\s*)?\\d+\\s*[.、:：)）-]?\\s*", ""))
+            .map(line -> line.replaceFirst("^关键词\\s*[:：]\\s*", ""))
+            .map(String::trim)
+            .filter(line -> !line.isBlank())
+            .toList();
     }
 
     private record KeywordExtractResult(List<TextChunk> chunks, int truncatedCount,

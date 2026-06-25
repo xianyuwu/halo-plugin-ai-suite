@@ -281,16 +281,16 @@ const configSummary = computed(() => {
   const m = config.value.models || {};
   const c = config.value.chat || {};
   const r = config.value.retrieval || {};
-  const chatOk = !!(m.chatModel || m.chatBaseUrl);
-  const embOk = !!(m.embeddingModel || m.embeddingBaseUrl);
+  const chatOk = true;
+  const embOk = true;
   const promptOk = !!c.systemPrompt;
 
   const modeLabel: Record<string, string> = { hybrid: "混合检索", vector: "语义检索", keyword: "关键词检索" };
   const themeLabel: Record<string, string> = { auto: "跟随系统", light: "浅色", dark: "深色", system: "跟随系统" };
 
   return [
-    { label: "聊天模型", value: chatOk ? "已配置" : "未配置", tag: chatOk ? "已配置" : "待配置", ok: chatOk, to: "/ai-suite/models" },
-    { label: "Embedding 模型", value: embOk ? "已配置" : "未配置", tag: embOk ? "已配置" : "待配置", ok: embOk, to: "/ai-suite/models" },
+    { label: "聊天模型", value: m.aiFoundationChatModelName || "AI Foundation 默认", tag: "AI Foundation", ok: chatOk, to: "/ai-suite/models" },
+    { label: "Embedding 模型", value: m.aiFoundationEmbeddingModelName || "AI Foundation 默认", tag: "AI Foundation", ok: embOk, to: "/ai-suite/models" },
     { label: "检索模式", value: modeLabel[r.searchMode] || r.searchMode || "未设置", tag: r.searchMode || "默认", ok: !!r.searchMode, to: "/ai-suite/retrieval" },
     { label: "切片大小", value: config.value.chunking?.chunkSize ? `${config.value.chunking.chunkSize} 字符` : "500 字符", tag: config.value.chunking?.chunkSize ? "自定义" : "默认", ok: true, to: "/ai-suite/chunking" },
     { label: "系统提示词", value: promptOk ? "已配置" : "未配置", tag: promptOk ? "已配置" : "待配置", ok: promptOk, to: "/ai-suite/chat" },

@@ -22,12 +22,12 @@
 
 ## 安全边界
 
-- API Key 存储在 Secret，普通配置存储在 ConfigMap。
-- 模型 Base URL 进行 SSRF 防护，默认拒绝本机、内网和云元数据地址。
+- 模型供应商、Base URL 和 API Key 由 Halo AI Foundation 管理。
+- AI 智能套件只保存业务配置和 AI Foundation 模型资源名。
 - 公开 API 仅通过匿名 RoleTemplate 精确授权。
 - Console API 使用管理员认证。
 - 访客调用同时受 IP 限流和模型预算保护。
-- 日志中的模型错误会尽量清理疑似 API Key。
+- 访客侧错误会隐藏供应商细节，管理端连通性测试返回可操作错误。
 
 ## 代理信任
 

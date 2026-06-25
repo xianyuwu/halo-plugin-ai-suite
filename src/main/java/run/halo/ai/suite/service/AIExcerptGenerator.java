@@ -77,9 +77,7 @@ public class AIExcerptGenerator implements run.halo.app.content.ExcerptGenerator
 
         return aiProperties.getModelConfig()
             .flatMap(modelCfg -> llmClient.chatInternal(
-                modelCfg.getChatBaseUrl(),
-                modelCfg.getChatApiKey(),
-                modelCfg.getChatModel(),
+                modelCfg.getEffectiveChatModel(),
                 List.of(Map.of("role", "user", "content", prompt)),
                 cfg.getTemperature() > 0 ? cfg.getTemperature() : 0.3f,
                 cfg.getMaxTokens() > 0 ? cfg.getMaxTokens() : 512,

@@ -6,13 +6,13 @@
 
 | 类型 | 示例 | 生命周期 |
 | --- | --- | --- |
-| 业务与配置 | ConfigMap、Secret、自定义 Extension | 需要备份和迁移 |
+| 业务与配置 | ConfigMap、自定义 Extension | 需要备份和迁移 |
 | 派生索引 | Lucene 切片与向量 | 可从文章重建 |
 | 运行状态 | 限流窗口、TraceCache、任务进度 | 允许过期或重启丢失 |
 
 ## 配置
 
-普通配置存于 `ai-suite-configmap`，API Key 存于 `ai-suite-api-keys`。`AIProperties` 读取两者并注入默认值。旧 `ai-assistant-*` 名称仅用于迁移兼容。
+AI 智能套件配置存于 `ai-suite-configmap`。模型供应商、Base URL、API Key 和默认模型由 Halo AI Foundation 管理，AI 智能套件只保存各业务使用的模型资源名。
 
 ## 自定义 Extension
 

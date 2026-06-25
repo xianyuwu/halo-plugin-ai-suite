@@ -115,9 +115,7 @@ public class ChatService {
                                     ? Math.max(128, Math.min(2048, searchConfig.getMaxTokens()))
                                     : chatConfig.getMaxTokens();
                                 return llmClient.chatStream(
-                                    modelConfig.getChatBaseUrl(),
-                                    modelConfig.getChatApiKey(),
-                                    modelConfig.getChatModel(),
+                                    modelConfig.getEffectiveChatModel(),
                                     messages,
                                     chatConfig.getTemperature(),
                                     maxTokens,
@@ -181,9 +179,7 @@ public class ChatService {
                                     List<Map<String, String>> messages = buildMessages(
                                         systemPrompt, 0, List.of(), userMessage);
                                     return llmClient.chatStream(
-                                        modelConfig.getChatBaseUrl(),
-                                        modelConfig.getChatApiKey(),
-                                        modelConfig.getChatModel(),
+                                        modelConfig.getEffectiveChatModel(),
                                         messages,
                                         chatConfig.getTemperature(),
                                         chatConfig.getMaxTokens(),
@@ -231,9 +227,7 @@ public class ChatService {
                                         systemPrompt, chatConfig.getHistoryTurns(),
                                         history, userMessage);
                                     return llmClient.chatStream(
-                                        modelConfig.getChatBaseUrl(),
-                                        modelConfig.getChatApiKey(),
-                                        modelConfig.getChatModel(),
+                                        modelConfig.getEffectiveChatModel(),
                                         messages,
                                         chatConfig.getTemperature(),
                                         chatConfig.getMaxTokens(),
@@ -281,9 +275,7 @@ public class ChatService {
             .flatMap(posts -> aiProperties.getModelConfig()
                 .flatMap(modelConfig -> aiProperties.getChatConfig()
                     .flatMap(chatConfig -> llmClient.chat(
-                        modelConfig.getChatBaseUrl(),
-                        modelConfig.getChatApiKey(),
-                        modelConfig.getChatModel(),
+                        modelConfig.getEffectiveChatModel(),
                         buildMessages(buildIntentPrompt(route, posts), 0, List.of(), userMessage),
                         chatConfig.getTemperature(),
                         chatConfig.getMaxTokens(),
@@ -316,9 +308,7 @@ public class ChatService {
                                     systemPrompt, chatConfig.getHistoryTurns(),
                                     history, userMessage);
                                 return llmClient.chat(
-                                    modelConfig.getChatBaseUrl(),
-                                    modelConfig.getChatApiKey(),
-                                    modelConfig.getChatModel(),
+                                    modelConfig.getEffectiveChatModel(),
                                     messages,
                                     chatConfig.getTemperature(),
                                     chatConfig.getMaxTokens(),
@@ -354,9 +344,7 @@ public class ChatService {
                             systemPrompt, chatConfig.getHistoryTurns(),
                             history, userMessage);
                         return llmClient.chat(
-                            modelConfig.getChatBaseUrl(),
-                            modelConfig.getChatApiKey(),
-                            modelConfig.getChatModel(),
+                            modelConfig.getEffectiveChatModel(),
                             messages,
                             chatConfig.getTemperature(),
                             chatConfig.getMaxTokens(),
@@ -680,9 +668,7 @@ public class ChatService {
                                         systemPrompt, chatConfig.getHistoryTurns(),
                                         history, userMessage);
                                     return llmClient.chatStream(
-                                        modelConfig.getChatBaseUrl(),
-                                        modelConfig.getChatApiKey(),
-                                        modelConfig.getChatModel(),
+                                        modelConfig.getEffectiveChatModel(),
                                         messages,
                                         chatConfig.getTemperature(),
                                         chatConfig.getMaxTokens(),

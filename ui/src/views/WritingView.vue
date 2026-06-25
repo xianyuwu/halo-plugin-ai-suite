@@ -22,30 +22,13 @@
       <!-- 左列：配置 -->
       <div class="ai-section-block">
         <!-- 写作模型配置 -->
-        <SectionCard title="写作模型" :icon-component="RiRobotLine" headerTitle="模型配置" headerDesc="配置写作辅助使用的 LLM 模型，留空则复用「模型配置」页的对话模型">
+        <SectionCard title="写作模型" :icon-component="RiRobotLine" headerTitle="模型配置" headerDesc="配置写作辅助使用的 AI Foundation 语言模型资源名，留空则复用「模型配置」页的对话模型">
           <div class="ai-card-body">
-            <div class="ai-toggle-row">
-              <label class="ai-switch-label">
-                <span class="ai-switch-track" :class="{ off: !form.useCustomModel }" @click="form.useCustomModel = !form.useCustomModel"></span>
-                <span>{{ form.useCustomModel ? '使用独立模型' : '复用对话模型' }}</span>
-              </label>
-              <span class="ai-toggle-desc">开启后可单独指定写作辅助的模型，不影响对话功能</span>
-            </div>
-
             <div class="ai-form-grid" style="margin-top: 16px;">
               <div class="ai-form-field">
-                <label class="ai-field-label">API Base URL</label>
-                <input type="text" class="ai-input" v-model="form.writingBaseUrl" placeholder="https://api.deepseek.com/v1" :disabled="!form.useCustomModel || saving" />
-                <span class="ai-helper-text">OpenAI 兼容协议的 API 地址</span>
-              </div>
-              <div class="ai-form-field">
-                <label class="ai-field-label">API Key</label>
-                <input type="password" class="ai-input" v-model="form.writingApiKey" placeholder="sk-..." :disabled="!form.useCustomModel || saving" />
-                <span class="ai-helper-text">密钥安全存储在 Secret 中</span>
-              </div>
-              <div class="ai-form-field">
-                <label class="ai-field-label">模型名称</label>
-                <input type="text" class="ai-input" v-model="form.writingModel" placeholder="deepseek-chat" :disabled="!form.useCustomModel || saving" />
+                <label class="ai-field-label">写作模型资源名</label>
+                <input type="text" class="ai-input" v-model="form.writingModel" placeholder="留空复用对话模型" :disabled="saving" />
+                <span class="ai-helper-text">模型供应商、密钥和连接能力由 Halo AI Foundation 统一管理</span>
               </div>
               <div class="ai-form-field">
                 <label class="ai-field-label">最大输出 Token</label>
@@ -54,9 +37,9 @@
               </div>
             </div>
 
-            <div :class="{ 'is-disabled': !form.useCustomModel }" class="ai-card-actions">
-              <VButton type="default" :disabled="!form.useCustomModel" @click="resetDefaults">恢复默认</VButton>
-              <VButton type="primary" :disabled="!form.useCustomModel || saving" @click="save">{{ saving ? '保存中...' : '保存配置' }}</VButton>
+            <div class="ai-card-actions">
+              <VButton type="default" @click="resetDefaults">恢复默认</VButton>
+              <VButton type="primary" :disabled="saving" @click="save">{{ saving ? '保存中...' : '保存配置' }}</VButton>
             </div>
           </div>
         </SectionCard>
@@ -158,9 +141,6 @@ import RiBookOpenLine from "~icons/ri/book-open-line";
 // 写作辅助默认配置
 const WRITING_DEFAULTS = {
   enabled: true,
-  useCustomModel: false,
-  writingBaseUrl: "",
-  writingApiKey: "",
   writingModel: "",
   maxTokens: 2048,
   outlineTemperature: 0.3,
@@ -256,11 +236,6 @@ onMounted(async () => {
   await loadGroup("writing", form);
   // 同步总开关到模块级 ref
   setWritingEnabled(form.enabled);
-  // 兜底：若后端没存过 useCustomModel 但 writingBaseUrl 有值，按"使用独立模型"对待
-  // 兼容旧版只存了 BaseURL 未存开关的状态
-  if (form.writingBaseUrl && form.useCustomModel === false) {
-    form.useCustomModel = true;
-  }
 });
 </script>
 

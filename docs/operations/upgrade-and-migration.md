@@ -6,7 +6,7 @@
 
 1. 阅读目标版本 Release Notes 和兼容矩阵。
 2. 记录当前 Halo、插件、Lucene 和模型配置。
-3. 备份 Halo 数据目录、数据库、ConfigMap、Secret 和自定义 Extension。
+3. 备份 Halo 数据目录、数据库、AI 智能套件 ConfigMap、AI Foundation 配置和自定义 Extension。
 4. 导出或截图关键配置与索引统计。
 5. 保留上一版本插件 JAR。
 
@@ -14,20 +14,19 @@
 
 1. 在测试环境安装新版本。
 2. 确认插件状态为 `STARTED`。
-3. 验证 ConfigMap 与 Secret 已正确读取。
+3. 验证 AI 智能套件 ConfigMap 与 AI Foundation 模型配置已正确读取。
 4. 检查意图路由、评测集和历史记录仍存在。
 5. 按版本说明决定是否重建索引。
 6. 执行后台调试、匿名聊天、搜索和写作验收。
 7. 再升级生产环境。
 
-## 旧名称迁移
+## 配置资源
 
-插件当前配置名称为：
+AI 智能套件当前只保存业务配置：
 
 - ConfigMap：`ai-suite-configmap`
-- Secret：`ai-suite-api-keys`
 
-代码仍兼容读取旧名称 `ai-assistant-configmap` 和 `ai-assistant-api-keys`，启动迁移会尽量复制到新资源。确认新资源保存成功前，不要手工删除旧资源。
+模型供应商、Base URL、API Key 和默认模型由 Halo AI Foundation 管理。旧 `ai-suite-api-keys` Secret 不再读取。
 
 ## 何时重建索引
 
@@ -37,7 +36,7 @@
 
 1. 禁用新插件。
 2. 恢复上一版本 JAR。
-3. 恢复升级前 ConfigMap/Secret 和业务 Extension（如发生迁移写入）。
+3. 恢复升级前 AI 智能套件 ConfigMap、AI Foundation 配置和业务 Extension。
 4. 必要时恢复 Halo 数据目录中的索引。
 5. 启用旧插件并验证状态、配置和公开 API。
 

@@ -76,19 +76,13 @@ public class ContentGapAgentService {
                 progressCallback.accept(40, "准备输入");
                 Map<String, Object> input = buildInput(safeDays, safeMaxLogs, logs, posts);
 
-                if (model.getChatApiKey() == null || model.getChatApiKey().isBlank()) {
-                    return Mono.just(errorReport(input, "聊天模型 API Key 未配置，无法运行内容缺口分析 Agent。"));
-                }
-
                 List<Map<String, String>> messages = List.of(
                     Map.of("role", "system", "content", systemPrompt()),
                     Map.of("role", "user", "content", userPrompt(input))
                 );
                 progressCallback.accept(70, "调用模型");
                 return llmClient.chatInternal(
-                        model.getChatBaseUrl(),
-                        model.getChatApiKey(),
-                        model.getChatModel(),
+                        model.getEffectiveChatModel(),
                         messages,
                         0.3f,
                         safeMaxTokens,

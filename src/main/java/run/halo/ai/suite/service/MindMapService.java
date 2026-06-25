@@ -130,9 +130,7 @@ public class MindMapService {
                                             Map.of("role", "user", "content", prompt)
                                         );
                                         return llmClient.chatInternal(
-                                            modelCfg.getChatBaseUrl(),
-                                            modelCfg.getChatApiKey(),
-                                            modelCfg.getChatModel(),
+                                            modelCfg.getEffectiveChatModel(),
                                             messages,
                                             cfg.getTemperature(),
                                             cfg.getMaxTokens(),

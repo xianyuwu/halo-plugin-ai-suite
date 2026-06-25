@@ -1,6 +1,6 @@
 # ADR-002：ConfigMap 与 Secret 分离配置
 
-- 状态：已采纳
+- 状态：已废弃，被 [ADR-005](005-ai-foundation-adapter.md) 取代
 
 ## 背景
 
@@ -8,11 +8,12 @@
 
 ## 决策
 
-普通配置按组序列化到 `ai-suite-configmap`；Chat、Embedding、Rerank、Query Rewrite 和 Writing API Key 保存到 `ai-suite-api-keys`。`AIProperties` 统一读取并兼容旧 `ai-assistant-*` 名称。
+历史版本曾将普通配置按组序列化到 `ai-suite-configmap`，并将 Chat、Embedding、Rerank、Query Rewrite 和 Writing API Key 保存到 `ai-suite-api-keys`。
+
+当前版本不再由 AI 智能套件保存模型 API Key。模型供应商、Base URL、API Key 和默认模型统一由 Halo AI Foundation 管理。
 
 ## 后果
 
-- 密钥与普通配置隔离。
-- Console 可以独立演进表单。
-- 备份恢复必须同时包含 ConfigMap 和 Secret。
-- Service 层必须负责默认值、迁移和错误回退。
+- AI 智能套件只需要备份 `ai-suite-configmap` 和自定义 Extension 数据。
+- AI Foundation 的模型与密钥按 AI Foundation 自身的数据策略备份。
+- 旧 `ai-suite-api-keys` Secret 不再读取。

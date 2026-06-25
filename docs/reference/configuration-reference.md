@@ -1,33 +1,25 @@
 # 配置参考
 
 > 事实来源：`AIProperties.java` 当前默认值  
-> 适用版本：AI 智能套件 0.2.23
+> 适用版本：AI 智能套件 0.3.0
 
 ## 配置存储
 
 [![配置与密钥存储](../diagrams/exported/config-storage.svg)](/diagrams/exported/config-storage.svg)
 
-ConfigMap 的每个 `data.<group>` 是一段 JSON 字符串。以下密钥单独存入 Secret：`chatApiKey`、`embeddingApiKey`、`rerankApiKey`、`queryRewriteApiKey`、`writingApiKey`。
+ConfigMap 的每个 `data.<group>` 是一段 JSON 字符串。AI 智能套件不再保存模型供应商密钥；模型供应商、Base URL、API Key 和默认模型由 Halo AI Foundation 统一管理。
 
 ## 模型配置 `models`
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| `chatBaseUrl` | `https://api.deepseek.com/v1` | Chat API 地址 |
-| `chatApiKey` | 空 | Chat API Key，存入 Secret |
-| `chatModel` | `deepseek-chat` | Chat 模型名称 |
-| `embeddingBaseUrl` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | Embedding API 地址 |
-| `embeddingApiKey` | 空 | Embedding API Key |
-| `embeddingModel` | `text-embedding-v3` | Embedding 模型名称 |
+| `aiFoundationChatModelName` | 空 | AI Foundation 语言模型资源名；为空使用默认语言模型 |
+| `aiFoundationEmbeddingModelName` | 空 | AI Foundation Embedding 模型资源名；为空使用默认嵌入模型 |
 | `embeddingDimensions` | `1024` | 索引向量维度；变更后需全量重建 |
-| `rerankEnabled` | `false` | 是否配置 Rerank 能力 |
-| `rerankBaseUrl` | `https://api.siliconflow.cn/v1` | Rerank API 地址 |
-| `rerankApiKey` | 空 | Rerank API Key |
-| `rerankModel` | `BAAI/bge-reranker-v2-m3` | Rerank 模型 |
-| `queryRewriteEnabled` | `false` | 是否配置 Query Rewrite 模型能力 |
-| `queryRewriteBaseUrl` | `https://open.bigmodel.cn/api/paas/v4/` | 改写模型地址 |
-| `queryRewriteApiKey` | 空 | 改写模型 API Key |
-| `queryRewriteModel` | `glm-4-flash` | 改写模型名称 |
+| `rerankEnabled` | `false` | 是否启用 Rerank 模型能力 |
+| `aiFoundationRerankModelName` | 空 | AI Foundation Rerank 模型资源名；为空使用默认 Rerank 模型 |
+| `queryRewriteEnabled` | `false` | 是否启用 Query Rewrite 模型能力 |
+| `aiFoundationQueryRewriteModelName` | 空 | AI Foundation 查询改写模型资源名；为空复用语言模型 |
 
 模型能力开关表示服务是否可用；检索增强页中的管线开关决定一次 RAG 请求是否实际调用它。
 
@@ -123,9 +115,7 @@ ConfigMap 的每个 `data.<group>` 是一段 JSON 字符串。以下密钥单独
 | 字段 | 默认值 | 说明 |
 | --- | ---: | --- |
 | `enabled` | `true` | 编辑器 AI 功能总开关 |
-| `writingBaseUrl` | 空 | 为空时复用 Chat 模型地址 |
-| `writingApiKey` | 空 | 独立写作 API Key |
-| `writingModel` | 空 | 为空时复用 Chat 模型 |
+| `writingModel` | 空 | AI Foundation 写作模型资源名；为空复用语言模型 |
 | `outlineTemperature` | `0.3` | 大纲温度 |
 | `outlineSections` | `6` | 顶层章节数量 |
 | `outlineDepth` | `1` | 大纲深度，合法范围 1～3 |

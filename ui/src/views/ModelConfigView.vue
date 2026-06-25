@@ -1,15 +1,22 @@
 <template>
   <div class="ai-model-page">
     <div class="ai-content">
-      <!-- ===== 核心模型区 ===== -->
       <div class="ai-section-block">
         <div class="ai-section-heading">
           <h2>核心模型</h2>
-          <span class="ai-section-tag ai-tag-required">必配</span>
+          <span class="ai-section-tag ai-tag-required">AI Foundation</span>
+        </div>
+
+        <div class="ai-source-panel">
+          <div class="ai-source-row">
+            <div>
+              <div class="ai-source-title">模型统一由 Halo AI Foundation 管理</div>
+              <div class="ai-source-desc">密钥、供应商和模型连接在官方 AI Foundation 插件中配置；这里仅指定 AI 智能套件各业务使用的模型资源名。</div>
+            </div>
+          </div>
         </div>
 
         <div class="ai-model-grid">
-          <!-- 对话模型卡片 -->
           <article class="ai-model-card">
             <div class="ai-model-card-header">
               <div class="ai-model-title-wrap">
@@ -20,7 +27,7 @@
                 </div>
               </div>
               <div class="ai-model-status">
-                <span class="ai-status-chip required">必填</span>
+                <span class="ai-status-chip required">必配能力</span>
                 <span class="ai-status-chip">
                   <span class="ai-dot" :class="statusDotClass('chat')"></span>
                   {{ statusLabel('chat') }}
@@ -30,31 +37,8 @@
             <div class="ai-model-card-body">
               <div class="ai-form-grid">
                 <div class="ai-form-field">
-                  <label class="ai-field-label">厂商预设</label>
-                  <select class="ai-input ai-select" v-model="vendorPreset.chat">
-                    <option value="">选择厂商快速填充...</option>
-                    <option v-for="v in CHAT_VENDORS" :key="v.name" :value="v.name">{{ v.name }}</option>
-                  </select>
-                </div>
-                <div class="ai-form-field">
-                  <label class="ai-field-label">Base URL</label>
-                  <input class="ai-input" v-model="form.chatBaseUrl" placeholder="https://api.deepseek.com/v1" />
-                </div>
-                <div class="ai-form-field">
-                  <label class="ai-field-label">
-                    API Key
-                    <span class="ai-field-hint">{{ form.chatApiKey ? '已加密保存' : '' }}</span>
-                  </label>
-                  <div class="ai-input-group">
-                    <input class="ai-input" v-model="form.chatApiKey" :type="showKey.chat ? 'text' : 'password'" placeholder="sk-..." />
-                    <button class="ai-input-addon" @click="showKey.chat = !showKey.chat" tabindex="-1">
-                      {{ showKey.chat ? '隐藏' : '显示' }}
-                    </button>
-                  </div>
-                </div>
-                <div class="ai-form-field">
-                  <label class="ai-field-label">模型名称</label>
-                  <input class="ai-input" v-model="form.chatModel" placeholder="deepseek-chat" />
+                  <label class="ai-field-label">语言模型资源名 <span class="ai-label-hint">留空使用默认语言模型</span></label>
+                  <input class="ai-input" v-model="form.aiFoundationChatModelName" placeholder="AI Foundation 模型资源名" />
                 </div>
               </div>
               <div v-if="testResult.chat" class="ai-test-feedback" :class="testResult.chat.ok ? 'success' : 'error'">
@@ -68,7 +52,6 @@
             </div>
           </article>
 
-          <!-- Embedding 模型卡片 -->
           <article class="ai-model-card">
             <div class="ai-model-card-header">
               <div class="ai-model-title-wrap">
@@ -79,7 +62,7 @@
                 </div>
               </div>
               <div class="ai-model-status">
-                <span class="ai-status-chip required">必填</span>
+                <span class="ai-status-chip required">必配能力</span>
                 <span class="ai-status-chip">
                   <span class="ai-dot" :class="statusDotClass('embedding')"></span>
                   {{ statusLabel('embedding') }}
@@ -89,41 +72,16 @@
             <div class="ai-model-card-body">
               <div class="ai-form-grid">
                 <div class="ai-form-field">
-                  <label class="ai-field-label">厂商预设</label>
-                  <select class="ai-input ai-select" v-model="vendorPreset.embedding">
-                    <option value="">选择厂商快速填充...</option>
-                    <option v-for="v in EMBEDDING_VENDORS" :key="v.name" :value="v.name">{{ v.name }}</option>
-                  </select>
+                  <label class="ai-field-label">嵌入模型资源名 <span class="ai-label-hint">留空使用默认嵌入模型</span></label>
+                  <input class="ai-input" v-model="form.aiFoundationEmbeddingModelName" placeholder="AI Foundation 模型资源名" />
                 </div>
                 <div class="ai-form-field">
-                  <label class="ai-field-label">Base URL</label>
-                  <input class="ai-input" v-model="form.embeddingBaseUrl" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1" />
-                </div>
-                <div class="ai-form-field">
-                  <label class="ai-field-label">
-                    API Key
-                    <span class="ai-field-hint">{{ form.embeddingApiKey ? '已加密保存' : '' }}</span>
-                  </label>
-                  <div class="ai-input-group">
-                    <input class="ai-input" v-model="form.embeddingApiKey" :type="showKey.embedding ? 'text' : 'password'" />
-                    <button class="ai-input-addon" @click="showKey.embedding = !showKey.embedding" tabindex="-1">
-                      {{ showKey.embedding ? '隐藏' : '显示' }}
-                    </button>
-                  </div>
-                </div>
-                <div class="ai-two-col">
-                  <div class="ai-form-field">
-                    <label class="ai-field-label">模型名称</label>
-                    <input class="ai-input" v-model="form.embeddingModel" placeholder="text-embedding-v3" />
-                  </div>
-                  <div class="ai-form-field">
-                    <label class="ai-field-label">向量维度</label>
-                    <input class="ai-input" v-model.number="form.embeddingDimensions" type="number" min="256" max="4096" step="128" />
-                  </div>
+                  <label class="ai-field-label">向量维度</label>
+                  <input class="ai-input" v-model.number="form.embeddingDimensions" type="number" min="256" max="4096" step="128" />
                 </div>
               </div>
               <div v-if="testResult.embedding" class="ai-test-feedback" :class="testResult.embedding.ok ? 'success' : 'error'">
-                <template v-if="testResult.embedding.ok"><RiCheckLine /> 连接成功 — 模型: {{ testResult.embedding.model }}，维度: {{ testResult.embedding.dimensions }}</template>
+                <template v-if="testResult.embedding.ok"><RiCheckLine /> 连接成功 — 模型: {{ testResult.embedding.model || '默认模型' }}，维度: {{ testResult.embedding.dimensions }}</template>
                 <template v-else><RiCloseLine /> {{ testResult.embedding.error }}</template>
               </div>
               <div style="justify-content: flex-end;" class="ai-card-actions">
@@ -135,7 +93,6 @@
         </div>
       </div>
 
-      <!-- ===== 高级模型区 ===== -->
       <div class="ai-section-block">
         <div class="ai-section-heading">
           <h2>高级模型</h2>
@@ -145,12 +102,11 @@
         <div class="ai-advanced-note">
           <div class="ai-note-icon">i</div>
           <div>
-            高级模型用于进一步提升检索质量和问答准确率。Rerank 可优化召回结果排序；查询改写可将用户问题改写为更适合检索的表达。
+            Rerank 可优化召回结果排序；查询改写可将用户问题改写为更适合检索的表达。模型资源名留空时使用 AI Foundation 的默认模型或复用对话模型。
           </div>
         </div>
 
         <div class="ai-model-grid">
-          <!-- Rerank 模型卡片 -->
           <article class="ai-model-card">
             <div class="ai-model-card-header">
               <div class="ai-model-title-wrap">
@@ -174,31 +130,8 @@
             <div class="ai-model-card-body" v-if="form.rerankEnabled">
               <div class="ai-form-grid">
                 <div class="ai-form-field">
-                  <label class="ai-field-label">厂商预设</label>
-                  <select class="ai-input ai-select" v-model="vendorPreset.rerank">
-                    <option value="">选择厂商快速填充...</option>
-                    <option v-for="v in RERANK_VENDORS" :key="v.name" :value="v.name">{{ v.name }}</option>
-                  </select>
-                </div>
-                <div class="ai-form-field">
-                  <label class="ai-field-label">Base URL</label>
-                  <input class="ai-input" v-model="form.rerankBaseUrl" placeholder="https://api.siliconflow.cn/v1" />
-                </div>
-                <div class="ai-form-field">
-                  <label class="ai-field-label">
-                    API Key
-                    <span class="ai-field-hint">{{ form.rerankApiKey ? '已加密保存' : '' }}</span>
-                  </label>
-                  <div class="ai-input-group">
-                    <input class="ai-input" v-model="form.rerankApiKey" :type="showKey.rerank ? 'text' : 'password'" />
-                    <button class="ai-input-addon" @click="showKey.rerank = !showKey.rerank" tabindex="-1">
-                      {{ showKey.rerank ? '隐藏' : '显示' }}
-                    </button>
-                  </div>
-                </div>
-                <div class="ai-form-field">
-                  <label class="ai-field-label">模型名称</label>
-                  <input class="ai-input" v-model="form.rerankModel" placeholder="BAAI/bge-reranker-v2-m3" />
+                  <label class="ai-field-label">重排序模型资源名 <span class="ai-label-hint">留空使用默认 Rerank 模型</span></label>
+                  <input class="ai-input" v-model="form.aiFoundationRerankModelName" placeholder="AI Foundation 模型资源名" />
                 </div>
               </div>
               <div v-if="testResult.rerank" class="ai-test-feedback" :class="testResult.rerank.ok ? 'success' : 'error'">
@@ -215,7 +148,6 @@
             </div>
           </article>
 
-          <!-- 查询改写模型卡片 -->
           <article class="ai-model-card">
             <div class="ai-model-card-header">
               <div class="ai-model-title-wrap">
@@ -239,31 +171,8 @@
             <div class="ai-model-card-body" v-if="form.queryRewriteEnabled">
               <div class="ai-form-grid">
                 <div class="ai-form-field">
-                  <label class="ai-field-label">厂商预设</label>
-                  <select class="ai-input ai-select" v-model="vendorPreset.queryRewrite">
-                    <option value="">选择厂商快速填充...</option>
-                    <option v-for="v in QUERY_REWRITE_VENDORS" :key="v.name" :value="v.name">{{ v.name }}</option>
-                  </select>
-                </div>
-                <div class="ai-form-field">
-                  <label class="ai-field-label">Base URL <span class="ai-label-hint">留空则复用对话模型</span></label>
-                  <input class="ai-input" v-model="form.queryRewriteBaseUrl" placeholder="https://open.bigmodel.cn/api/paas/v4/" />
-                </div>
-                <div class="ai-form-field">
-                  <label class="ai-field-label">
-                    API Key <span class="ai-label-hint">留空则复用对话模型 Key</span>
-                    <span class="ai-field-hint">{{ form.queryRewriteApiKey ? '已加密保存' : '' }}</span>
-                  </label>
-                  <div class="ai-input-group">
-                    <input class="ai-input" v-model="form.queryRewriteApiKey" :type="showKey.queryRewrite ? 'text' : 'password'" />
-                    <button class="ai-input-addon" @click="showKey.queryRewrite = !showKey.queryRewrite" tabindex="-1">
-                      {{ showKey.queryRewrite ? '隐藏' : '显示' }}
-                    </button>
-                  </div>
-                </div>
-                <div class="ai-form-field">
-                  <label class="ai-field-label">模型名称</label>
-                  <input class="ai-input" v-model="form.queryRewriteModel" placeholder="glm-4-flash" />
+                  <label class="ai-field-label">查询改写模型资源名 <span class="ai-label-hint">留空复用对话模型</span></label>
+                  <input class="ai-input" v-model="form.aiFoundationQueryRewriteModelName" placeholder="AI Foundation 模型资源名" />
                 </div>
               </div>
               <div v-if="testResult.queryRewrite" class="ai-test-feedback" :class="testResult.queryRewrite.ok ? 'success' : 'error'">
@@ -286,8 +195,8 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch, onMounted } from "vue";
-import { Toast , VButton, VSpace} from "@halo-dev/components";
+import { reactive, onMounted } from "vue";
+import { Toast, VButton } from "@halo-dev/components";
 import RiChatSmileLine from "~icons/ri/chat-smile-line";
 import RiStackLine from "~icons/ri/stack-line";
 import RiSortDesc from "~icons/ri/sort-desc";
@@ -295,73 +204,27 @@ import RiSearchAiLine from "~icons/ri/search-ai-line";
 import RiCheckLine from "~icons/ri/check-line";
 import RiCloseLine from "~icons/ri/close-line";
 
-// ===== 常量 =====
 const CONFIG_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/config";
 
-// 每个模型包含的配置字段，用于独立保存
 const MODEL_FIELDS: Record<string, string[]> = {
-  chat: ["chatBaseUrl", "chatApiKey", "chatModel"],
-  embedding: ["embeddingBaseUrl", "embeddingApiKey", "embeddingModel", "embeddingDimensions"],
-  rerank: ["rerankEnabled", "rerankBaseUrl", "rerankApiKey", "rerankModel"],
-  queryRewrite: ["queryRewriteEnabled", "queryRewriteBaseUrl", "queryRewriteApiKey", "queryRewriteModel"],
+  chat: ["aiFoundationChatModelName"],
+  embedding: ["aiFoundationEmbeddingModelName", "embeddingDimensions"],
+  rerank: ["rerankEnabled", "aiFoundationRerankModelName"],
+  queryRewrite: ["queryRewriteEnabled", "aiFoundationQueryRewriteModelName"],
 };
 
-// 厂商预设 —— 选择后自动填充对应字段
-interface VendorPreset {
-  name: string;
-  baseUrl: string;
-  model: string;
-  dimensions?: number;
-}
-
-const CHAT_VENDORS: VendorPreset[] = [
-  { name: "DeepSeek", baseUrl: "https://api.deepseek.com/v1", model: "deepseek-chat" },
-  { name: "阿里通义千问", baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1", model: "qwen-plus" },
-  { name: "智谱 GLM", baseUrl: "https://open.bigmodel.cn/api/paas/v4/", model: "glm-4-flash" },
-  { name: "Moonshot", baseUrl: "https://api.moonshot.cn/v1", model: "moonshot-v1-8k" },
-  { name: "硅基流动", baseUrl: "https://api.siliconflow.cn/v1", model: "deepseek-ai/DeepSeek-V3" },
-  { name: "OpenAI", baseUrl: "https://api.openai.com/v1", model: "gpt-4o" },
-];
-
-const EMBEDDING_VENDORS: VendorPreset[] = [
-  { name: "阿里通义千问", baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1", model: "text-embedding-v3", dimensions: 1024 },
-  { name: "智谱 GLM", baseUrl: "https://open.bigmodel.cn/api/paas/v4/", model: "embedding-2", dimensions: 1024 },
-  { name: "硅基流动", baseUrl: "https://api.siliconflow.cn/v1", model: "BAAI/bge-large-zh-v1.5", dimensions: 1024 },
-];
-
-const RERANK_VENDORS: VendorPreset[] = [
-  { name: "硅基流动", baseUrl: "https://api.siliconflow.cn/v1", model: "BAAI/bge-reranker-v2-m3" },
-  { name: "阿里通义千问", baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1", model: "gte-rerank" },
-];
-
-const QUERY_REWRITE_VENDORS: VendorPreset[] = [
-  { name: "智谱 GLM", baseUrl: "https://open.bigmodel.cn/api/paas/v4/", model: "glm-4-flash" },
-  { name: "DeepSeek", baseUrl: "https://api.deepseek.com/v1", model: "deepseek-chat" },
-  { name: "阿里通义千问", baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1", model: "qwen-turbo" },
-];
-
-// ===== 表单状态 =====
 const form = reactive({
-  chatBaseUrl: "",
-  chatApiKey: "",
-  chatModel: "",
-  embeddingBaseUrl: "",
-  embeddingApiKey: "",
-  embeddingModel: "",
+  aiFoundationChatModelName: "",
+  aiFoundationEmbeddingModelName: "",
+  aiFoundationRerankModelName: "",
+  aiFoundationQueryRewriteModelName: "",
   embeddingDimensions: 1024,
   rerankEnabled: false,
-  rerankBaseUrl: "",
-  rerankApiKey: "",
-  rerankModel: "",
   queryRewriteEnabled: false,
-  queryRewriteBaseUrl: "",
-  queryRewriteApiKey: "",
-  queryRewriteModel: "",
 });
 
 const saving = reactive({ chat: false, embedding: false, rerank: false, queryRewrite: false });
 const testing = reactive({ chat: false, embedding: false, rerank: false, queryRewrite: false });
-const showKey = reactive({ chat: false, embedding: false, rerank: false, queryRewrite: false });
 
 const testResult = reactive<Record<string, { ok: boolean; reply?: string; model?: string; dimensions?: number; relevanceScore?: number; error?: string } | null>>({
   chat: null,
@@ -370,22 +233,14 @@ const testResult = reactive<Record<string, { ok: boolean; reply?: string; model?
   queryRewrite: null,
 });
 
-// 厂商预设下拉的当前选中值
-const vendorPreset = reactive({ chat: "", embedding: "", rerank: "", queryRewrite: "" });
-
-// ===== 状态指示器 =====
-function getConnectionStatus(model: string): "connected" | "error" | "testing" | "configured" | "empty" {
+function getConnectionStatus(model: string): "connected" | "error" | "testing" | "configured" {
   const tr = testResult[model];
   if (testing[model]) return "testing";
   if (tr?.ok) return "connected";
   if (tr && !tr.ok) return "error";
-  const prefix = model === "queryRewrite" ? "queryRewrite" : model;
-  const keyField = (form as any)[prefix + "BaseUrl"] || (form as any)[prefix + "ApiKey"];
-  if (keyField) return "configured";
-  return "empty";
+  return "configured";
 }
 
-// 状态圆点颜色
 function statusDotClass(model: string) {
   const s = getConnectionStatus(model);
   return {
@@ -393,7 +248,6 @@ function statusDotClass(model: string) {
     error: "ai-dot-red",
     testing: "ai-dot-blue",
     configured: "ai-dot-green",
-    empty: "ai-dot-gray",
   }[s];
 }
 
@@ -403,34 +257,10 @@ function statusLabel(model: string) {
     connected: "已连接",
     error: "连接失败",
     testing: "测试中...",
-    configured: "已填写",
-    empty: "未配置",
+    configured: "AI Foundation",
   }[s];
 }
 
-// ===== 厂商预设：监听下拉变化，自动填充对应字段 =====
-watch(() => vendorPreset.chat, (name) => {
-  if (!name) return;
-  const v = CHAT_VENDORS.find(x => x.name === name);
-  if (v) { form.chatBaseUrl = v.baseUrl; form.chatModel = v.model; }
-});
-watch(() => vendorPreset.embedding, (name) => {
-  if (!name) return;
-  const v = EMBEDDING_VENDORS.find(x => x.name === name);
-  if (v) { form.embeddingBaseUrl = v.baseUrl; form.embeddingModel = v.model; if (v.dimensions) form.embeddingDimensions = v.dimensions; }
-});
-watch(() => vendorPreset.rerank, (name) => {
-  if (!name) return;
-  const v = RERANK_VENDORS.find(x => x.name === name);
-  if (v) { form.rerankBaseUrl = v.baseUrl; form.rerankModel = v.model; }
-});
-watch(() => vendorPreset.queryRewrite, (name) => {
-  if (!name) return;
-  const v = QUERY_REWRITE_VENDORS.find(x => x.name === name);
-  if (v) { form.queryRewriteBaseUrl = v.baseUrl; form.queryRewriteModel = v.model; }
-});
-
-// ===== 独立保存 =====
 async function saveModel(model: string) {
   saving[model] = true;
   try {
@@ -462,7 +292,6 @@ async function saveModel(model: string) {
   }
 }
 
-// ===== 连通性测试 =====
 async function testChat() {
   testing.chat = true;
   testResult.chat = null;
@@ -470,10 +299,10 @@ async function testChat() {
     const resp = await fetch(CONFIG_API + "/test-model", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ baseUrl: form.chatBaseUrl, apiKey: form.chatApiKey, model: form.chatModel }),
+      body: JSON.stringify({ model: form.aiFoundationChatModelName }),
     });
     const data = await resp.json();
-    testResult.chat = { ok: data.connected, reply: data.reply, error: data.error };
+    testResult.chat = { ok: data.connected, reply: data.reply, model: data.model, error: data.error };
   } catch (e: any) {
     testResult.chat = { ok: false, error: e.message };
   } finally {
@@ -488,7 +317,10 @@ async function testEmbedding() {
     const resp = await fetch(CONFIG_API + "/test-embedding", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ baseUrl: form.embeddingBaseUrl, apiKey: form.embeddingApiKey, model: form.embeddingModel, dimensions: form.embeddingDimensions }),
+      body: JSON.stringify({
+        model: form.aiFoundationEmbeddingModelName,
+        dimensions: form.embeddingDimensions,
+      }),
     });
     const data = await resp.json();
     testResult.embedding = { ok: data.connected, model: data.model, dimensions: data.dimensions, error: data.error };
@@ -506,7 +338,7 @@ async function testRerank() {
     const resp = await fetch(CONFIG_API + "/test-rerank", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ baseUrl: form.rerankBaseUrl, apiKey: form.rerankApiKey, model: form.rerankModel }),
+      body: JSON.stringify({ model: form.aiFoundationRerankModelName }),
     });
     const data = await resp.json();
     testResult.rerank = { ok: data.connected, model: data.model, relevanceScore: data.relevanceScore, error: data.error };
@@ -524,7 +356,7 @@ async function testQueryRewrite() {
     const resp = await fetch(CONFIG_API + "/test-query-rewrite", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ baseUrl: form.queryRewriteBaseUrl, apiKey: form.queryRewriteApiKey, model: form.queryRewriteModel }),
+      body: JSON.stringify({ model: form.aiFoundationQueryRewriteModelName || form.aiFoundationChatModelName }),
     });
     const data = await resp.json();
     testResult.queryRewrite = { ok: data.connected, model: data.model, reply: data.reply, error: data.error };
@@ -535,7 +367,6 @@ async function testQueryRewrite() {
   }
 }
 
-// ===== 初始化 =====
 onMounted(async () => {
   try {
     const resp = await fetch(CONFIG_API);
@@ -552,6 +383,42 @@ onMounted(async () => {
 
 <style scoped>
 /* ===== 双栏卡片网格 ===== */
+
+.ai-source-panel {
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.ai-source-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.ai-source-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.ai-source-desc {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.ai-source-select {
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.ai-source-models {
+  margin-top: 14px;
+}
 
 /* ===== 双栏卡片网格 ===== */
 .ai-model-grid {

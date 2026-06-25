@@ -269,7 +269,7 @@ public class PublicChatEndpoint implements CustomEndpoint {
         if (e instanceof WebClientResponseException wcre) {
             int code = wcre.getStatusCode().value();
             if (code == 401 || code == 403) {
-                return "⚠️ AI 服务授权失败 (HTTP " + code + "),请联系博主检查 API Key 配置。";
+                return "⚠️ AI 服务授权失败 (HTTP " + code + "),请联系博主检查 AI Foundation 模型配置。";
             }
             if (code == 429) {
                 return "⚠️ AI 服务调用过于频繁,请稍后再试。";
@@ -300,7 +300,7 @@ public class PublicChatEndpoint implements CustomEndpoint {
                                     String clientIp, String userAgent) {
         try {
             String model = aiProperties.getModelConfig()
-                .map(m -> m.getChatModel() != null ? m.getChatModel() : "unknown")
+                .map(m -> m.getEffectiveChatModel() != null ? m.getEffectiveChatModel() : "unknown")
                 .defaultIfEmpty("unknown")
                 .block();
             ChatLogEntry entry = new ChatLogEntry(

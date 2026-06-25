@@ -81,11 +81,6 @@ public class LlmTitleFilterProcessor implements PipelineProcessor {
             "判断标题是否与用户问题主题相关");
 
         return aiProperties.getModelConfig().flatMap(modelConfig -> {
-            if (modelConfig.getChatApiKey() == null || modelConfig.getChatApiKey().isBlank()) {
-                log.warn("[LlmTitleFilter] Chat API Key 未配置，返回空结果以防止输出无关文章");
-                return Mono.just(List.of());
-            }
-
             // 拼标题列表
             StringBuilder titleList = new StringBuilder();
             for (int i = 0; i < pool.size(); i++) {
@@ -114,9 +109,7 @@ public class LlmTitleFilterProcessor implements PipelineProcessor {
             responseFormat.put("type", "json_object");
 
             return llmClient.chat(
-                    modelConfig.getChatBaseUrl(),
-                    modelConfig.getChatApiKey(),
-                    modelConfig.getChatModel(),
+                    modelConfig.getEffectiveChatModel(),
                     messages,
                     0.0f,
                     512,

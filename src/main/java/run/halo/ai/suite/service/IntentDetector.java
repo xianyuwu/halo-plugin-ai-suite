@@ -105,10 +105,6 @@ public class IntentDetector {
     private Mono<Optional<IntentRoute>> detectByLlm(String userQuery,
                                                      List<IntentRoute> candidates) {
         return aiProperties.getModelConfig().flatMap(modelConfig -> {
-            if (modelConfig.getChatApiKey() == null || modelConfig.getChatApiKey().isBlank()) {
-                return Mono.just(Optional.<IntentRoute>empty());
-            }
-
             // 构建 LLM 候选列表 + hint
             StringBuilder candList = new StringBuilder();
             StringBuilder hints = new StringBuilder();
@@ -136,9 +132,7 @@ public class IntentDetector {
             );
 
             return llmClient.chat(
-                    modelConfig.getChatBaseUrl(),
-                    modelConfig.getChatApiKey(),
-                    modelConfig.getChatModel(),
+                    modelConfig.getEffectiveChatModel(),
                     messages,
                     0.0f,
                     32,

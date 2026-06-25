@@ -1,7 +1,7 @@
 # 安装与首次配置
 
 > 适用读者：Halo 站长、首次部署人员  
-> 适用版本：AI 智能套件 0.2.23、Halo 2.24+  
+> 适用版本：AI 智能套件 0.3.0、Halo 2.25+  
 > 预计耗时：15～30 分钟
 
 ## 安装完成后的目标状态
@@ -34,7 +34,7 @@ JAVA_HOME=~/jdk21/contents/Contents/Home ./gradlew build
 构建产物位于：
 
 ```text
-build/libs/plugin-ai-suite-0.2.23.jar
+build/libs/plugin-ai-suite-0.3.0.jar
 ```
 
 本项目开发环境不使用 Docker，也不要运行 `./gradlew haloServer`。
@@ -50,21 +50,24 @@ curl -u admin:admin123 \
 
 响应中的 `status.phase` 应为 `STARTED`。
 
-## 2. 配置 Chat 模型
+## 2. 配置 AI Foundation 模型
 
-进入“AI 智能套件 → 模型配置”，填写：
+先进入 Halo AI Foundation 插件，配置语言模型、Embedding 模型和需要的 Rerank 模型。供应商、Base URL、API Key 都在 AI Foundation 中维护。
+
+再进入“AI 智能套件 → 模型配置”，按需填写 AI Foundation 模型资源名：
 
 ![模型配置](../../assets/readme/screenshots/console-models.jpg)
 
-- Base URL，例如 `https://api.deepseek.com/v1`
-- API Key
-- 模型名称，例如 `deepseek-chat`
+- 语言模型资源名，留空使用 AI Foundation 默认语言模型。
+- Embedding 模型资源名，留空使用 AI Foundation 默认嵌入模型。
+- Rerank 模型资源名，留空使用 AI Foundation 默认 Rerank 模型。
+- 查询改写模型资源名，留空复用语言模型。
 
 点击连通性测试。成功只代表模型接口可调用，不代表 RAG 已经可用。
 
 ## 3. 配置 Embedding 模型
 
-填写 Embedding Base URL、API Key、模型名称和向量维度。默认配置使用 `text-embedding-v3` 和 1024 维，但最终值必须与实际服务返回一致。
+在 AI Foundation 中确认 Embedding 模型可用，并在 AI 智能套件中填写向量维度。默认维度为 1024，但最终值必须与实际服务返回一致。
 
 > Embedding 模型名称或向量维度变化后，必须执行全量重建。旧向量不能与新模型生成的向量混用。
 
@@ -101,7 +104,7 @@ curl -u admin:admin123 \
 
 [![配置与密钥存储](../diagrams/exported/config-storage.svg)](/diagrams/exported/config-storage.svg)
 
-普通配置保存在 ConfigMap `ai-suite-configmap`，API Key 保存在 Secret `ai-suite-api-keys`。插件能够兼容读取旧名称 `ai-assistant-configmap` 和 `ai-assistant-api-keys`，用于升级迁移。
+AI 智能套件普通配置保存在 ConfigMap `ai-suite-configmap`。模型供应商、Base URL、API Key 和默认模型由 Halo AI Foundation 自己保存和管理。
 
 ## 下一步
 

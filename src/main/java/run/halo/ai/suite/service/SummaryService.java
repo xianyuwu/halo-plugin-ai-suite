@@ -74,9 +74,7 @@ public class SummaryService {
                                             Map.of("role", "user", "content", prompt)
                                         );
                                         return llmClient.chatInternal(
-                                            modelConfig.getChatBaseUrl(),
-                                            modelConfig.getChatApiKey(),
-                                            modelConfig.getChatModel(),
+                                            modelConfig.getEffectiveChatModel(),
                                             messages,
                                             0.3f,
                                             512,

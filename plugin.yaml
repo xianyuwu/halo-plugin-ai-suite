@@ -4,17 +4,19 @@ kind: "Plugin"
 metadata:
   name: "ai-suite"
 spec:
-  version: "0.2.18-SNAPSHOT"
+  version: "0.3.0"
   enabled: true
-  requires: ">=2.24.0"
+  requires: ">=2.25.0"
   author:
     name: "rainwu"
     website: "https://github.com/rainwu"
   logo: "/plugins/ai-suite/assets/res/images/logo.png"
   homepage: "https://github.com/rainwu/plugin-ai-suite#readme"
   displayName: "AI智能套件"
-  description: "为 Halo 博客提供 AI 智能问答、文档智能编辑、AI 摘要等功能，支持对接主流 AI 大模型厂商"
+  description: "为 Halo 博客提供 AI 智能问答、文档智能编辑、AI 摘要等功能，基于 Halo AI Foundation 统一管理模型能力"
   configMapName: "ai-suite-configmap"
+  pluginDependencies:
+    ai-foundation: "*"
   license:
   - name: "GPL-3.0"
     url: "https://github.com/rainwu/plugin-ai-suite/blob/main/LICENSE"

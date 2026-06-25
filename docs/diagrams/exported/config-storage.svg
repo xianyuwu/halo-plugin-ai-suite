@@ -1,6 +1,6 @@
 <svg width="1400" height="560" viewBox="0 0 1400 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="diagram-title diagram-desc" preserveAspectRatio="xMidYMid meet">
-  <title id="diagram-title">配置与密钥存储</title>
-  <desc id="diagram-desc">普通配置与敏感凭据分离，读取时由 AIProperties 统一组装</desc>
+  <title id="diagram-title">配置与模型能力</title>
+  <desc id="diagram-desc">AI Suite 保存业务配置，模型凭据由 Halo AI Foundation 管理</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08111F"/><stop offset=".55" stop-color="#111C35"/><stop offset="1" stop-color="#17143A"/></linearGradient>
     <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#C7D2FE" stroke-opacity=".045"/></pattern>
@@ -11,19 +11,17 @@
   </defs>
   <rect width="1400" height="560" rx="28" fill="url(#bg)"/>
   <rect width="1400" height="560" rx="28" fill="url(#grid)"/>
-  <text x="52" y="58" fill="#F8FAFC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="28" font-weight="760">配置与密钥存储</text>
-  <text x="52" y="88" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="14">普通配置与敏感凭据分离，读取时由 AIProperties 统一组装</text>
+  <text x="52" y="58" fill="#F8FAFC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="28" font-weight="760">配置与模型能力</text>
+  <text x="52" y="88" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="14">AI Suite 保存业务配置，模型凭据由 Halo AI Foundation 管理</text>
   <rect x="420" y="120" width="540" height="320" rx="22" fill="#0F172A" fill-opacity=".52" stroke="#475569" stroke-opacity=".8"/>
   <text x="440" y="148" fill="#A5B4FC" font-family="Inter, PingFang SC, sans-serif" font-size="11" font-weight="750" letter-spacing="1.5">HALO EXTENSION STORE</text>
 <path d="M275 270 C295 270,295 270,315 270" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
   
 <path d="M525 270 C557.5 270,557.5 202.5,590 202.5" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
   
-<path d="M525 270 C557.5 270,557.5 362.5,590 362.5" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
-  
 <path d="M890 202.5 C952.5 202.5,952.5 270,1015 270" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
   
-<path d="M890 362.5 C952.5 362.5,952.5 270,1015 270" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
+<path d="M890 362.5 C1075 362.5,1075 270,1260 270" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
   
 <path d="M1225 270 C1242.5 270,1242.5 270,1260 270" stroke="#34D399" stroke-width="2.2" fill="none" marker-end="url(#arrowGreen)"/>
   
@@ -37,7 +35,7 @@
     <rect x="315" y="225" width="210" height="90" rx="18" fill="#1E2455" stroke="#818CF8" stroke-opacity=".68"/>
     
     <text x="420" y="268" text-anchor="middle" fill="#EEF2FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">配置 Endpoint</text>
-    <text x="420" y="294" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">校验 · 拆分 · 保存</text>
+    <text x="420" y="294" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">校验 · 保存</text>
   </g>
 <g filter="url(#shadow)">
     <rect x="590" y="155" width="300" height="95" rx="18" fill="#172033" stroke="#64748B" stroke-opacity=".68"/>
@@ -48,8 +46,8 @@
 <g filter="url(#shadow)">
     <rect x="590" y="315" width="300" height="95" rx="18" fill="#3A2416" stroke="#FB923C" stroke-opacity=".68"/>
     
-    <text x="740" y="360.5" text-anchor="middle" fill="#FFF7ED" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">Secret</text>
-    <text x="740" y="386.5" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">ai-suite-api-keys · API Key</text>
+    <text x="740" y="360.5" text-anchor="middle" fill="#FFF7ED" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">AI Foundation</text>
+    <text x="740" y="386.5" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">模型供应商 · API Key</text>
   </g>
 <g filter="url(#shadow)">
     <rect x="1015" y="225" width="210" height="90" rx="18" fill="#2D1D46" stroke="#C084FC" stroke-opacity=".68"/>
@@ -63,5 +61,5 @@
     <text x="1310" y="268" text-anchor="middle" fill="#ECFDF5" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">服务</text>
     <text x="1310" y="294" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">RAG / AI</text>
   </g>
-  <text x="1348" y="535" text-anchor="end" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="11">AI 智能套件 · 0.2.23</text>
+  <text x="1348" y="535" text-anchor="end" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="11">AI 智能套件 · 0.3.0</text>
 </svg>

@@ -312,8 +312,7 @@ public class RAGPipeline {
     }
 
     private boolean hasEmbeddingConfig(ModelConfig modelConfig) {
-        return modelConfig.getEmbeddingApiKey() != null
-            && !modelConfig.getEmbeddingApiKey().isBlank();
+        return true;
     }
 
     private String normalizedSearchMode(RetrievalConfig retrievalConfig) {
@@ -401,11 +400,12 @@ public class RAGPipeline {
             Map.of("role", "user", "content", query)
         );
 
-        String baseUrl = getRewriteBaseUrl(modelConfig);
-        String apiKey = getRewriteApiKey(modelConfig);
-        String model = modelConfig.getQueryRewriteModel();
+        String model = modelConfig.getEffectiveQueryRewriteModel();
+        if (model == null || model.isBlank()) {
+            model = modelConfig.getEffectiveChatModel();
+        }
 
-        return llmClient.chat(baseUrl, apiKey, model, messages, 0.0f, 256, null, null,
+        return llmClient.chat(model, messages, 0.0f, 256, null, null,
                 UsageScenario.SEARCH_QUERY_REWRITE)
             .timeout(QUERY_REWRITE_TIMEOUT)
             .map(result -> {
@@ -431,11 +431,12 @@ public class RAGPipeline {
         }
         messages.add(Map.of("role", "user", "content", query));
 
-        String baseUrl = getRewriteBaseUrl(modelConfig);
-        String apiKey = getRewriteApiKey(modelConfig);
-        String model = modelConfig.getQueryRewriteModel();
+        String model = modelConfig.getEffectiveQueryRewriteModel();
+        if (model == null || model.isBlank()) {
+            model = modelConfig.getEffectiveChatModel();
+        }
 
-        return llmClient.chat(baseUrl, apiKey, model, messages, 0.0f, 256, null, null,
+        return llmClient.chat(model, messages, 0.0f, 256, null, null,
                 UsageScenario.SEARCH_QUERY_REWRITE)
             .timeout(QUERY_REWRITE_TIMEOUT)
             .map(result -> {
@@ -447,16 +448,6 @@ public class RAGPipeline {
                 return rewritten;
             })
             .onErrorReturn(query);
-    }
-
-    private String getRewriteBaseUrl(ModelConfig modelConfig) {
-        String url = modelConfig.getQueryRewriteBaseUrl();
-        return (url != null && !url.isBlank()) ? url : modelConfig.getChatBaseUrl();
-    }
-
-    private String getRewriteApiKey(ModelConfig modelConfig) {
-        String key = modelConfig.getQueryRewriteApiKey();
-        return (key != null && !key.isBlank()) ? key : modelConfig.getChatApiKey();
     }
 
     // ===== Step 2: HyDE =====
@@ -477,8 +468,7 @@ public class RAGPipeline {
             Map.of("role", "user", "content", query)
         );
 
-        return llmClient.chat(modelConfig.getChatBaseUrl(), modelConfig.getChatApiKey(),
-                modelConfig.getChatModel(), messages, 0.7f, 512, null, null,
+        return llmClient.chat(modelConfig.getEffectiveChatModel(), messages, 0.7f, 512, null, null,
                 UsageScenario.SEARCH_HYDE)
             .timeout(HYDE_TIMEOUT)
             .onErrorResume(e -> {
@@ -529,9 +519,7 @@ public class RAGPipeline {
         long rerankStart = trace != null ? System.currentTimeMillis() : 0;
 
         return llmClient.rerank(
-                modelConfig.getRerankBaseUrl(),
-                modelConfig.getRerankApiKey(),
-                modelConfig.getRerankModel(),
+                modelConfig.getEffectiveRerankModel(),
                 query, docTexts, rerankTopN,
                 UsageScenario.SEARCH_RERANK
             )
@@ -643,8 +631,7 @@ public class RAGPipeline {
             Map.of("role", "user", "content", query)
         );
 
-        return llmClient.chat(modelConfig.getChatBaseUrl(), modelConfig.getChatApiKey(),
-                modelConfig.getChatModel(), messages, 0.0f, 256, null, null,
+        return llmClient.chat(modelConfig.getEffectiveChatModel(), messages, 0.0f, 256, null, null,
                 UsageScenario.SEARCH_CROSS_LANGUAGE)
             .timeout(CROSS_LANG_TIMEOUT)
             .map(String::trim)
@@ -703,9 +690,7 @@ public class RAGPipeline {
 
     private Mono<float[]> embedQuery(String text, ModelConfig modelConfig) {
         return llmClient.embed(
-            modelConfig.getEmbeddingBaseUrl(),
-            modelConfig.getEmbeddingApiKey(),
-            modelConfig.getEmbeddingModel(),
+            modelConfig.getEffectiveEmbeddingModel(),
             text,
             modelConfig.getEmbeddingDimensions(),
             UsageScenario.SEARCH_EMBEDDING

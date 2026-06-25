@@ -31,7 +31,7 @@ shasum -a 256 build/libs/plugin-ai-suite-*.jar
 
 ## 验收
 
-- JAR 能在干净的 Halo 2.24+ 环境安装并启用。
+- JAR 能在干净的 Halo 2.25+ 环境安装并启用，并能识别已安装的 Halo AI Foundation。
 - 配置保存和重新打开一致。
 - 索引、聊天、搜索、脑图、写作、评测可用。
 - 匿名 RoleTemplate 权限准确。

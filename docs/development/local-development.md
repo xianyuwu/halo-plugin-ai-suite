@@ -7,7 +7,7 @@
 - JDK 21：`~/jdk21/contents/Contents/Home`
 - Node.js 20+
 - pnpm 9+
-- Halo 2.24，端口 8090
+- Halo 2.25，端口 8090
 - 不使用 Docker，不运行 `./gradlew haloServer`
 
 ## 一键启动

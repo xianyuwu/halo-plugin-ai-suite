@@ -362,12 +362,12 @@ public class ConsoleUsageEndpoint implements CustomEndpoint {
                 ModelConfig mc = tuple.getT1().getT1().getT2();
                 AIProperties.WritingConfig wc = tuple.getT2();
                 Map<String, Object> m = limitsToMap(tuple.getT1().getT1().getT1(), tuple.getT1().getT2());
-                m.put("chatModel", mc != null ? mc.getChatModel() : null);
-                m.put("embeddingModel", mc != null ? mc.getEmbeddingModel() : null);
+                m.put("chatModel", mc != null ? mc.getEffectiveChatModel() : null);
+                m.put("embeddingModel", mc != null ? mc.getEffectiveEmbeddingModel() : null);
                 m.put("rerankEnabled", mc != null && mc.isRerankEnabled());
-                m.put("rerankModel", mc != null ? mc.getRerankModel() : null);
+                m.put("rerankModel", mc != null ? mc.getEffectiveRerankModel() : null);
                 m.put("queryRewriteEnabled", mc != null && mc.isQueryRewriteEnabled());
-                m.put("queryRewriteModel", mc != null ? mc.getQueryRewriteModel() : null);
+                m.put("queryRewriteModel", mc != null ? mc.getEffectiveQueryRewriteModel() : null);
                 m.put("writingModel", wc != null ? wc.getWritingModel() : "");
                 return m;
             })

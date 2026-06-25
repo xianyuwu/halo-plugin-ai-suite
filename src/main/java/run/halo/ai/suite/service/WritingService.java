@@ -131,10 +131,7 @@ public class WritingService {
             }
             String act = v.action();
 
-            // 独立模型：writingBaseUrl 非空时用它，否则回退到对话模型
-            String baseUrl = isNotBlank(writingCfg.getWritingBaseUrl()) ? writingCfg.getWritingBaseUrl() : modelCfg.getChatBaseUrl();
-            String apiKey = isNotBlank(writingCfg.getWritingApiKey()) ? writingCfg.getWritingApiKey() : modelCfg.getChatApiKey();
-            String model = isNotBlank(writingCfg.getWritingModel()) ? writingCfg.getWritingModel() : modelCfg.getChatModel();
+            String model = isNotBlank(writingCfg.getWritingModel()) ? writingCfg.getWritingModel() : modelCfg.getEffectiveChatModel();
 
             // 大纲温度从配置读，其他 action 用硬编码温度表
             float temperature;
@@ -152,7 +149,7 @@ public class WritingService {
                 ? Map.of("type", "json_object")
                 : null;
 
-            return llmClient.chatStreamInternal(baseUrl, apiKey, model, messages, temperature, maxTokens, responseFormat,
+            return llmClient.chatStreamInternal(model, messages, temperature, maxTokens, responseFormat,
                     UsageScenario.WRITING_ASSIST)
                 .map(AssistEvent::token)
                 .concatWith(Flux.just(AssistEvent.done()))
@@ -181,9 +178,7 @@ public class WritingService {
             }
             String act = v.action();
 
-            String baseUrl = isNotBlank(writingCfg.getWritingBaseUrl()) ? writingCfg.getWritingBaseUrl() : modelCfg.getChatBaseUrl();
-            String apiKey = isNotBlank(writingCfg.getWritingApiKey()) ? writingCfg.getWritingApiKey() : modelCfg.getChatApiKey();
-            String model = isNotBlank(writingCfg.getWritingModel()) ? writingCfg.getWritingModel() : modelCfg.getChatModel();
+            String model = isNotBlank(writingCfg.getWritingModel()) ? writingCfg.getWritingModel() : modelCfg.getEffectiveChatModel();
 
             float temperature;
             if ("outline".equals(act)) {
@@ -198,7 +193,7 @@ public class WritingService {
                 ? Map.of("type", "json_object")
                 : null;
 
-            return llmClient.chatInternal(baseUrl, apiKey, model, messages, temperature, maxTokens, responseFormat,
+            return llmClient.chatInternal(model, messages, temperature, maxTokens, responseFormat,
                 UsageScenario.WRITING_ASSIST);
         })
         .onErrorResume(e -> {

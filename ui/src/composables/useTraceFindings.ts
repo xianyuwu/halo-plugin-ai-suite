@@ -55,7 +55,7 @@ export function computeFindings(
       causes: [ragErr.detail || "未知异常"],
       suggestions: [
         "查看 Halo 日志中的 RAG 错误详情",
-        "确认 Embedding 模型配置正确（baseUrl / API Key）",
+        "确认 AI Foundation 中的 Embedding 模型配置正确",
         "在「模型配置」测一下 Embedding 连通性",
       ],
       relatedStages: ["rag_error"],

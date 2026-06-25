@@ -9,7 +9,7 @@
 
 ## 决策
 
-使用与 Halo 2.24 对齐的 Lucene 10.3.2：BM25 负责关键词召回，HNSW 负责向量召回，RRF 融合排名。核心 Lucene 依赖使用 `compileOnly` 复用 Halo ClassLoader；SmartCN 单独打包且禁止传递引入 Core。
+使用与 Halo 2.25 对齐的 Lucene 10.3.2：BM25 负责关键词召回，HNSW 负责向量召回，RRF 融合排名。核心 Lucene 依赖使用 `compileOnly` 复用 Halo ClassLoader；SmartCN 单独打包且禁止传递引入 Core。
 
 ## 后果
 

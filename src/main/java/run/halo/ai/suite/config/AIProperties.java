@@ -1,8 +1,8 @@
 package run.halo.ai.suite.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.Data;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -10,9 +10,7 @@ import run.halo.ai.suite.endpoint.UsageLimit.UsageLimitsConfig;
 import run.halo.ai.suite.endpoint.UsageLimit.VisitorRateLimitConfig;
 import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.ReactiveExtensionClient;
-import run.halo.app.extension.Secret;
 
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,18 +36,11 @@ public class AIProperties {
         this.client = client;
     }
 
-    // Secret 名称，专门存储 API Keys
-    private static final String SECRET_NAME = "ai-suite-api-keys";
-    private static final String LEGACY_SECRET_NAME = "ai-assistant-api-keys";
-    private static final String[] API_KEY_FIELDS = {
-        "chatApiKey", "embeddingApiKey", "rerankApiKey", "queryRewriteApiKey", "writingApiKey"
-    };
-
     /**
-     * 从 ConfigMap 读取指定 group 的 JSON，并从 Secret 注入 API Keys
+     * 从 ConfigMap 读取指定 group 的 JSON。
      */
     private Mono<JsonNode> readGroup(String group) {
-        Mono<JsonNode> configJson = fetchConfigMapWithLegacyFallback()
+        return fetchConfigMapWithLegacyFallback()
             .mapNotNull(cm -> {
                 var data = cm.getData();
                 if (data == null) return null;
@@ -62,42 +53,11 @@ public class AIProperties {
                 }
             })
             .defaultIfEmpty(new ObjectMapper().createObjectNode());
-
-        Mono<Map<String, String>> secretKeys = fetchSecretWithLegacyFallback()
-            .map(secret -> {
-                var stringData = secret.getStringData();
-                if (stringData == null) return Map.<String, String>of();
-                return stringData;
-            })
-            .onErrorResume(e -> Mono.just(Map.of()))
-            .defaultIfEmpty(Map.of());
-
-        return Mono.zip(configJson, secretKeys)
-            .map(tuple -> {
-                JsonNode node = tuple.getT1();
-                Map<String, String> keys = tuple.getT2();
-                if (keys.isEmpty()) return node;
-
-                // 将 Secret 中的 API key 注入到 JSON 中
-                ObjectNode mutable = node.deepCopy();
-                for (String field : API_KEY_FIELDS) {
-                    String val = keys.get(field);
-                    if (val != null && !val.isBlank()) {
-                        mutable.put(field, val);
-                    }
-                }
-                return (JsonNode) mutable;
-            });
     }
 
     private Mono<ConfigMap> fetchConfigMapWithLegacyFallback() {
         return client.fetch(ConfigMap.class, CONFIG_MAP_NAME)
             .switchIfEmpty(client.fetch(ConfigMap.class, LEGACY_CONFIG_MAP_NAME));
-    }
-
-    private Mono<Secret> fetchSecretWithLegacyFallback() {
-        return client.fetch(Secret.class, SECRET_NAME)
-            .switchIfEmpty(client.fetch(Secret.class, LEGACY_SECRET_NAME));
     }
 
     public Mono<ModelConfig> getModelConfig() {
@@ -187,21 +147,21 @@ public class AIProperties {
 
     private ModelConfig parseModelConfig(JsonNode node) {
         ModelConfig c = new ModelConfig();
-        c.setChatBaseUrl(textVal(node, "chatBaseUrl", "https://api.deepseek.com/v1"));
-        c.setChatApiKey(textVal(node, "chatApiKey", ""));
-        c.setChatModel(textVal(node, "chatModel", "deepseek-chat"));
-        c.setEmbeddingBaseUrl(textVal(node, "embeddingBaseUrl", "https://dashscope.aliyuncs.com/compatible-mode/v1"));
-        c.setEmbeddingApiKey(textVal(node, "embeddingApiKey", ""));
-        c.setEmbeddingModel(textVal(node, "embeddingModel", "text-embedding-v3"));
         c.setEmbeddingDimensions(intVal(node, "embeddingDimensions", 1024));
         c.setRerankEnabled(boolVal(node, "rerankEnabled", false));
-        c.setRerankBaseUrl(textVal(node, "rerankBaseUrl", "https://api.siliconflow.cn/v1"));
-        c.setRerankApiKey(textVal(node, "rerankApiKey", ""));
-        c.setRerankModel(textVal(node, "rerankModel", "BAAI/bge-reranker-v2-m3"));
         c.setQueryRewriteEnabled(boolVal(node, "queryRewriteEnabled", false));
-        c.setQueryRewriteBaseUrl(textVal(node, "queryRewriteBaseUrl", "https://open.bigmodel.cn/api/paas/v4/"));
-        c.setQueryRewriteApiKey(textVal(node, "queryRewriteApiKey", ""));
-        c.setQueryRewriteModel(textVal(node, "queryRewriteModel", "glm-4-flash"));
+        JsonNode aiFoundation = node.path("aiFoundation");
+        c.setAiFoundationChatModelName(textVal(aiFoundation, "chatModelName",
+            textVal(node, "aiFoundationChatModelName", "")));
+        c.setAiFoundationEmbeddingModelName(textVal(aiFoundation, "embeddingModelName",
+            textVal(node, "aiFoundationEmbeddingModelName", "")));
+        c.setAiFoundationRerankModelName(textVal(aiFoundation, "rerankModelName",
+            textVal(node, "aiFoundationRerankModelName", "")));
+        c.setAiFoundationQueryRewriteModelName(textVal(aiFoundation, "queryRewriteModelName",
+            textVal(node, "aiFoundationQueryRewriteModelName", "")));
+        if (c.getAiFoundationQueryRewriteModelName().isBlank()) {
+            c.setAiFoundationQueryRewriteModelName(c.getAiFoundationChatModelName());
+        }
         return c;
     }
 
@@ -293,8 +253,6 @@ public class AIProperties {
     private WritingConfig parseWritingConfig(JsonNode node) {
         WritingConfig c = new WritingConfig();
         c.setEnabled(boolVal(node, "enabled", true));
-        c.setWritingBaseUrl(textVal(node, "writingBaseUrl", ""));
-        c.setWritingApiKey(textVal(node, "writingApiKey", ""));
         c.setWritingModel(textVal(node, "writingModel", ""));
         c.setOutlineTemperature(floatVal(node, "outlineTemperature", 0.3f));
         c.setOutlineSections(intVal(node, "outlineSections", 6));
@@ -370,21 +328,33 @@ public class AIProperties {
 
     @Data
     public static class ModelConfig {
-        private String chatBaseUrl;
-        private String chatApiKey;
-        private String chatModel;
-        private String embeddingBaseUrl;
-        private String embeddingApiKey;
-        private String embeddingModel;
         private int embeddingDimensions;
         private boolean rerankEnabled;
-        private String rerankBaseUrl;
-        private String rerankApiKey;
-        private String rerankModel;
         private boolean queryRewriteEnabled;
-        private String queryRewriteBaseUrl;
-        private String queryRewriteApiKey;
-        private String queryRewriteModel;
+        private String aiFoundationChatModelName;
+        private String aiFoundationEmbeddingModelName;
+        private String aiFoundationRerankModelName;
+        private String aiFoundationQueryRewriteModelName;
+
+        @JsonIgnore
+        public String getEffectiveChatModel() {
+            return aiFoundationChatModelName;
+        }
+
+        @JsonIgnore
+        public String getEffectiveEmbeddingModel() {
+            return aiFoundationEmbeddingModelName;
+        }
+
+        @JsonIgnore
+        public String getEffectiveRerankModel() {
+            return aiFoundationRerankModelName;
+        }
+
+        @JsonIgnore
+        public String getEffectiveQueryRewriteModel() {
+            return aiFoundationQueryRewriteModelName;
+        }
     }
 
     @Data
@@ -483,11 +453,7 @@ public class AIProperties {
     public static class WritingConfig {
         /** AI 写作辅助总开关：false 时编辑器内的 AI 大纲按钮和选区气泡菜单全部不可用 */
         private boolean enabled;
-        /** 独立写作模型 API 地址（为空则复用对话模型） */
-        private String writingBaseUrl;
-        /** 独立写作模型 API Key */
-        private String writingApiKey;
-        /** 独立写作模型名称 */
+        /** AI Foundation 写作模型资源名，留空复用对话模型 */
         private String writingModel;
         /** 大纲生成温度 */
         private float outlineTemperature;

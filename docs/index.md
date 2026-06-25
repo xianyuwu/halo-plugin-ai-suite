@@ -1,6 +1,6 @@
 # AI 智能套件文档中心
 
-> 适用版本：AI 智能套件 0.2.23、Halo 2.24+
+> 适用版本：AI 智能套件 0.3.0、Halo 2.25+
 
 这里是 AI 智能套件的完整文档入口。根目录的 `README.md` 用于介绍产品和帮助第一次安装；本目录负责操作手册、生产运维、系统架构、API 和二次开发。
 
@@ -88,6 +88,7 @@
 - [ADR-002：ConfigMap 与 Secret 分离配置](adr/002-configmap-secret-storage.md)
 - [ADR-003：访客 SSE 使用 POST](adr/003-post-sse-api.md)
 - [ADR-004：可配置意图路由](adr/004-configurable-intent-routing.md)
+- [ADR-005：可选适配 Halo AI Foundation](adr/005-ai-foundation-adapter.md)
 
 ## 文档事实来源
 

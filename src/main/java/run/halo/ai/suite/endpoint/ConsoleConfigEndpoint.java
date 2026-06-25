@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -19,7 +18,6 @@ import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.GroupVersion;
 import run.halo.app.extension.Metadata;
 import run.halo.app.extension.ReactiveExtensionClient;
-import run.halo.app.extension.Secret;
 import run.halo.ai.suite.config.AIProperties;
 import run.halo.ai.suite.llm.LlmClient;
 import run.halo.ai.suite.llm.UsageScenario;
@@ -27,7 +25,6 @@ import run.halo.ai.suite.rag.PipelineTrace;
 import run.halo.ai.suite.service.ChatService;
 
 import java.util.LinkedHashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,12 +40,28 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ConsoleConfigEndpoint implements CustomEndpoint {
 
-    private static final String SECRET_NAME = "ai-suite-api-keys";
     private static final String CONFIG_MAP_NAME = "ai-suite-configmap";
     private static final String LEGACY_CONFIG_MAP_NAME = "ai-assistant-configmap";
-    private static final String[] API_KEY_FIELDS = {
-        "chatApiKey", "embeddingApiKey", "rerankApiKey", "queryRewriteApiKey", "writingApiKey"
-    };
+    private static final Set<String> MODEL_FIELDS = Set.of(
+        "aiFoundationChatModelName",
+        "aiFoundationEmbeddingModelName",
+        "aiFoundationRerankModelName",
+        "aiFoundationQueryRewriteModelName",
+        "embeddingDimensions",
+        "rerankEnabled",
+        "queryRewriteEnabled"
+    );
+    private static final Set<String> WRITING_FIELDS = Set.of(
+        "enabled",
+        "writingModel",
+        "outlineTemperature",
+        "outlineSections",
+        "outlineDepth",
+        "outlineNumbering",
+        "outlineExtraPrompt",
+        "maxInputLength",
+        "maxTokens"
+    );
 
     private final AIProperties aiProperties;
     private final LlmClient llmClient;
@@ -76,15 +89,13 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
     }
 
     /**
-     * 保存配置 — 非敏感数据写入 ConfigMap，API Key 写入 Secret
+     * 保存配置 — AI Suite 只保存业务配置，模型凭据由 AI Foundation 管理。
      */
     @SuppressWarnings("unchecked")
     private Mono<ServerResponse> saveConfig(ServerRequest request) {
         return request.bodyToMono(Map.class)
             .flatMap(body -> {
                 Map<String, String> configData = new LinkedHashMap<>();
-                Map<String, String> secretData = new LinkedHashMap<>();
-                Set<String> secretKeysToDelete = new HashSet<>();
                 for (Object key : body.keySet()) {
                     Object val = body.get(key);
                     String json;
@@ -100,28 +111,16 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
                         continue;
                     }
 
-                    // 提取 API Key 字段存储到 Secret
                     try {
                         JsonNode node = objectMapper.readTree(json);
                         if (node.isObject()) {
                             ObjectNode mutable = node.deepCopy();
-                            boolean hasKeys = false;
-                            for (String f : API_KEY_FIELDS) {
-                                JsonNode keyVal = mutable.get(f);
-                                if (keyVal != null && !keyVal.isNull()) {
-                                    String text = keyVal.asText("");
-                                    if (text.isBlank()) {
-                                        secretKeysToDelete.add(f);
-                                        secretData.remove(f);
-                                    } else {
-                                        secretData.put(f, text);
-                                        secretKeysToDelete.remove(f);
-                                    }
-                                    mutable.remove(f);
-                                    hasKeys = true;
-                                }
+                            if ("models".equals(key.toString())) {
+                                mutable.retain(MODEL_FIELDS);
+                            } else if ("writing".equals(key.toString())) {
+                                mutable.retain(WRITING_FIELDS);
                             }
-                            json = hasKeys ? objectMapper.writeValueAsString(mutable) : json;
+                            json = objectMapper.writeValueAsString(mutable);
                         }
                     } catch (Exception ignored) {}
 
@@ -157,35 +156,7 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
                             });
                     }));
 
-                Mono<Secret> saveSecret = Mono.defer(() -> {
-                    if (secretData.isEmpty() && secretKeysToDelete.isEmpty()) {
-                        return Mono.empty();
-                    }
-                    return extensionClient.fetch(Secret.class, SECRET_NAME)
-                        .flatMap(existing -> {
-                            Map<String, String> merged = new LinkedHashMap<>();
-                            if (existing.getStringData() != null) {
-                                merged.putAll(existing.getStringData());
-                            }
-                            secretKeysToDelete.forEach(merged::remove);
-                            merged.putAll(secretData);
-                            existing.setStringData(merged);
-                            return extensionClient.update(existing);
-                        })
-                        .switchIfEmpty(Mono.defer(() -> {
-                            if (secretData.isEmpty()) {
-                                return Mono.empty();
-                            }
-                            Secret s = new Secret();
-                            s.setMetadata(new Metadata());
-                            s.getMetadata().setName(SECRET_NAME);
-                            s.setStringData(new LinkedHashMap<>(secretData));
-                            s.setType("Opaque");
-                            return extensionClient.create(s);
-                        }));
-                });
-
-                return Mono.when(saveConfig, saveSecret)
+                return saveConfig
                     .then(ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .bodyValue(Map.of("saved", true)));
@@ -255,26 +226,20 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
     }
 
     /**
-     * 真正的连通性测试 — 发一条简短消息给 LLM，验证 baseUrl / apiKey / model 是否正确
-     *
-     * 成功返回 { connected: true, model, reply }
-     * 失败返回 { connected: false, error: "具体错误原因" }
+     * 真正的连通性测试 — 发一条简短消息给 AI Foundation 语言模型。
      */
     private Mono<ServerResponse> testConnection(ServerRequest request) {
         return aiProperties.getModelConfig()
             .flatMap(modelConfig -> {
-                // 用最少 token 的测试消息
                 List<Map<String, String>> messages = List.of(
                     Map.of("role", "user", "content", "Hi")
                 );
 
                 return llmClient.chat(
-                    modelConfig.getChatBaseUrl(),
-                    modelConfig.getChatApiKey(),
-                    modelConfig.getChatModel(),
+                    modelConfig.getEffectiveChatModel(),
                     messages,
-                    0.0f,   // temperature=0 保证稳定输出
-                    32,     // maxTokens=32 节省费用
+                    0.0f,
+                    32,
                     null,
                     null,
                     UsageScenario.MODEL_TEST
@@ -282,7 +247,7 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(Map.of(
                         "connected", true,
-                        "model", modelConfig.getChatModel(),
+                        "model", modelConfig.getEffectiveChatModel(),
                         "reply", reply
                     ))
                 );
@@ -300,95 +265,31 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
             });
     }
 
-    /**
-     * 从异常中提取人类可读的错误信息
-     * 优先提取 WebClientResponseException 的原始响应体（包含 API 返回的具体错误）
-     */
     private String extractErrorMessage(Throwable e) {
-        // WebClient 的 HTTP 错误，提取 API 返回的原始错误信息
-        if (e instanceof WebClientResponseException wce) {
-            int status = wce.getStatusCode().value();
-            String body = wce.getResponseBodyAsString();
-            log.warn("[ConsoleConfigEndpoint] API 返回 HTTP {}: {}", status, body);
-
-            // 尝试从 JSON 响应中提取 error.message
-            String apiError = parseApiErrorMessage(body);
-            if (apiError != null && !apiError.isBlank()) {
-                return apiError;
-            }
-
-            // 兜底：按状态码给提示
-            return switch (status) {
-                case 401 -> "API Key 无效或已过期";
-                case 403 -> "无权访问该模型，请检查 API Key 权限";
-                case 404 -> "API 地址或模型名称错误，请检查 Base URL 和模型名";
-                case 429 -> "API 调用频率超限，请稍后重试";
-                default -> "HTTP " + status + ": " + (body.length() > 200 ? body.substring(0, 200) : body);
-            };
-        }
-
-        // 非 HTTP 错误（网络、DNS 等）
         String msg = e.getMessage();
         if (msg == null) return "未知错误";
-        if (msg.contains("Connection refused") || msg.contains("connect timed out")) {
-            return "无法连接到 API 服务器，请检查网络和 Base URL";
-        }
         return msg.length() > 200 ? msg.substring(0, 200) + "..." : msg;
     }
 
     /**
-     * 从 API 返回的 JSON 错误响应中提取 error.message 字段
-     * 兼容 OpenAI 格式 { "error": { "message": "..." } } 和简单格式
-     */
-    private String parseApiErrorMessage(String body) {
-        if (body == null || body.isBlank()) return null;
-        try {
-            var node = new com.fasterxml.jackson.databind.ObjectMapper().readTree(body);
-            // OpenAI 格式: { "error": { "message": "xxx" } }
-            var errorMsg = node.path("error").path("message").asText(null);
-            if (errorMsg != null && !errorMsg.isBlank()) return errorMsg;
-            // 简单格式: { "message": "xxx" }
-            errorMsg = node.path("message").asText(null);
-            return (errorMsg != null && !errorMsg.isBlank()) ? errorMsg : null;
-        } catch (Exception ex) {
-            return null;
-        }
-    }
-
-    /**
-     * 用请求体中的参数测试模型连通性（支持未保存的配置）
-     *
-     * 请求体: { "baseUrl": "...", "apiKey": "...", "model": "..." }
-     * 任意字段为空时，从已保存的配置中回退读取
+     * 用请求体中的 AI Foundation 模型资源名测试语言模型。
      */
     private Mono<ServerResponse> testModelWithBody(ServerRequest request) {
         return request.bodyToMono(Map.class)
             .flatMap(body -> {
-                String baseUrl = (String) body.getOrDefault("baseUrl", "");
-                String apiKey = (String) body.getOrDefault("apiKey", "");
                 String model = (String) body.getOrDefault("model", "");
 
-                // 如果请求体参数不全，从已保存配置中补全
                 return aiProperties.getModelConfig()
                     .flatMap(saved -> {
-                        String finalBaseUrl = (baseUrl == null || baseUrl.isBlank()) ? saved.getChatBaseUrl() : baseUrl;
-                        String finalApiKey = (apiKey == null || apiKey.isBlank()) ? saved.getChatApiKey() : apiKey;
-                        String finalModel = (model == null || model.isBlank()) ? saved.getChatModel() : model;
-
-                        if (finalBaseUrl.isBlank() || finalApiKey.isBlank() || finalModel.isBlank()) {
-                            return ServerResponse.ok()
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .bodyValue(Map.of(
-                                    "connected", false,
-                                    "error", "缺少必要参数：Base URL、API Key、模型名称不能为空"
-                                ));
-                        }
+                        String finalModel = (model == null || model.isBlank()) ? saved.getEffectiveChatModel() : model;
 
                         List<Map<String, String>> messages = List.of(
-                            Map.of("role", "user", "content", "Hi")
+                            Map.of("role", "user", "content", "你好，请用一句话回复：模型连接测试成功")
                         );
-                        return llmClient.chat(finalBaseUrl, finalApiKey, finalModel, messages, 0.0f, 32,
+                        return llmClient.chatStream(finalModel, messages, 0.0f, 128,
                                 null, null, UsageScenario.MODEL_TEST)
+                            .collectList()
+                            .map(chunks -> String.join("", chunks))
                             .flatMap(reply -> ServerResponse.ok()
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .bodyValue(Map.of(
@@ -411,17 +312,12 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
     }
 
     /**
-     * 测试 Embedding 模型连通性
-     *
-     * 请求体: { "baseUrl": "...", "apiKey": "...", "model": "...", "dimensions": 1024 }
-     * 任意字段为空时，从已保存的配置中回退读取
+     * 测试 AI Foundation Embedding 模型连通性。
      */
     @SuppressWarnings("unchecked")
     private Mono<ServerResponse> testEmbedding(ServerRequest request) {
         return request.bodyToMono(Map.class)
             .flatMap(body -> {
-                String baseUrl = (String) body.getOrDefault("baseUrl", "");
-                String apiKey = (String) body.getOrDefault("apiKey", "");
                 String model = (String) body.getOrDefault("model", "");
                 Object dimObj = body.get("dimensions");
                 final int dimensions;
@@ -431,24 +327,12 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
                     dimensions = 0;
                 }
 
-                // 从已保存配置中补全空字段
                 return aiProperties.getModelConfig()
                     .flatMap(saved -> {
-                        String finalBaseUrl = (baseUrl == null || baseUrl.isBlank()) ? saved.getEmbeddingBaseUrl() : baseUrl;
-                        String finalApiKey = (apiKey == null || apiKey.isBlank()) ? saved.getEmbeddingApiKey() : apiKey;
-                        String finalModel = (model == null || model.isBlank()) ? saved.getEmbeddingModel() : model;
+                        String finalModel = (model == null || model.isBlank()) ? saved.getEffectiveEmbeddingModel() : model;
                         int finalDimensions = dimensions > 0 ? dimensions : saved.getEmbeddingDimensions();
 
-                        if (finalBaseUrl.isBlank() || finalApiKey.isBlank() || finalModel.isBlank()) {
-                            return ServerResponse.ok()
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .bodyValue(Map.of(
-                                    "connected", false,
-                                    "error", "缺少必要参数：Base URL、API Key、模型名称不能为空"
-                                ));
-                        }
-
-                        return llmClient.embed(finalBaseUrl, finalApiKey, finalModel, "Hello", finalDimensions,
+                        return llmClient.embed(finalModel, "Hello", finalDimensions,
                                 UsageScenario.MODEL_TEST)
                             .flatMap(vector -> ServerResponse.ok()
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -473,35 +357,19 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
     }
 
     /**
-     * 测试 Rerank 模型连通性
-     *
-     * 请求体: { "baseUrl": "...", "apiKey": "...", "model": "..." }
-     * 对一条 query + 一条文档做 rerank，验证服务是否正常
+     * 测试 AI Foundation Rerank 模型连通性。
      */
     @SuppressWarnings("unchecked")
     private Mono<ServerResponse> testRerank(ServerRequest request) {
         return request.bodyToMono(Map.class)
             .flatMap(body -> {
-                String baseUrl = (String) body.getOrDefault("baseUrl", "");
-                String apiKey = (String) body.getOrDefault("apiKey", "");
                 String model = (String) body.getOrDefault("model", "");
 
                 return aiProperties.getModelConfig()
                     .flatMap(saved -> {
-                        String finalBaseUrl = isBlank(baseUrl) ? saved.getRerankBaseUrl() : baseUrl;
-                        String finalApiKey = isBlank(apiKey) ? saved.getRerankApiKey() : apiKey;
-                        String finalModel = isBlank(model) ? saved.getRerankModel() : model;
+                        String finalModel = isBlank(model) ? saved.getEffectiveRerankModel() : model;
 
-                        if (finalBaseUrl.isBlank() || finalApiKey.isBlank() || finalModel.isBlank()) {
-                            return ServerResponse.ok()
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .bodyValue(Map.of(
-                                    "connected", false,
-                                    "error", "缺少必要参数：Base URL、API Key、模型名称不能为空"
-                                ));
-                        }
-
-                        return llmClient.rerank(finalBaseUrl, finalApiKey, finalModel,
+                        return llmClient.rerank(finalModel,
                                 "什么是机器学习", List.of("机器学习是人工智能的一个分支。"), 1,
                                 UsageScenario.MODEL_TEST)
                             .flatMap(results -> ServerResponse.ok()
@@ -526,40 +394,25 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
     }
 
     /**
-     * 测试查询改写模型连通性
-     *
-     * 请求体: { "baseUrl": "...", "apiKey": "...", "model": "..." }
-     * 查询改写本质是 Chat 调用，用一条简短消息验证
+     * 测试查询改写模型连通性。
      */
     @SuppressWarnings("unchecked")
     private Mono<ServerResponse> testQueryRewrite(ServerRequest request) {
         return request.bodyToMono(Map.class)
             .flatMap(body -> {
-                String baseUrl = (String) body.getOrDefault("baseUrl", "");
-                String apiKey = (String) body.getOrDefault("apiKey", "");
                 String model = (String) body.getOrDefault("model", "");
 
                 return aiProperties.getModelConfig()
                     .flatMap(saved -> {
-                        // 查询改写的 URL/Key/Model 留空时复用对话模型配置
-                        String finalBaseUrl = isBlank(baseUrl) ? (isBlank(saved.getQueryRewriteBaseUrl()) ? saved.getChatBaseUrl() : saved.getQueryRewriteBaseUrl()) : baseUrl;
-                        String finalApiKey = isBlank(apiKey) ? (isBlank(saved.getQueryRewriteApiKey()) ? saved.getChatApiKey() : saved.getQueryRewriteApiKey()) : apiKey;
-                        String finalModel = isBlank(model) ? (isBlank(saved.getQueryRewriteModel()) ? saved.getChatModel() : saved.getQueryRewriteModel()) : model;
-
-                        if (finalBaseUrl.isBlank() || finalApiKey.isBlank() || finalModel.isBlank()) {
-                            return ServerResponse.ok()
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .bodyValue(Map.of(
-                                    "connected", false,
-                                    "error", "缺少必要参数：Base URL、API Key、模型名称不能为空"
-                                ));
-                        }
+                        String finalModel = isBlank(model) ? (isBlank(saved.getEffectiveQueryRewriteModel()) ? saved.getEffectiveChatModel() : saved.getEffectiveQueryRewriteModel()) : model;
 
                         List<Map<String, String>> messages = List.of(
-                            Map.of("role", "user", "content", "Hi")
+                            Map.of("role", "user", "content", "你好，请用一句话回复：查询改写模型连接成功")
                         );
-                        return llmClient.chat(finalBaseUrl, finalApiKey, finalModel, messages, 0.0f, 32,
+                        return llmClient.chatStream(finalModel, messages, 0.0f, 128,
                                 null, null, UsageScenario.MODEL_TEST)
+                            .collectList()
+                            .map(chunks -> String.join("", chunks))
                             .flatMap(reply -> ServerResponse.ok()
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .bodyValue(Map.of(

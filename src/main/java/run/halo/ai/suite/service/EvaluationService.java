@@ -28,7 +28,7 @@ import reactor.core.scheduler.Schedulers;
  * 效果评测服务。
  *
  * <p>前端传入评测用例，服务依次执行当前 RAG 问答链路，
- * 再用同一套 OpenAI 兼容模型作为裁判输出结构化分数。
+ * 再用 AI Foundation 语言模型作为裁判输出结构化分数。
  */
 @Slf4j
 @Service
@@ -152,8 +152,7 @@ public class EvaluationService {
             int maxTokens = chatConfig != null
                 ? Math.min(1200, Math.max(512, chatConfig.getMaxTokens())) : 800;
             String json = llmClient.chatInternal(
-                modelConfig.getChatBaseUrl(), modelConfig.getChatApiKey(),
-                modelConfig.getChatModel(), messages, 0.0f, maxTokens,
+                modelConfig.getEffectiveChatModel(), messages, 0.0f, maxTokens,
                 Map.of("type", "json_object"), UsageScenario.EVALUATION_JUDGE).block();
             return parseJudgeResult(json != null ? json : "");
         } catch (Exception e) {
@@ -241,9 +240,7 @@ public class EvaluationService {
                 Map.of("role", "user", "content", judgeUserPrompt(testCase, answer, docs, retrievalEval))
             );
             return llmClient.chatInternal(
-                    modelConfig.getChatBaseUrl(),
-                    modelConfig.getChatApiKey(),
-                    modelConfig.getChatModel(),
+                    modelConfig.getEffectiveChatModel(),
                     messages,
                     0.0f,
                     Math.min(1200, Math.max(512, chatConfig.getMaxTokens())),

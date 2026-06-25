@@ -1,7 +1,7 @@
 # 生产部署
 
 > 适用读者：Halo 运维人员、站长  
-> 适用版本：AI 智能套件 0.2.23、Halo 2.24+
+> 适用版本：AI 智能套件 0.3.0、Halo 2.25+
 
 ## 推荐部署拓扑
 
@@ -11,7 +11,7 @@
 
 ## 部署前检查
 
-- Halo 版本满足 `>=2.24.0`。
+- Halo 版本满足 `>=2.25.0`。
 - 插件版本与目标 Halo 版本兼容。
 - Chat、Embedding 服务可以从 Halo 所在服务器访问。
 - Halo 数据目录有足够空间保存 Lucene 索引。
@@ -101,7 +101,7 @@ Console API 不应匿名开放。
 
 ## 生产安全
 
-- 模型 API Key 只通过 Console 保存到 Secret，不写入代码或 Nginx 配置。
+- 模型 API Key 只在 Halo AI Foundation 中配置，不写入 AI 智能套件、代码或 Nginx 配置。
 - 开启访客限流，并确认代理正确传递客户端 IP。
 - 根据预算设置模型每日 token 上限。
 - 不把本地开发账号 `admin/admin123` 用于生产。
