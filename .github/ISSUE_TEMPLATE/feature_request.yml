@@ -1,0 +1,24 @@
+name: Feature request
+description: 提议新的能力或体验改进
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 使用场景
+      description: 说明谁在什么情况下遇到了什么问题。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+      description: 描述期望行为、边界和可接受的替代方案。
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: 兼容性影响
+      description: 是否影响现有配置、API、索引、主题或其他插件？

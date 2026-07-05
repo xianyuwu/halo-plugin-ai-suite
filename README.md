@@ -138,12 +138,12 @@
 
 ### 1. 安装插件
 
-从 [Releases](https://gitlab.rainwu.cn/rainwu/halo-plugin-ai-suite/-/releases) 下载 `plugin-ai-suite-*.jar`，然后在 Halo Console 中进入「插件 → 安装」，上传并启用。
+从 [GitHub Releases](https://github.com/xianyuwu/halo-plugin-ai-suite/releases) 下载 `plugin-ai-suite-*.jar`，然后在 Halo Console 中进入「插件 → 安装」，上传并启用。
 
 也可以使用 JDK 21 从源码构建：
 
 ```bash
-git clone https://gitlab.rainwu.cn/rainwu/halo-plugin-ai-suite.git
+git clone https://github.com/xianyuwu/halo-plugin-ai-suite.git
 cd halo-plugin-ai-suite
 JAVA_HOME=/path/to/jdk21 ./gradlew build
 ```

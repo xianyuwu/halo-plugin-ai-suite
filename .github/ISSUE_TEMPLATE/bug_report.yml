@@ -1,0 +1,41 @@
+name: Bug report
+description: 报告可以稳定复现的问题
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: 提交安全漏洞前请先阅读 SECURITY.md，不要在公开 Issue 中披露漏洞细节。
+  - type: input
+    id: plugin-version
+    attributes:
+      label: 插件版本
+      placeholder: 例如 0.3.2
+    validations:
+      required: true
+  - type: input
+    id: halo-version
+    attributes:
+      label: Halo 版本
+      placeholder: 例如 2.25.0
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 说明期望结果和实际结果。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: 请按顺序列出操作步骤。
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 日志与截图
+      description: 请先移除 API Key、Cookie、个人信息和生产敏感数据。

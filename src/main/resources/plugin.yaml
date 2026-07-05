@@ -8,9 +8,9 @@ spec:
   requires: ">=2.25.0"
   author:
     name: rainwu
-    website: https://github.com/rainwu
+    website: https://github.com/xianyuwu
   logo: static/images/logo.svg
-  homepage: https://github.com/rainwu/plugin-ai-suite#readme
+  homepage: https://github.com/xianyuwu/halo-plugin-ai-suite#readme
   displayName: "AI智能套件"
   description: "为 Halo 博客提供 AI 智能问答、文档智能编辑、AI 摘要等功能，基于 Halo AI Foundation 统一管理模型能力"
   configMapName: ai-suite-configmap
@@ -18,4 +18,4 @@ spec:
     ai-foundation: "*"
   license:
     - name: "GPL-3.0"
-      url: "https://github.com/rainwu/plugin-ai-suite/blob/main/LICENSE"
+      url: "https://github.com/xianyuwu/halo-plugin-ai-suite/blob/main/LICENSE"
