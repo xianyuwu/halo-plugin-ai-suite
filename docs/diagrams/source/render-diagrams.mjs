@@ -10,6 +10,7 @@ const projectRoot = resolve(here, "../../..");
 const version = readFileSync(resolve(projectRoot, "gradle.properties"), "utf8")
   .match(/^version=(.+)$/m)?.[1]?.trim();
 if (!version) throw new Error("Cannot read version from gradle.properties");
+const documentationSeries = version.replace(/\.\d+(?:[-+].*)?$/, ".x");
 mkdirSync(outputDir, { recursive: true });
 
 const tones = {
@@ -47,7 +48,7 @@ function shell(title, subtitle, width, height, body) {
   <text x="52" y="58" fill="#F8FAFC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="28" font-weight="760">${esc(title)}</text>
   <text x="52" y="88" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="14">${esc(subtitle)}</text>
   ${body}
-  <text x="${width - 52}" y="${height - 25}" text-anchor="end" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="11">AI 智能套件 · ${esc(version)}</text>
+  <text x="${width - 52}" y="${height - 25}" text-anchor="end" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="11">AI 智能套件 · ${esc(documentationSeries)}</text>
 </svg>`;
 }
 

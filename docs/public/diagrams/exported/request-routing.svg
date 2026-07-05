@@ -1,6 +1,6 @@
-<svg width="1400" height="650" viewBox="0 0 1400 650" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="diagram-title diagram-desc" preserveAspectRatio="xMidYMid meet">
+<svg width="1400" height="700" viewBox="0 0 1400 700" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="diagram-title diagram-desc" preserveAspectRatio="xMidYMid meet">
   <title id="diagram-title">访客问题的双路径编排</title>
-  <desc id="diagram-desc">意图 Pipeline 与 RAG 共用输出协议、引用、日志和用量统计</desc>
+  <desc id="diagram-desc">快捷问题优先绑定路由；意图路径输出可信卡片，RAG 路径通过 AI Foundation 流式生成</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08111F"/><stop offset=".55" stop-color="#111C35"/><stop offset="1" stop-color="#17143A"/></linearGradient>
     <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#C7D2FE" stroke-opacity=".045"/></pattern>
@@ -9,73 +9,69 @@
     <marker id="arrowGreen" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#34D399"/></marker>
     <marker id="arrowOrange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#FB923C"/></marker>
   </defs>
-  <rect width="1400" height="650" rx="28" fill="url(#bg)"/>
-  <rect width="1400" height="650" rx="28" fill="url(#grid)"/>
+  <rect width="1400" height="700" rx="28" fill="url(#bg)"/>
+  <rect width="1400" height="700" rx="28" fill="url(#grid)"/>
   <text x="52" y="58" fill="#F8FAFC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="28" font-weight="760">访客问题的双路径编排</text>
-  <text x="52" y="88" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="14">意图 Pipeline 与 RAG 共用输出协议、引用、日志和用量统计</text>
-  <path d="M245 295 C267.5 295,267.5 295,290 295" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  <text x="52" y="88" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="14">快捷问题优先绑定路由；意图路径输出可信卡片，RAG 路径通过 AI Foundation 流式生成</text>
+  <path d="M225 320 C245 320,245 320,265 320" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
   
-<path d="M490 295 C512.5 295,512.5 295,535 295" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+<path d="M465 320 C485 320,485 320,505 320" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
   
-<path d="M745 295 C787.5 295,787.5 190,830 190" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
-  <rect x="759.5" y="218.5" width="56" height="22" rx="11" fill="#0B1220" stroke="#FB923C" stroke-opacity=".35"/><text x="787.5" y="233.5" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, sans-serif" font-size="11">命中意图</text>
-<path d="M745 295 C787.5 295,787.5 400,830 400" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
-  <rect x="759.5" y="323.5" width="56" height="22" rx="11" fill="#0B1220" stroke="#60A5FA" stroke-opacity=".35"/><text x="787.5" y="338.5" text-anchor="middle" fill="#93C5FD" font-family="Inter, PingFang SC, sans-serif" font-size="11">未命中</text>
-<path d="M1050 190 C1070 190,1070 190,1090 190" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
+<path d="M725 320 C757.5 320,757.5 190,790 190" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
+  <rect x="725" y="231" width="65" height="22" rx="11" fill="#0B1220" stroke="#FB923C" stroke-opacity=".35"/><text x="757.5" y="246" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, sans-serif" font-size="11">指定或命中意图</text>
+<path d="M725 320 C757.5 320,757.5 450,790 450" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
+  <rect x="729.5" y="361" width="56" height="22" rx="11" fill="#0B1220" stroke="#60A5FA" stroke-opacity=".35"/><text x="757.5" y="376" text-anchor="middle" fill="#93C5FD" font-family="Inter, PingFang SC, sans-serif" font-size="11">未命中</text>
+<path d="M1010 190 C1035 190,1035 190,1060 190" stroke="#FB923C" stroke-width="2.2" fill="none" marker-end="url(#arrowOrange)"/>
   
-<path d="M1050 400 C1070 400,1070 400,1090 400" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
-  
-<path d="M1195 235 C1195 367.5,1195 367.5,1195 500" stroke="#34D399" stroke-width="2.2" fill="none" marker-end="url(#arrowGreen)"/>
-  
-<path d="M1195 445 C1195 472.5,1195 472.5,1195 500" stroke="#34D399" stroke-width="2.2" fill="none" marker-end="url(#arrowGreen)"/>
+<path d="M1010 450 C1035 450,1035 450,1060 450" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)"/>
   
 <g filter="url(#shadow)">
-    <rect x="55" y="250" width="190" height="90" rx="18" fill="#0D2A47" stroke="#38BDF8" stroke-opacity=".68"/>
+    <rect x="45" y="275" width="180" height="90" rx="18" fill="#0D2A47" stroke="#38BDF8" stroke-opacity=".68"/>
     
-    <text x="150" y="293" text-anchor="middle" fill="#E0F2FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">访客问题</text>
-    <text x="150" y="319" text-anchor="middle" fill="#7DD3FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">message + history</text>
+    <text x="135" y="318" text-anchor="middle" fill="#E0F2FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">访客请求</text>
+    <text x="135" y="344" text-anchor="middle" fill="#7DD3FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">问题 · 历史 · 可选参数</text>
   </g>
 <g filter="url(#shadow)">
-    <rect x="290" y="250" width="200" height="90" rx="18" fill="#1E2455" stroke="#818CF8" stroke-opacity=".68"/>
+    <rect x="265" y="275" width="200" height="90" rx="18" fill="#1E2455" stroke="#818CF8" stroke-opacity=".68"/>
     
-    <text x="390" y="293" text-anchor="middle" fill="#EEF2FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">公开 Endpoint</text>
-    <text x="390" y="319" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">参数校验与限流</text>
+    <text x="365" y="318" text-anchor="middle" fill="#EEF2FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">公开问答接口</text>
+    <text x="365" y="344" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">访客开关 · 参数校验 · 限流</text>
   </g>
 <g filter="url(#shadow)">
-    <rect x="535" y="250" width="210" height="90" rx="18" fill="#2D1D46" stroke="#C084FC" stroke-opacity=".68"/>
+    <rect x="505" y="275" width="220" height="90" rx="18" fill="#2D1D46" stroke="#C084FC" stroke-opacity=".68"/>
     
-    <text x="640" y="293" text-anchor="middle" fill="#FAF5FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">IntentDetector</text>
-    <text x="640" y="319" text-anchor="middle" fill="#D8B4FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">正则优先 · LLM 兜底</text>
+    <text x="615" y="318" text-anchor="middle" fill="#FAF5FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">路由解析</text>
+    <text x="615" y="344" text-anchor="middle" fill="#D8B4FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">快捷路由优先 · 否则自动识别</text>
   </g>
 <g filter="url(#shadow)">
-    <rect x="830" y="145" width="220" height="90" rx="18" fill="#3A2416" stroke="#FB923C" stroke-opacity=".68"/>
+    <rect x="790" y="145" width="220" height="90" rx="18" fill="#3A2416" stroke="#FB923C" stroke-opacity=".68"/>
     
-    <text x="940" y="188" text-anchor="middle" fill="#FFF7ED" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">意图 Pipeline</text>
-    <text x="940" y="214" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">实时 Post 过滤与排序</text>
+    <text x="900" y="188" text-anchor="middle" fill="#FFF7ED" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">意图处理管线</text>
+    <text x="900" y="214" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">实时文章筛选与排序</text>
   </g>
 <g filter="url(#shadow)">
-    <rect x="830" y="355" width="220" height="90" rx="18" fill="#0D2A47" stroke="#38BDF8" stroke-opacity=".68"/>
+    <rect x="1060" y="145" width="245" height="90" rx="18" fill="#3A2416" stroke="#FB923C" stroke-opacity=".68"/>
     
-    <text x="940" y="398" text-anchor="middle" fill="#E0F2FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">RAG Pipeline</text>
-    <text x="940" y="424" text-anchor="middle" fill="#7DD3FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">BM25 · HNSW · RRF</text>
+    <text x="1182.5" y="188" text-anchor="middle" fill="#FFF7ED" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">可信结构化结果</text>
+    <text x="1182.5" y="214" text-anchor="middle" fill="#FDBA74" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">确定性导语 · 文章卡片 · 引用</text>
   </g>
 <g filter="url(#shadow)">
-    <rect x="1090" y="145" width="210" height="90" rx="18" fill="#2D1D46" stroke="#C084FC" stroke-opacity=".68"/>
+    <rect x="790" y="405" width="220" height="90" rx="18" fill="#0D2A47" stroke="#38BDF8" stroke-opacity=".68"/>
     
-    <text x="1195" y="188" text-anchor="middle" fill="#FAF5FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">意图回答</text>
-    <text x="1195" y="214" text-anchor="middle" fill="#D8B4FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">候选文章 + 模板</text>
+    <text x="900" y="448" text-anchor="middle" fill="#E0F2FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">RAG 检索管线</text>
+    <text x="900" y="474" text-anchor="middle" fill="#7DD3FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">增强 · BM25 · HNSW · RRF</text>
   </g>
 <g filter="url(#shadow)">
-    <rect x="1090" y="355" width="210" height="90" rx="18" fill="#2D1D46" stroke="#C084FC" stroke-opacity=".68"/>
+    <rect x="1060" y="405" width="245" height="90" rx="18" fill="#2D1D46" stroke="#C084FC" stroke-opacity=".68"/>
     
-    <text x="1195" y="398" text-anchor="middle" fill="#FAF5FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">RAG 回答</text>
-    <text x="1195" y="424" text-anchor="middle" fill="#D8B4FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">上下文 + 引用</text>
+    <text x="1182.5" y="448" text-anchor="middle" fill="#FAF5FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">AI Foundation 模型网关</text>
+    <text x="1182.5" y="474" text-anchor="middle" fill="#D8B4FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">LlmClient · 对话模型 · 流式生成</text>
   </g>
 <g filter="url(#shadow)">
-    <rect x="1090" y="500" width="210" height="80" rx="18" fill="#0B352F" stroke="#34D399" stroke-opacity=".68"/>
+    <rect x="790" y="565" width="515" height="84" rx="18" fill="#0B352F" stroke="#34D399" stroke-opacity=".68"/>
     
-    <text x="1195" y="538" text-anchor="middle" fill="#ECFDF5" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">统一输出</text>
-    <text x="1195" y="564" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">SSE · 引用 · 日志</text>
+    <text x="1047.5" y="605" text-anchor="middle" fill="#ECFDF5" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">两条路径统一 SSE 输出</text>
+    <text x="1047.5" y="631" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">引用 · 卡片 · 推理 · 回答片段 · 日志编号 · 异步日志</text>
   </g>
-  <text x="1348" y="625" text-anchor="end" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="11">AI 智能套件 · 0.3.2</text>
+  <text x="1348" y="675" text-anchor="end" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="11">AI 智能套件 · 0.3.x</text>
 </svg>

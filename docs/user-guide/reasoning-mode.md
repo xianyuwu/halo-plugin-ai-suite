@@ -1,7 +1,7 @@
 # 深度思考与推理过程
 
 > 适用读者：Halo 站长、Widget 开发者
-> 适用版本：AI 智能套件 0.3.2
+> 适用版本：AI 智能套件 0.3.x
 > 前置条件：所选 AI Foundation 语言模型支持推理能力
 
 ## 功能边界
@@ -71,4 +71,3 @@ AI Foundation 可能通过结构化 reasoning 字段返回推理，也可能把 
 - Nginx/CDN 未缓冲 SSE。
 
 相关内容：[SSE 协议](../api/sse-protocol.md)、[访客问答与浮窗](rag-chat.md)、[兼容矩阵](../reference/compatibility-matrix.md)。
-

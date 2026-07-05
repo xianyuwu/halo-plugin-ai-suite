@@ -11,10 +11,7 @@ if (!projectVersion) {
 const siteOrigin = "https://ai-suite-docs.rainwu.cn";
 const siteBase = process.env.DOCS_BASE || "/";
 const historicalVersion = process.env.DOCS_HISTORICAL_VERSION || "";
-const publishedVersions = JSON.parse(
-  readFileSync(new URL("../versions.json", import.meta.url), "utf8"),
-) as string[];
-
+const documentationSeries = projectVersion.replace(/\.\d+(?:[-+].*)?$/, ".x");
 const userGuide = [
   { text: "模型、切片与检索", link: "/user-guide/models-and-retrieval" },
   { text: "访客问答与浮窗", link: "/user-guide/rag-chat" },
@@ -52,17 +49,7 @@ export default defineConfig({
       { text: "用户手册", link: "/user-guide/rag-chat" },
       { text: "架构", link: "/architecture/overview" },
       { text: "API", link: "/api/overview" },
-      {
-        text: historicalVersion ? `版本 ${historicalVersion}` : `版本 ${projectVersion}`,
-        items: [
-          { text: `最新版 (${projectVersion})`, link: `${siteOrigin}/`, target: "_self" },
-          ...publishedVersions.map(version => ({
-            text: version === historicalVersion ? `${version}（当前）` : version,
-            link: `${siteOrigin}/versions/${version}/`,
-            target: "_self",
-          })),
-        ],
-      },
+      { text: `版本 ${documentationSeries}`, link: "/reference/current-version" },
     ],
     sidebar: [
       {
@@ -160,7 +147,7 @@ export default defineConfig({
       copyright: "AI 智能套件",
     },
     versionMeta: {
-      current: projectVersion,
+      current: documentationSeries,
       historical: historicalVersion || null,
       latestUrl: `${siteOrigin}/`,
     },

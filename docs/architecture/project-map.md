@@ -1,6 +1,6 @@
 # 项目模块地图
 
-> 适用版本：AI 智能套件 0.3.2
+> 适用版本：AI 智能套件 0.3.x
 > 适用读者：维护者、评审者、二次开发者
 
 本页按当前源码梳理项目，不使用历史 Phase 文档作为事实来源。
@@ -72,4 +72,3 @@ Console 以 `ui/src/index.ts` 注册路由，`AISuiteLayout.vue` 提供套件内
 - [意图路由架构](intent-routing.md)
 - [数据存储与生命周期](data-storage.md)
 - [当前版本能力清单](../reference/current-version.md)
-

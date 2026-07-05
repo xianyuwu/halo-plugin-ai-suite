@@ -2,7 +2,7 @@
 
 | 组件 | 当前要求 | 说明 |
 | --- | --- | --- |
-| AI 智能套件 | 0.3.2 | 文档当前适用版本 |
+| AI 智能套件 | 0.3.x | 文档当前适用版本系列 |
 | Halo | 2.25.0+ | `plugin.yaml` 声明 `>=2.25.0` |
 | Halo AI Foundation | 必需 | `plugin.yaml` 声明 `pluginDependencies.ai-foundation` |
 | Java | 21 | 构建与本地运行要求 |

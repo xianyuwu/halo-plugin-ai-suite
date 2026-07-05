@@ -323,6 +323,8 @@
   // 否则 fitAndCenterMarkmap 在加载阶段会有 TDZ 引用错。
   var currentMarkmap = null;
   var currentMarkmapSvg = null;
+  // 每次加载或销毁都会递增，用于阻止上一篇文章的异步响应回写到新页面。
+  var mindmapRequestSerial = 0;
   var expandRenderTimer = null;
 
   function isElementAttached(el) {
@@ -817,6 +819,7 @@
   }
 
   function loadMindMapData(postName, block, theme) {
+    var requestSerial = ++mindmapRequestSerial;
     setBlockState(block, "loading");
     showStatus(block, "loading");
     // v3：头部 pill 回到 loading 态
@@ -828,6 +831,7 @@
         return res.json();
       })
       .then(function (data) {
+        if (!isActiveMindmapRequest(requestSerial, postName, block)) return;
         if (data.error) {
           setBlockState(block, "error");
           showStatus(block, "error", data.error);
@@ -853,11 +857,19 @@
         }
       })
       .catch(function (e) {
+        if (!isActiveMindmapRequest(requestSerial, postName, block)) return;
         console.error("[MindMap] fetch 异常:", e);
         setBlockState(block, "error");
         showStatus(block, "error", "加载失败：" + e.message);
         setPillState(block, "error", "加载失败");
       });
+  }
+
+  function isActiveMindmapRequest(requestSerial, postName, block) {
+    return requestSerial === mindmapRequestSerial
+      && isElementAttached(block)
+      && document.querySelector("." + BLOCK_CLASS) === block
+      && block.getAttribute("data-post") === postName;
   }
 
   // ===== v3 新增：头部章节数 pill =====
@@ -1358,6 +1370,7 @@
    * 暴露到 window 方便外部触发；监听 pjax:end 自动调用。
    */
   function destroyMindmapBlock() {
+    mindmapRequestSerial++;
     var block = document.querySelector("." + BLOCK_CLASS);
     if (block && block.parentNode) block.parentNode.removeChild(block);
     // 释放 flash class
@@ -1397,17 +1410,43 @@
     setTimeout(mountMindmapBlock, 30);
   });
 
+  // Dream 使用 jQuery 触发 PJAX 自定义事件，原生 addEventListener 不一定能收到。
+  // 同时绑定 jQuery 事件，保证生产主题切页后一定销毁上一篇脑图。
+  if (window.jQuery && typeof window.jQuery(document).on === "function") {
+    window.jQuery(document).on("pjax:end.aiSuiteMindmap", function () {
+      destroyMindmapBlock();
+      pjaxDirty = true;
+      setTimeout(function () {
+        tryMountWhenReady();
+      }, 30);
+    });
+  }
+
   // 通用 PJAX 兜底
   var pjaxColumn = document.querySelector(".column-main");
   var pjaxDirty = false;
   var retryTimer = null;
 
   function tryMountWhenReady() {
-    if (document.querySelector("." + BLOCK_CLASS)) {
+    var block = document.querySelector("." + BLOCK_CLASS);
+    if (!isArticlePage()) {
+      if (block) destroyMindmapBlock();
+      return;
+    }
+
+    var postName = getPostName();
+    if (!postName) return;
+
+    // PJAX 可能保留旧 DOM；只要文章身份变化，就必须销毁并重新请求。
+    if (block && block.getAttribute("data-post") !== postName) {
+      destroyMindmapBlock();
+      block = null;
+    }
+
+    if (block) {
       ensureMindmapPlacement();
       return;
     }
-    if (!isArticlePage()) { destroyMindmapBlock(); return; }
     mountMindmapBlock();
   }
 
@@ -1422,12 +1461,7 @@
       for (var i = 0; i < delays.length; i++) {
         (function (d) {
           setTimeout(function () {
-            if (!isArticlePage()) return;
-            if (document.querySelector("." + BLOCK_CLASS)) {
-              ensureMindmapPlacement();
-            } else {
-              mountMindmapBlock();
-            }
+            tryMountWhenReady();
           }, d);
         })(delays[i]);
       }
@@ -1446,6 +1480,7 @@
   function onRouteChange() {
     if (location.pathname === lastPath) return;
     lastPath = location.pathname;
+    destroyMindmapBlock();
     pjaxColumn = document.querySelector(".column-main");
     pjaxDirty = true;
     scheduleRetry();
@@ -1463,11 +1498,6 @@
   window.addEventListener("popstate", onRouteChange);
 
   setInterval(function () {
-    if (!isArticlePage()) return;
-    if (document.querySelector("." + BLOCK_CLASS)) {
-      ensureMindmapPlacement();
-    } else {
-      mountMindmapBlock();
-    }
+    tryMountWhenReady();
   }, 3000);
 })();
