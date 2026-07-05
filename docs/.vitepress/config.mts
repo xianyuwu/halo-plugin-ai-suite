@@ -51,6 +51,13 @@ export default defineConfig({
       { text: "API", link: "/api/overview" },
       { text: `版本 ${documentationSeries}`, link: "/reference/current-version" },
     ],
+    socialLinks: [
+      {
+        icon: "github",
+        link: "https://github.com/xianyuwu/halo-plugin-ai-suite",
+        ariaLabel: "GitHub 仓库",
+      },
+    ],
     sidebar: [
       {
         text: "快速开始",
