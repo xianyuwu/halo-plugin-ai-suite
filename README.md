@@ -10,7 +10,7 @@
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Lucene](https://img.shields.io/badge/Lucene-10.3.2-0a6f3a)](https://lucene.apache.org/)
-[![Version](https://img.shields.io/badge/version-0.3.2-blue)](src/main/resources/plugin.yaml)
+[![Version](https://img.shields.io/badge/version-0.3.3-blue)](src/main/resources/plugin.yaml)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
 [快速开始](#快速开始) · [功能全景](#功能全景) · [完整文档](https://ai-suite-docs.rainwu.cn) · [工作原理](#工作原理) · [开发指南](#开发指南)

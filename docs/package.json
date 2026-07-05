@@ -1,6 +1,6 @@
 {
   "name": "@halo-ai-suite/docs",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@9.15.9",
