@@ -25,8 +25,18 @@
 AI 智能套件当前只保存业务配置：
 
 - ConfigMap：`ai-suite-configmap`
+- 用量历史：`ai-suite-usage-YYYY-MM-DD`（按日期保存，默认恢复/查询窗口为最近 30 天）
 
 模型供应商、Base URL、API Key 和默认模型由 Halo AI Foundation 管理。旧 `ai-suite-api-keys` Secret 不再读取。
+
+## 升级到 0.3.2
+
+- Halo 必须为 2.25.0 或更高版本，并已安装 AI Foundation。
+- 旧版插件内 Base URL、API Key 和供应商配置不再生效，应先在 AI Foundation 中重建模型资源。
+- `shortcutQuestions` 可以继续读取，保存后会逐步转换为结构化 `shortcutItems`。
+- 旧 `reasoningMode=enabled` 会兼容为“默认开启深度思考”。建议在“对话与外观”重新确认访客权限与默认值。
+- 插件热更新后若旧聊天路由仍被 Halo 缓存，可临时使用 `v1alpha2`；生产升级建议完整重启 Halo。
+- Embedding 模型或维度发生变化时必须全量重建索引。
 
 ## 何时重建索引
 
@@ -36,7 +46,7 @@ AI 智能套件当前只保存业务配置：
 
 1. 禁用新插件。
 2. 恢复上一版本 JAR。
-3. 恢复升级前 AI 智能套件 ConfigMap、AI Foundation 配置和业务 Extension。
+3. 恢复升级前 AI 智能套件 ConfigMap、需要保留的用量 ConfigMap、AI Foundation 配置和业务 Extension。
 4. 必要时恢复 Halo 数据目录中的索引。
 5. 启用旧插件并验证状态、配置和公开 API。
 

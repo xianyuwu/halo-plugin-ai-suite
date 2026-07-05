@@ -162,6 +162,15 @@ public class UsageTracker {
             this.embeddingTokens.addAndGet(embeddingTokens);
         }
 
+        void add(ModelUsage other) {
+            if (other == null) return;
+            this.promptTokens.addAndGet(other.promptTokens.get());
+            this.completionTokens.addAndGet(other.completionTokens.get());
+            this.calls.addAndGet(other.calls.get());
+            this.failures.addAndGet(other.failures.get());
+            this.embeddingTokens.addAndGet(other.embeddingTokens.get());
+        }
+
         ModelUsageSnapshot snapshot() {
             return new ModelUsageSnapshot(
                 promptTokens.get(),
@@ -278,6 +287,14 @@ public class UsageTracker {
             .filter(type -> type != null && !type.isBlank())
             .distinct()
             .sorted()
+            .toList();
+    }
+
+    public List<ModelCallLog> getFailedCallLogs(LocalDate start, LocalDate end, String model) {
+        String modelFilter = model == null ? "" : model.trim();
+        return collectCallLogs(start, end).stream()
+            .filter(ModelCallLog::failure)
+            .filter(log -> modelFilter.isEmpty() || log.model().equals(modelFilter))
             .toList();
     }
 
@@ -441,6 +458,111 @@ public class UsageTracker {
         return getTodayUsage().stream()
             .mapToLong(r -> r.usage().totalTokens())
             .sum();
+    }
+
+    @FunctionalInterface
+    private interface DayCleanup {
+        DayCleanupResult apply(String date);
+    }
+
+    private record DayCleanupResult(boolean changed, long calls, long logs) {}
+
+    public record UsageCleanupResult(int changedDays, long affectedCalls, long affectedLogs) {}
+
+    public UsageCleanupResult mergeModelUsage(LocalDate start, LocalDate end,
+                                              String sourceModel, String targetModel) {
+        if (sourceModel == null || sourceModel.isBlank()) {
+            throw new IllegalArgumentException("sourceModel is required");
+        }
+        if (targetModel == null || targetModel.isBlank()) {
+            throw new IllegalArgumentException("targetModel is required");
+        }
+        if (sourceModel.equals(targetModel)) {
+            return new UsageCleanupResult(0, 0, 0);
+        }
+        return cleanupRange(start, end, date -> {
+            var perModel = daily.computeIfAbsent(date, k -> new ConcurrentHashMap<>());
+            ModelUsage source = perModel.remove(sourceModel);
+            long calls = 0;
+            if (source != null) {
+                perModel.computeIfAbsent(targetModel, k -> new ModelUsage()).add(source);
+                calls += source.calls.get();
+            }
+            int logsChanged = 0;
+            List<ModelCallLog> logs = dailyCallLogs.get(date);
+            if (logs != null) {
+                synchronized (logs) {
+                    for (int i = 0; i < logs.size(); i++) {
+                        ModelCallLog log = logs.get(i);
+                        if (sourceModel.equals(log.model())) {
+                            logs.set(i, log.withModel(targetModel));
+                            logsChanged++;
+                        }
+                    }
+                }
+            }
+            return new DayCleanupResult(source != null || logsChanged > 0, calls, logsChanged);
+        });
+    }
+
+    public UsageCleanupResult deleteModelUsage(LocalDate start, LocalDate end, String model) {
+        if (model == null || model.isBlank()) {
+            throw new IllegalArgumentException("model is required");
+        }
+        return cleanupRange(start, end, date -> {
+            var perModel = daily.computeIfAbsent(date, k -> new ConcurrentHashMap<>());
+            ModelUsage removed = perModel.remove(model);
+            long calls = removed != null ? removed.calls.get() : 0;
+            int logsRemoved = 0;
+            List<ModelCallLog> logs = dailyCallLogs.get(date);
+            if (logs != null) {
+                synchronized (logs) {
+                    int before = logs.size();
+                    logs.removeIf(log -> model.equals(log.model()));
+                    logsRemoved = before - logs.size();
+                }
+            }
+            return new DayCleanupResult(removed != null || logsRemoved > 0, calls, logsRemoved);
+        });
+    }
+
+    private UsageCleanupResult cleanupRange(LocalDate start, LocalDate end, DayCleanup cleanup) {
+        if (start == null || end == null || end.isBefore(start)) {
+            throw new IllegalArgumentException("invalid date range");
+        }
+        daySwitchLock.lock();
+        try {
+            int changedDays = 0;
+            long affectedCalls = 0;
+            long affectedLogs = 0;
+            LocalDate cursor = start;
+            while (!cursor.isAfter(end)) {
+                String date = cursor.toString();
+                if (!daily.containsKey(date) && !negativeCache.contains(date)) {
+                    loadConfigMapForDate(date);
+                }
+                DayCleanupResult result = cleanup.apply(date);
+                if (result.changed()) {
+                    changedDays++;
+                    affectedCalls += result.calls();
+                    affectedLogs += result.logs();
+                    persistDate(date);
+                    negativeCache.remove(date);
+                }
+                cursor = cursor.plusDays(1);
+            }
+            return new UsageCleanupResult(changedDays, affectedCalls, affectedLogs);
+        } finally {
+            daySwitchLock.unlock();
+        }
+    }
+
+    private void persistDate(String date) {
+        var perModel = daily.computeIfAbsent(date, k -> new ConcurrentHashMap<>());
+        String json = buildPayloadJson(date, perModel);
+        if (json != null) {
+            persistConfigMap(USAGE_CONFIG_PREFIX + date, json);
+        }
     }
 
     public int getCallLogRetentionDays() {
@@ -639,6 +761,24 @@ public class UsageTracker {
                 node.path("failure").asBoolean(false),
                 node.path("durationMs").asLong(0),
                 node.path("error").asText("")
+            );
+        }
+
+        ModelCallLog withModel(String newModel) {
+            return new ModelCallLog(
+                id,
+                date,
+                time,
+                newModel == null ? "" : newModel,
+                type,
+                scenario,
+                promptTokens,
+                completionTokens,
+                embeddingTokens,
+                totalTokens,
+                failure,
+                durationMs,
+                error
             );
         }
 

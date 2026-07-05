@@ -128,8 +128,12 @@
 | PUT | `/intent-routes/{id}` | 更新，路径 ID 覆盖 body ID |
 | DELETE | `/intent-routes/{id}` | 删除，内置路由不可删 |
 | POST | `/intent-routes/{id}/preview` | 试跑 Pipeline |
+| POST | `/intent-routes/generate` | 根据自然语言生成未保存、默认关闭的路由草稿 |
+| POST | `/intent-routes/simulate` | 使用未保存草稿模拟执行 Pipeline |
 
-保存请求字段包括 `id`、`displayName`、`description`、`enabled`、`priority`、`triggerPatterns`、`llmFallback`、`llmFallbackHint`、`pipeline` 和 `outputTemplate`。预览请求为 `{"query":"测试问题"}`，含 LLM 的处理器会真实产生费用。
+保存请求字段包括 `id`、`displayName`、`description`、`enabled`、`priority`、`triggerPatterns`、`llmFallback`、`llmFallbackHint`、`pipeline` 和 `outputTemplate`。其中 `outputTemplate` 是兼容字段，0.3.2 的确定性导语和 `structured_result` 卡片不读取它。预览请求为 `{"query":"测试问题"}`，含 LLM 的处理器会真实产生费用。
+
+生成请求为 `{"requirement":"查找旅行分类中最热门的 10 篇文章"}`。模拟请求为 `{"draft":{...保存请求字段...},"query":"推荐热门旅行文章"}`。两个接口都不会自动保存或启用路由。
 
 ## 用量
 
@@ -138,10 +142,15 @@
 | GET | `/usage/today` | 今日概览 |
 | GET | `/usage/stats` | 区间统计 |
 | GET | `/usage/calls` | 调用明细 |
+| GET | `/usage/failure-diagnostics` | 失败原因聚合诊断 |
 | GET | `/usage/limits` | 当前限制 |
 | POST | `/usage/limits` | 保存限制 |
+| GET | `/usage/cleanup` | 读取用量清理配置 |
+| POST | `/usage/cleanup/hidden` | 保存隐藏模型列表 |
+| POST | `/usage/cleanup/merge` | 合并历史模型用量 |
+| POST | `/usage/cleanup/delete` | 删除历史模型用量 |
 
-`/usage/calls` 支持 `model`、`type`、`scenario`、`status`、`sort`、`page`、`size`、`start`、`end`。`/usage/stats` 支持 `range` 或自定义日期。
+`/usage/calls` 支持 `model`、`type`、`scenario`、`status`、`sort`、`page`、`size`、`start`、`end`。`/usage/stats` 支持 `range` 或自定义日期。`/usage/failure-diagnostics` 支持 `start`、`end` 和可选 `model`，日期范围不能超过调用明细保留窗口。
 
 限制请求主要结构：
 
@@ -156,6 +165,19 @@
     "whitelist": ["127.0.0.1"]
   }
 }
+```
+
+用量清理接口用于处理模型资源重命名、测试模型污染统计或隐藏已废弃模型：
+
+```jsonc
+// POST /usage/cleanup/hidden
+{ "hiddenModels": ["old-model"] }
+
+// POST /usage/cleanup/merge
+{ "sourceModel": "old-model", "targetModel": "new-model", "start": "2026-06-01", "end": "2026-06-26" }
+
+// POST /usage/cleanup/delete
+{ "model": "test-model", "start": "2026-06-01", "end": "2026-06-26" }
 ```
 
 ## 问答日志

@@ -4,7 +4,7 @@ kind: "Plugin"
 metadata:
   name: "ai-suite"
 spec:
-  version: "0.3.0"
+  version: "0.3.2"
   enabled: true
   requires: ">=2.25.0"
   author:

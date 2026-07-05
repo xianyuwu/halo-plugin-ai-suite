@@ -405,16 +405,40 @@ function handleCancel() {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 
 .ai-outline-brand {
   font-size: 11px;
   color: #b0b0b0;
+  flex-shrink: 0;
 }
 
 @keyframes ai-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+
+@media (max-width: 640px) {
+  .ai-outline-modal {
+    min-height: 320px;
+    max-height: 68vh;
+  }
+  .ai-outline-preview {
+    min-height: 160px;
+    padding: 12px;
+  }
+  .ai-outline-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .ai-outline-footer :deep(.space-wrapper) {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+  .ai-outline-brand {
+    text-align: right;
+  }
 }
 </style>
 

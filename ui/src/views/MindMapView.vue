@@ -210,18 +210,18 @@
                 </thead>
                 <tbody>
                   <tr v-for="item in articleList" :key="item.postName">
-                    <td class="mindmap-cell-check">
+                    <td class="mindmap-cell-check" data-label="选择">
                       <input type="checkbox" :value="item.postName" v-model="selected" />
                     </td>
-                    <td>
+                    <td class="mindmap-title-cell" data-label="文章标题">
                       <div class="mindmap-article-title">{{ item.title }}</div>
                       <div v-if="item.hasMindMap" class="mindmap-markdown-preview">{{ mindMapSummary(item) }}</div>
                     </td>
-                    <td class="mindmap-cell-date">{{ formatDate(item.publishTime) }}</td>
-                    <td>
+                    <td class="mindmap-cell-date" data-label="发布时间">{{ formatDate(item.publishTime) }}</td>
+                    <td class="mindmap-status-cell" data-label="脑图状态">
                       <span class="mindmap-status-badge" :class="statusClass(item)">{{ statusLabel(item) }}</span>
                     </td>
-                    <td>
+                    <td class="mindmap-actions-td" data-label="操作">
                       <div class="mindmap-actions-cell">
                         <VButton type="primary" size="xs" :disabled="jobRunning" :loading="generating === item.postName" @click="generateOne(item.postName)">
                           {{ item.hasMindMap ? '重生成' : '生成' }}
@@ -1765,6 +1765,23 @@ onBeforeUnmount(() => {
 }
 @media (max-width: 900px) {
   .ai-form-grid-2 { grid-template-columns: 1fr; }
+  .mindmap-config-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .mindmap-heading-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+  .mindmap-settings-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "switch"
+      "theme"
+      "generation";
+  }
   .mindmap-toolbar,
   .mindmap-table-footer {
     align-items: stretch;
@@ -1786,6 +1803,7 @@ onBeforeUnmount(() => {
   }
   .mindmap-batch-actions {
     margin-left: 0;
+    flex-wrap: wrap;
   }
   .mindmap-footer-stat,
   .mindmap-pagination {
@@ -1804,6 +1822,186 @@ onBeforeUnmount(() => {
   .mindmap-preview-dialog .halo-mindmap-body {
     height: 54vh;
     min-height: 320px;
+  }
+}
+
+@media (max-width: 760px) {
+  .mindmap-page .ai-content {
+    padding: 18px 10px 36px;
+  }
+
+  .mindmap-setting-card {
+    padding: 14px;
+  }
+
+  .mindmap-setting-head {
+    gap: 10px;
+  }
+
+  .mindmap-theme-fields {
+    gap: 14px;
+  }
+
+  .mindmap-job-panel {
+    margin: 12px 12px 0;
+    padding: 12px;
+  }
+
+  .mindmap-job-stats,
+  .mindmap-job-progress-meta {
+    flex-wrap: wrap;
+  }
+
+  .mindmap-toolbar {
+    padding: 12px;
+  }
+
+  .mindmap-status-select {
+    width: 100%;
+  }
+
+  .mindmap-table-wrap {
+    overflow: visible;
+  }
+
+  .mindmap-table {
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .mindmap-table thead {
+    display: none;
+  }
+
+  .mindmap-table tbody,
+  .mindmap-table tr,
+  .mindmap-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .mindmap-table tbody {
+    padding: 10px;
+    background: #f8fafc;
+  }
+
+  .mindmap-table tbody tr {
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .mindmap-table tbody tr:hover {
+    background: #fff;
+  }
+
+  .mindmap-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 38px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right;
+  }
+
+  .mindmap-table td::before {
+    content: attr(data-label);
+    flex: 0 0 72px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 650;
+    text-align: left;
+  }
+
+  .mindmap-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .mindmap-title-cell {
+    display: block !important;
+    padding: 13px 12px !important;
+    text-align: left !important;
+  }
+
+  .mindmap-title-cell::before {
+    display: none;
+  }
+
+  .mindmap-article-title,
+  .mindmap-markdown-preview {
+    max-width: none;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.55;
+  }
+
+  .mindmap-cell-check {
+    justify-content: flex-start !important;
+  }
+
+  .mindmap-cell-check::before {
+    flex: 0 0 auto !important;
+    margin-right: 12px;
+  }
+
+  .mindmap-status-cell,
+  .mindmap-cell-date {
+    text-align: right;
+  }
+
+  .mindmap-actions-td {
+    align-items: flex-start !important;
+  }
+
+  .mindmap-actions-cell {
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .mindmap-table-footer {
+    padding: 12px;
+  }
+
+  .mindmap-footer-stat {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .mindmap-preview-dialog-backdrop {
+    padding: 10px;
+  }
+
+  .mindmap-preview-dialog {
+    width: 100%;
+    height: 94vh;
+    max-height: 94vh;
+  }
+
+  .mindmap-preview-dialog-head {
+    padding: 10px 12px;
+  }
+
+  .mindmap-preview-dialog > .mindmap-article-preview {
+    padding: 8px;
+  }
+
+  .mindmap-preview-dialog .mindmap-article-shell {
+    padding: 16px 14px;
+  }
+
+  .mindmap-preview-dialog .mindmap-article-shell h1 {
+    font-size: 16px;
+  }
+
+  .mindmap-preview-dialog .halo-mindmap-body {
+    min-height: 260px;
   }
 }
 </style>

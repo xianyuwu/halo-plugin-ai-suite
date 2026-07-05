@@ -43,12 +43,12 @@
                   <input class="ai-input" v-model.number="form.autoKeywordsCount" type="number" min="1" max="10" />
                 </div>
                 <div class="ai-form-field">
-                  <label class="ai-field-label">响应 Token 上限</label>
-                  <input class="ai-input" v-model.number="form.keywordsMaxTokens" type="number" min="256" max="65536" step="128" />
+                  <label class="ai-field-label">单次输入 Token 上限</label>
+                  <input class="ai-input" v-model.number="form.keywordsMaxTokens" type="number" min="512" max="32768" step="512" />
                 </div>
                 <div class="ai-form-field">
-                  <label class="ai-field-label">每批切片数量</label>
-                  <input class="ai-input" v-model.number="form.keywordsBatchSize" type="number" min="5" max="50" />
+                  <label class="ai-field-label">关键词提取并发</label>
+                  <input class="ai-input" v-model.number="form.keywordsBatchSize" type="number" min="1" max="4" />
                 </div>
               </div>
             </div>
@@ -99,8 +99,8 @@ const DEFAULTS = {
   markdownHeadingAware: true,
   autoKeywords: false,
   autoKeywordsCount: 3,
-  keywordsMaxTokens: 1024,
-  keywordsBatchSize: 20,
+  keywordsMaxTokens: 2048,
+  keywordsBatchSize: 1,
   cleanWhitespace: true,
 };
 
@@ -109,12 +109,18 @@ const saving = ref(false);
 const saveMsg = ref("");
 const saveOk = ref(false);
 
+function normalizeKeywordForm() {
+  form.keywordsMaxTokens = Math.min(32768, Math.max(512, Number(form.keywordsMaxTokens) || DEFAULTS.keywordsMaxTokens));
+  form.keywordsBatchSize = Math.min(4, Math.max(1, Number(form.keywordsBatchSize) || DEFAULTS.keywordsBatchSize));
+}
+
 function resetDefaults() {
   Object.assign(form, DEFAULTS);
   Toast.success("已恢复默认配置");
 }
 
 async function save() {
+  normalizeKeywordForm();
   await saveGroup("chunking", form, saving, saveMsg, saveOk);
   if (saveOk.value) {
     Toast.success(saveMsg.value || "保存成功");
@@ -125,6 +131,7 @@ async function save() {
 
 onMounted(async () => {
   await loadGroup("chunking", form);
+  normalizeKeywordForm();
 });
 </script>
 

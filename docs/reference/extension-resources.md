@@ -8,7 +8,7 @@
 | `ChatLog` | `chatlogs` | 访客问答与反馈 | timestamp、question、answer、model、citations、feedbackType、trace |
 | `EvaluationDataset` | `evaluationdatasets` | 可重复评测集 | displayName、description、cases、updatedAt |
 | `EvaluationRunRecord` | `evaluationrunrecords` | 完整评测报告 | runId、datasetId、summary、resultsJson |
-| `IntentRoute` | `intentroutes` | 自定义意图与 Pipeline | enabled、priority、patterns、pipeline、template |
+| `IntentRoute` | `intentroutes` | 自定义意图与 Pipeline | enabled、priority、triggerPatterns、llmFallback、pipeline、outputTemplate（兼容字段） |
 | `AgentTaskRecord` | `agenttaskrecords` | 运营智能体历史任务 | taskId、status、progress、inputJson、reportJson |
 
 ## 管理原则

@@ -23,4 +23,5 @@ public final class UsageScenario {
     public static final String AGENT_CONTENT_GAP = "agent_content_gap";
     public static final String INTENT_DETECT = "intent_detect";
     public static final String INTENT_PIPELINE = "intent_pipeline";
+    public static final String INTENT_ROUTE_GENERATE = "intent_route_generate";
 }

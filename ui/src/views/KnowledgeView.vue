@@ -78,18 +78,20 @@
                 以下情况需要手动重建：首次配置 Embedding 模型、修改切片参数、更换模型或向量维度。
               </div>
             </div>
-          </div>
-        </SectionCard>
 
-        <SectionCard title="维护建议" :icon-component="RiLightbulbLine" headerTitle="使用指南" headerDesc="索引维护的注意事项与最佳实践">
-          <div class="ai-card-body">
-            <ul class="ai-tips-list">
-              <li>文章更新后会自动同步索引，无需手动操作</li>
-              <li>修改切片参数后需手动重建索引，让新参数生效</li>
-              <li>更换 Embedding 模型后建议清空索引并全量重建</li>
-              <li>失败的文章可在列表中单独重试，无需全量重建</li>
-              <li>定期查看索引状态，保证文章数与博客文章总数一致</li>
-            </ul>
+            <div class="ai-help-panel">
+              <button type="button" class="ai-help-toggle" @click="tipsOpen = !tipsOpen">
+                <span>维护建议</span>
+                <span class="ai-help-chevron" :class="{ open: tipsOpen }">▾</span>
+              </button>
+              <ul v-if="tipsOpen" class="ai-tips-list">
+                <li>文章更新后会自动同步索引，无需手动操作</li>
+                <li>修改切片参数后需手动重建索引，让新参数生效</li>
+                <li>更换 Embedding 模型后建议清空索引并全量重建</li>
+                <li>失败的文章可在列表中单独重试，无需全量重建</li>
+                <li>定期查看索引状态，保证文章数与博客文章总数一致</li>
+              </ul>
+            </div>
           </div>
         </SectionCard>
       </div>
@@ -148,14 +150,14 @@
                 <tbody>
                   <template v-for="article in pagedArticles" :key="article.postName">
                     <tr>
-                      <td class="article-title-cell">{{ article.title }}</td>
-                      <td class="ai-cell-center">
+                      <td class="article-title-cell" data-label="文章标题">{{ article.title }}</td>
+                      <td class="ai-cell-center" data-label="状态">
                         <span :class="['ai-status-badge', getStatusClass(article.status)]">
                           {{ getStatusLabel(article.status) }}
                         </span>
                       </td>
-                      <td class="ai-cell-center">{{ article.chunkCount || '-' }}</td>
-                      <td class="ai-cell-center kw-cell">
+                      <td class="ai-cell-center" data-label="切片">{{ article.chunkCount || '-' }}</td>
+                      <td class="ai-cell-center kw-cell" data-label="关键词">
                         <span v-if="article.chunkCount > 0" class="ai-keyword-pct" :class="keywordCoverageClass(article)">
                           {{ article.keywordChunks || 0 }}/{{ article.chunkCount }} ({{ keywordCoverage(article) }})
                         </span>
@@ -164,9 +166,9 @@
                           :title="truncatedTip(article)">截断{{ article.keywordTruncated }}</span>
                         <span v-else-if="article.keywordStatus === 'failed'" class="kw-tag kw-tag-failed">失败</span>
                       </td>
-                      <td class="ai-cell-center ai-cell-date">{{ formatDate(article.createTime) }}</td>
-                      <td class="ai-cell-center ai-cell-date">{{ formatDate(article.updateTime) }}</td>
-                      <td class="actions-cell">
+                      <td class="ai-cell-center ai-cell-date" data-label="创建时间">{{ formatDate(article.createTime) }}</td>
+                      <td class="ai-cell-center ai-cell-date" data-label="更新时间">{{ formatDate(article.updateTime) }}</td>
+                      <td class="actions-cell" data-label="操作">
                         <!-- 重建中：显示进度条 -->
                         <div v-if="isPostReindexing(article.postName) && getPostProgress(article.postName)" class="post-reindex-inline">
                           <span class="post-reindex-stage">{{ postStageLabel(getPostProgress(article.postName)!.stage) }}</span>
@@ -217,7 +219,7 @@
                     </tr>
                     <!-- 切片预览行 -->
                     <tr v-if="previewingPost === article.postName" class="preview-row">
-                      <td colspan="6">
+                      <td colspan="7">
                         <div class="chunk-preview">
                           <div v-if="loadingChunks" class="ai-loading-sm">加载切片中...</div>
                           <div v-else-if="chunks.length === 0" class="ai-empty-text">暂无切片数据</div>
@@ -348,6 +350,7 @@ interface ReindexProgress {
   keywordsFailed: number;
 }
 const reindexProgress = ref<ReindexProgress | null>(null);
+const tipsOpen = ref(false);
 
 // ===== 文章列表 =====
 interface Article {
@@ -582,19 +585,14 @@ function keywordCoverageClass(article: Article): string {
 
 function truncatedTip(article: Article): string {
   const missing = article.keywordTruncated || 0;
-  const suggestedTokens = Math.max(1024, Math.ceil((article.chunkCount || 20) * 50));
-  const suggestedBatch = Math.max(5, Math.ceil((article.chunkCount || 10) / 4));
-  return `缺失 ${missing} 个切片关键词。建议：响应Token上限 ≥ ${suggestedTokens}，或每批切片数 ≤ ${suggestedBatch}`;
+  return `缺失 ${missing} 个切片关键词。建议降低关键词提取并发，或查看模型用量里的失败诊断`;
 }
 
 const truncatedSummary = computed(() => {
   const trList = articles.value.filter(a => a.keywordStatus === 'truncated');
   if (trList.length === 0) return '';
   const totalMissing = trList.reduce((s, a) => s + (a.keywordTruncated || 0), 0);
-  const maxTokens = Math.max(...trList.map(a => Math.ceil((a.chunkCount || 20) * 50)));
-  const minBatch = Math.max(5, Math.min(...trList.map(a => Math.ceil((a.chunkCount || 10) / 4))));
-  const suggestedTokens = Math.max(1024, maxTokens);
-  return `${trList.length} 篇文章共缺失 ${totalMissing} 个切片关键词。建议调整：响应Token上限 ≥ ${suggestedTokens}，每批切片数 ≤ ${minBatch}`;
+  return `${trList.length} 篇文章共缺失 ${totalMissing} 个切片关键词。建议先将关键词提取并发设为 1，并查看模型用量里的失败诊断`;
 });
 
 // ===== API 方法 =====
@@ -713,7 +711,7 @@ watch(() => reindexProgress.value?.phase, (phase) => {
         ? `重建完成，${p.successArticles} 篇成功，${p.failedArticles} 篇失败`
         : `重建完成，共 ${p.totalChunks} 个切片`;
       if (p.truncatedKeywords > 0) {
-        msg += `，${p.truncatedKeywords} 个切片关键词不完整（响应Token不足）`;
+        msg += `，${p.truncatedKeywords} 个切片关键词不完整`;
       }
       if (p.keywordsFailed > 0) {
         msg += `，${p.keywordsFailed} 篇文章关键词提取失败`;
@@ -828,24 +826,9 @@ async function previewChunks(article: Article) {
   background: #f5f7fb;
 }
 
-/* ===== 顶部两栏布局（同 ExcerptView） ===== */
+/* ===== 顶部概览布局 ===== */
 .ai-excerpt-cols {
-  display: flex;
-  gap: 24px;
   margin-bottom: 24px;
-  align-items: stretch;
-}
-
-.ai-excerpt-cols > :deep(.ai-section-block) {
-  flex: 1;
-  min-width: 0;
-}
-
-/* 使用指南卡片——纯提示性质，底色区别于功能卡片 */
-.ai-excerpt-cols > :deep(.ai-section-block:last-child) .ai-section-card {
-  background: #f8fafc;
-  border-color: #e2e8f0;
-  box-shadow: none;
 }
 
 /* ===== 统计迷你卡片（横排） ===== */
@@ -1022,21 +1005,73 @@ async function previewChunks(article: Article) {
   font-weight: 600;
 }
 
-/* ===== 维护建议列表 ===== */
+/* ===== 维护建议折叠区 ===== */
+.ai-help-panel {
+  margin-top: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.ai-help-toggle {
+  width: 100%;
+  border: 0;
+  background: #fff;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.ai-help-toggle:hover {
+  background: #f9fafb;
+}
+
+.ai-help-chevron {
+  color: #9ca3af;
+  font-size: 12px;
+  transition: transform 0.16s ease, color 0.16s ease;
+}
+
+.ai-help-chevron.open {
+  color: #4b5563;
+  transform: rotate(180deg);
+}
+
 .ai-tips-list {
-  padding: 0;
+  padding: 0 14px 12px;
   margin: 0;
   list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 18px;
+  border-top: 1px solid #f3f4f6;
 }
 
 .ai-tips-list li {
-  font-size: 13px;
+  position: relative;
+  font-size: 12px;
   color: #4b5563;
-  line-height: 2.0;
-  padding: 0;
+  line-height: 1.6;
+  padding: 10px 0 0 12px;
+}
+
+.ai-tips-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 18px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #9ca3af;
 }
 
 /* ===== 搜索 + 工具栏 ===== */
@@ -1134,10 +1169,15 @@ async function previewChunks(article: Article) {
 }
 
 /* ===== 表格 ===== */
-.ai-table-wrap { overflow: hidden; }
+.ai-table-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
 
 .ai-table {
   width: 100%;
+  min-width: 980px;
   border-collapse: collapse;
   font-size: 14px;
 }
@@ -1465,9 +1505,167 @@ async function previewChunks(article: Article) {
 }
 
 /* ===== 响应式 ===== */
-@media (max-width: 1024px) {
-  .ai-excerpt-cols {
+@media (max-width: 760px) {
+  .ai-batch-toolbar {
+    align-items: stretch;
     flex-direction: column;
+  }
+
+  .ai-search-box {
+    width: 100%;
+  }
+
+  .ai-batch-actions {
+    justify-content: flex-end;
+  }
+
+  .ai-table-wrap {
+    overflow: visible;
+  }
+
+  .ai-table {
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .ai-table thead {
+    display: none;
+  }
+
+  .ai-table tbody,
+  .ai-table tr,
+  .ai-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .ai-table tbody {
+    padding: 10px;
+    background: #f8fafc;
+  }
+
+  .ai-table tbody tr {
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .ai-table tbody tr:hover {
+    background: #fff;
+  }
+
+  .ai-table td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 38px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right;
+  }
+
+  .ai-table td::before {
+    content: attr(data-label);
+    flex: 0 0 72px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 650;
+    text-align: left;
+  }
+
+  .ai-table tbody tr:last-child td,
+  .ai-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .article-title-cell {
+    display: block !important;
+    padding: 13px 12px !important;
+    text-align: left !important;
+    line-height: 1.55;
+    word-break: break-word;
+  }
+
+  .article-title-cell::before {
+    display: none;
+  }
+
+  .ai-cell-center,
+  .ai-cell-date,
+  .kw-cell {
+    text-align: right;
+    white-space: normal;
+  }
+
+  .kw-cell {
+    justify-content: space-between;
+  }
+
+  .actions-cell {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  .actions-cell::before {
+    margin-right: auto;
+  }
+
+  .actions-cell > * + * {
+    margin-left: 0;
+  }
+
+  .actions-cell > * {
+    margin-left: 6px;
+    margin-bottom: 6px;
+  }
+
+  .post-reindex-inline {
+    min-width: 0;
+    width: min(220px, 100%);
+  }
+
+  .preview-row {
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  .preview-row td {
+    display: block !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  .preview-row td::before {
+    display: none;
+  }
+
+  .chunk-preview {
+    max-height: 360px;
+    padding: 12px;
+  }
+
+  .chunk-item {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ai-table-footer {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 12px;
+  }
+
+  .ai-pagination-controls {
+    justify-content: flex-end;
+    flex-wrap: wrap;
   }
 }
 </style>

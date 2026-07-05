@@ -18,6 +18,7 @@ const publishedVersions = JSON.parse(
 const userGuide = [
   { text: "模型、切片与检索", link: "/user-guide/models-and-retrieval" },
   { text: "访客问答与浮窗", link: "/user-guide/rag-chat" },
+  { text: "深度思考与推理过程", link: "/user-guide/reasoning-mode" },
   { text: "AI 搜索", link: "/user-guide/ai-search" },
   { text: "索引中心", link: "/user-guide/knowledge-index" },
   { text: "AI 脑图", link: "/user-guide/mindmap" },
@@ -62,7 +63,6 @@ export default defineConfig({
           })),
         ],
       },
-      { text: "GitHub", link: "https://github.com/rainwu/plugin-ai-suite" },
     ],
     sidebar: [
       {
@@ -91,6 +91,7 @@ export default defineConfig({
         collapsed: true,
         items: [
           { text: "架构总览", link: "/architecture/overview" },
+          { text: "项目模块地图", link: "/architecture/project-map" },
           { text: "RAG 管线", link: "/architecture/rag-pipeline" },
           { text: "意图路由", link: "/architecture/intent-routing" },
           { text: "数据存储", link: "/architecture/data-storage" },
@@ -121,6 +122,7 @@ export default defineConfig({
         text: "参考资料",
         collapsed: true,
         items: [
+          { text: "当前版本能力", link: "/reference/current-version" },
           { text: "配置参考", link: "/reference/configuration-reference" },
           { text: "用量场景", link: "/reference/usage-scenarios" },
           { text: "兼容矩阵", link: "/reference/compatibility-matrix" },
@@ -153,9 +155,6 @@ export default defineConfig({
     darkModeSwitchLabel: "主题",
     lightModeSwitchTitle: "切换到亮色模式",
     darkModeSwitchTitle: "切换到暗色模式",
-    socialLinks: [
-      { icon: "github", link: "https://github.com/rainwu/plugin-ai-suite" },
-    ],
     footer: {
       message: "基于 GPL-3.0 许可发布",
       copyright: "AI 智能套件",

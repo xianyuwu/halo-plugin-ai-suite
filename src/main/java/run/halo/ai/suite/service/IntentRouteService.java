@@ -257,6 +257,10 @@ public class IntentRouteService {
         enabledIntentsCache = null;
     }
 
+    public void validateDraft(SaveIntentRequest request) {
+        validate(request);
+    }
+
     private void validate(SaveIntentRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("请求体不能为空");

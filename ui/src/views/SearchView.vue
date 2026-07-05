@@ -118,7 +118,7 @@
           <SectionCard title="实时预览" :icon-component="RiEyeLine" headerTitle="搜索弹框预览" headerDesc="预览主题色、AI 回答区和关键词结果样式">
             <div class="ai-card-body">
               <div class="search-preview-stage" :style="previewStyle">
-                <div class="ai-search-overlay ai-search-preview-overlay" :data-theme="previewThemeValue">
+                <div class="ai-search-preview-overlay" :data-theme="previewThemeValue">
                   <div class="ai-search-modal" :data-theme="previewThemeValue">
                     <div class="ai-search-input-wrap">
                       <RiSearchLine class="ai-search-icon" />
@@ -683,6 +683,9 @@ onBeforeUnmount(() => {
 .ai-switch input:checked + .ai-switch-slider::before { transform: translateX(20px); }
 
 .ai-form-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
+.ai-form-field {
+  min-width: 0;
+}
 .ai-prompt-field { margin-top: 18px; }
 .ai-color-swatches {
   display: flex;
@@ -764,22 +767,25 @@ onBeforeUnmount(() => {
   border-radius: 8px;
   overflow: hidden;
   position: relative;
+  isolation: isolate;
+  contain: layout paint;
   background:
     linear-gradient(135deg, rgba(15, 23, 42, 0.08), rgba(148, 163, 184, 0.12)),
     radial-gradient(circle at 20% 20%, rgba(var(--ai-search-color-rgb), 0.16), transparent 34%),
     #eef2f7;
 }
 .ai-search-preview-overlay {
-  position: absolute;
-  inset: 0;
+  position: absolute !important;
+  inset: 0 !important;
   background: rgba(15, 18, 30, 0.28);
   backdrop-filter: blur(6px) saturate(120%);
   -webkit-backdrop-filter: blur(6px) saturate(120%);
-  z-index: 1;
+  z-index: 1 !important;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding-top: 58px;
+  animation: none;
 }
 .ai-search-modal {
   width: 580px;
@@ -1346,6 +1352,10 @@ onBeforeUnmount(() => {
     flex: none;
     padding: 0;
   }
+  .search-preview-stage {
+    height: min(620px, 74vh);
+    min-height: 460px;
+  }
   .search-preview-shell {
     height: auto;
     max-height: none;
@@ -1354,5 +1364,40 @@ onBeforeUnmount(() => {
 }
 @media (max-width: 900px) {
   .ai-form-grid-2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .search-page .ai-content {
+    padding: 18px 14px 36px;
+  }
+  .search-workbench {
+    gap: 16px;
+  }
+  .search-config-scroll {
+    gap: 16px;
+  }
+  .ai-enhance-section {
+    padding: 14px;
+  }
+  .ai-enhance-header {
+    align-items: center;
+  }
+  .search-preview-stage {
+    height: 560px;
+    min-height: 420px;
+  }
+  .ai-search-preview-overlay {
+    padding-top: 20px;
+  }
+  .ai-search-modal {
+    max-width: calc(100% - 20px);
+    max-height: calc(100% - 40px);
+    border-radius: 14px;
+  }
+  .ai-search-kbd {
+    display: none;
+  }
+  .search-preview-meta {
+    font-size: 11px;
+  }
 }
 </style>

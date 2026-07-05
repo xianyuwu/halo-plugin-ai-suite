@@ -8,17 +8,20 @@
         :icon-component="RiRouteLine"
       >
         <template #header-extra>
-          <VButton type="primary" size="sm" @click="startCreate">
-            <template #icon>
-              <RiAddLine />
-            </template>
-            新建意图
-          </VButton>
+          <VSpace>
+            <VButton size="sm" @click="$router.push({ name: 'AISuiteIntentRouteAiCreate' })">
+              ✨ AI 创建
+            </VButton>
+            <VButton type="primary" size="sm" @click="startCreate">
+              <template #icon><RiAddLine /></template>
+              手动创建
+            </VButton>
+          </VSpace>
         </template>
 
         <div v-if="loading" class="ai-empty">加载中…</div>
         <div v-else-if="!intents.length" class="ai-empty">
-          还没有意图配置。点击「新建意图」创建第一个，或等待内置意图初始化。
+          还没有意图配置。可以手动创建，也可以用自然语言让 AI 生成路由草稿。
         </div>
         <table v-else class="ai-table">
           <thead>
@@ -34,14 +37,14 @@
           </thead>
           <tbody>
             <tr v-for="it in intents" :key="it.id">
-              <td>
+              <td data-label="名称" class="intent-title-cell">
                 <div class="ai-title-cell">
                   <span class="ai-title-text">{{ it.displayName || it.id }}</span>
                   <span v-if="it.builtin" class="ai-tag ai-tag-builtin">内置</span>
                 </div>
                 <div v-if="it.description" class="ai-desc">{{ it.description }}</div>
               </td>
-              <td>
+              <td data-label="触发词">
                 <div class="ai-trigger-chips">
                   <span v-for="p in it.triggerPatterns.slice(0, 4)" :key="p" class="ai-chip">{{ p }}</span>
                   <span v-if="it.triggerPatterns.length > 4" class="ai-chip ai-chip-more">
@@ -50,7 +53,7 @@
                   <span v-if="it.llmFallback" class="ai-chip ai-chip-llm">+ LLM 兜底</span>
                 </div>
               </td>
-              <td>
+              <td data-label="Pipeline">
                 <div class="ai-pipeline-summary">
                   <template v-if="it.pipeline && it.pipeline.length">
                     <span
@@ -65,8 +68,8 @@
                   <span v-else class="ai-empty-mini">未配置</span>
                 </div>
               </td>
-              <td>{{ it.priority }}</td>
-              <td>
+              <td data-label="优先级">{{ it.priority }}</td>
+              <td data-label="启用">
                 <label class="ai-switch" @click.stop>
                   <input
                     type="checkbox"
@@ -76,8 +79,8 @@
                   <span class="ai-switch-slider"></span>
                 </label>
               </td>
-              <td class="ai-cell-muted">{{ formatDate(it.updatedAt) }}</td>
-              <td class="ai-col-actions">
+              <td data-label="更新时间" class="ai-cell-muted">{{ formatDate(it.updatedAt) }}</td>
+              <td data-label="操作" class="ai-col-actions">
                 <VSpace spacing="sm">
                   <VButton size="xs" @click="startEdit(it)">编辑</VButton>
                   <VButton
@@ -340,19 +343,6 @@
           </div>
         </div>
 
-        <!-- 输出模板区 -->
-        <div class="ai-form-section">
-          <div class="ai-section-title">输出模板（可选）</div>
-          <div class="ai-field-label">
-            指引 LLM 如何组织回答。留空则使用默认格式（编号 + 标题链接 + 发布日期 + 摘要）
-          </div>
-          <textarea
-            v-model="form.outputTemplate"
-            class="ai-input ai-textarea"
-            rows="4"
-            placeholder="如：按发布时间倒序列出文章，每篇用编号 + Markdown 链接格式"
-          ></textarea>
-        </div>
       </SectionCard>
     </template>
 
@@ -880,8 +870,19 @@ onMounted(() => {
 
 .ai-table {
   width: 100%;
+  min-width: 920px;
   border-collapse: collapse;
   font-size: 14px;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ai-table thead,
+.ai-table tbody {
+  display: table;
+  width: 100%;
+  min-width: inherit;
 }
 
 .ai-table th,
@@ -911,6 +912,10 @@ onMounted(() => {
 
 .ai-title-text {
   font-weight: 600;
+}
+
+.intent-title-cell {
+  min-width: 180px;
 }
 
 .ai-desc {
@@ -1516,5 +1521,160 @@ onMounted(() => {
   margin-top: 8px;
   font-size: 12px;
   color: var(--ai-color-fg-muted, #6b7280);
+}
+
+@media (max-width: 900px) {
+  .ai-page {
+    padding: 10px;
+  }
+
+  .ai-section-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .ai-chip-input-row {
+    align-items: stretch;
+  }
+
+  .ai-toggle-row {
+    align-items: flex-start;
+  }
+
+  .node-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .node-type-select {
+    flex: 1 1 220px;
+  }
+
+  .node-actions {
+    margin-left: 32px;
+    flex-wrap: wrap;
+  }
+
+  .node-params,
+  .node-preview {
+    margin-left: 0;
+  }
+
+  .node-toggle-params {
+    padding-left: 0;
+  }
+
+  .preview-input-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 760px) {
+  .ai-table {
+    min-width: 0;
+    width: 100%;
+    overflow: visible;
+  }
+
+  .ai-table thead {
+    display: none;
+  }
+
+  .ai-table tbody,
+  .ai-table tr,
+  .ai-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .ai-table tbody {
+    padding: 10px;
+    background: #f8fafc;
+  }
+
+  .ai-table tbody tr {
+    margin-bottom: 10px;
+    border: 1px solid var(--color-border, #e5e7eb);
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .ai-table td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 38px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right;
+  }
+
+  .ai-table td::before {
+    content: attr(data-label);
+    flex: 0 0 72px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 650;
+    text-align: left;
+  }
+
+  .ai-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .intent-title-cell {
+    display: block !important;
+    min-width: 0;
+    padding: 13px 12px !important;
+    text-align: left !important;
+  }
+
+  .intent-title-cell::before {
+    display: none;
+  }
+
+  .ai-title-cell {
+    flex-wrap: wrap;
+  }
+
+  .ai-desc {
+    max-width: none;
+    line-height: 1.55;
+  }
+
+  .ai-trigger-chips,
+  .ai-pipeline-summary {
+    justify-content: flex-end;
+  }
+
+  .ai-col-actions {
+    text-align: right;
+    white-space: normal;
+  }
+
+  .node-canvas {
+    padding-left: 0;
+  }
+
+  .node-connector {
+    display: none;
+  }
+
+  .node-card {
+    padding: 10px;
+  }
+
+  .node-actions {
+    width: 100%;
+    margin-left: 32px;
+  }
+
+  .node-preview-post {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 </style>

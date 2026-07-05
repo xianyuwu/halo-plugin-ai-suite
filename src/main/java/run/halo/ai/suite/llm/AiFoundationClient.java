@@ -1,11 +1,16 @@
 package run.halo.ai.suite.llm;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import run.halo.ai.suite.state.UsageTracker;
+import run.halo.app.extension.ConfigMap;
+import run.halo.app.extension.ReactiveExtensionClient;
 import run.halo.app.plugin.extensionpoint.ExtensionGetter;
 
 import java.lang.reflect.InvocationTargetException;
@@ -31,10 +36,14 @@ public class AiFoundationClient {
 
     private static final String AI_MODEL_SERVICE = "run.halo.aifoundation.AiModelService";
     private static final String GENERATE_TEXT_REQUEST = "run.halo.aifoundation.chat.GenerateTextRequest";
+    private static final String REASONING_OPTIONS = "run.halo.aifoundation.chat.ReasoningOptions";
     private static final String MODEL_MESSAGE = "run.halo.aifoundation.message.ModelMessage";
     private static final String EMBEDDING_REQUEST = "run.halo.aifoundation.embedding.EmbeddingRequest";
     private static final String RERANK_REQUEST = "run.halo.aifoundation.rerank.RerankRequest";
     private static final String RERANK_DOCUMENT = "run.halo.aifoundation.rerank.RerankDocument";
+    private static final String AI_FOUNDATION_CONFIG_MAP = "ai-foundation-configmap";
+    private static final String DEFAULT_MODEL_SLOTS_KEY = "defaults";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private static final Duration CALL_TIMEOUT = Duration.ofSeconds(60);
     private static final Duration EMBEDDING_TIMEOUT = Duration.ofSeconds(30);
@@ -42,89 +51,201 @@ public class AiFoundationClient {
 
     private final ExtensionGetter extensionGetter;
     private final UsageTracker usageTracker;
+    private final ReactiveExtensionClient extensionClient;
 
     public static boolean isAiFoundationBaseUrl(String baseUrl) {
         return baseUrl != null && baseUrl.startsWith(BASE_URL);
     }
 
+    public Mono<String> chatUsageModelName(String modelName) {
+        return usageModel(modelName, "languageModelName", "ai-foundation-language");
+    }
+
     public Mono<String> chat(String modelName, List<Map<String, String>> messages,
                              float temperature, int maxTokens,
                              Map<String, Object> responseFormat,
-                             String scenario) {
-        String usageModel = usageModel(modelName, "ai-foundation-language");
-        return languageModel(modelName)
-            .flatMap(model -> {
-                Object request = generateTextRequest(messages, temperature, maxTokens, responseFormat);
-                Object streamResult = invoke(model, "streamText", request.getClass(), request);
-                return asMono(invoke(streamResult, "text"))
-                    .map(String::valueOf)
-                    .doOnNext(reply -> usageTracker.recordUsage(usageModel, "chat", scenario,
-                        estimateMessageTokens(messages), estimateTokens(reply), false, 0));
-            })
-            .timeout(CALL_TIMEOUT)
-            .doOnError(e -> usageTracker.recordUsage(usageModel, "chat", scenario, 0, 0, true, 0, describeError(e)));
+                             String scenario,
+                             String reasoningMode) {
+        return usageModel(modelName, "languageModelName", "ai-foundation-language")
+            .flatMap(usageModel -> chatOnce(modelName, messages, temperature, maxTokens,
+                    responseFormat, reasoningMode)
+                .onErrorResume(error -> shouldFallbackReasoning(reasoningMode, error), error -> {
+                    log.warn("当前 AI Provider 不支持思考模式 {}，已回退为模型默认",
+                        reasoningMode);
+                    return chatOnce(modelName, messages, temperature, maxTokens, responseFormat,
+                        "default");
+                })
+                .map(ThinkContentFilter::strip)
+                .doOnNext(reply -> usageTracker.recordUsage(usageModel, "chat", scenario,
+                    estimateMessageTokens(messages), estimateTokens(reply), false, 0))
+                .timeout(CALL_TIMEOUT)
+                .doOnError(e -> usageTracker.recordUsage(usageModel, "chat", scenario, 0, 0, true, 0, describeError(e))));
     }
 
     public Flux<String> chatStream(String modelName, List<Map<String, String>> messages,
                                    float temperature, int maxTokens,
                                    Map<String, Object> responseFormat,
-                                   String scenario) {
-        String usageModel = usageModel(modelName, "ai-foundation-language");
-        StringBuilder content = new StringBuilder();
-        return Flux.defer(() -> languageModel(modelName)
-            .flatMapMany(model -> {
-                Object request = generateTextRequest(messages, temperature, maxTokens, responseFormat);
-                Object streamResult = invoke(model, "streamText", request.getClass(), request);
-                Flux<String> textStream = asFlux(invoke(streamResult, "textStream"))
-                    .map(String::valueOf)
+                                   String scenario,
+                                   String reasoningMode) {
+        return Flux.defer(() -> usageModel(modelName, "languageModelName", "ai-foundation-language")
+            .flatMapMany(usageModel -> {
+                StringBuilder content = new StringBuilder();
+                Flux<String> stream = chatStreamOnce(modelName, messages, temperature, maxTokens,
+                        responseFormat, reasoningMode, usageModel, scenario, content)
+                    .onErrorResume(error -> content.isEmpty()
+                            && shouldFallbackReasoning(reasoningMode, error), error -> {
+                        log.warn("当前 AI Provider 不支持思考模式 {}，已回退为模型默认",
+                            reasoningMode);
+                        return chatStreamOnce(modelName, messages, temperature, maxTokens,
+                            responseFormat, "default", usageModel, scenario, content);
+                    })
                     .doOnNext(content::append);
-                Mono<?> result = asMono(invoke(streamResult, "result"))
-                    .doOnNext(value -> recordChatUsage(usageModel, scenario, value, messages, content.toString(), false));
-                return textStream.concatWith(result.then(Mono.<String>empty()));
-            }))
-            .timeout(CALL_TIMEOUT)
-            .doOnError(e -> usageTracker.recordUsage(usageModel, "chat", scenario, 0, 0, true, 0, describeError(e)));
+                return ThinkContentFilter.filter(stream)
+                    .timeout(CALL_TIMEOUT)
+                    .doOnError(e -> usageTracker.recordUsage(usageModel, "chat", scenario, 0, 0, true, 0, describeError(e)));
+            }));
+    }
+
+    public Flux<LlmClient.StreamEvent> chatStreamEvents(String modelName,
+                                                        List<Map<String, String>> messages,
+                                                        float temperature, int maxTokens,
+                                                        Map<String, Object> responseFormat,
+                                                        String scenario,
+                                                        String reasoningMode) {
+        return Flux.defer(() -> usageModel(modelName, "languageModelName", "ai-foundation-language")
+            .flatMapMany(usageModel -> {
+                StringBuilder content = new StringBuilder();
+                Flux<LlmClient.StreamEvent> stream = chatStreamEventsOnce(modelName, messages,
+                        temperature, maxTokens, responseFormat, reasoningMode, usageModel, scenario,
+                        content)
+                    .onErrorResume(error -> content.isEmpty()
+                            && shouldFallbackReasoning(reasoningMode, error), error -> {
+                        log.warn("当前 AI Provider 不支持思考模式 {}，已回退为模型默认",
+                            reasoningMode);
+                        return chatStreamEventsOnce(modelName, messages, temperature, maxTokens,
+                            responseFormat, "default", usageModel, scenario, content);
+                    })
+                    .doOnNext(event -> {
+                        if (event.isText() && event.content() != null) {
+                            content.append(event.content());
+                        }
+                    });
+                return InlineReasoningParser.parse(stream).timeout(CALL_TIMEOUT)
+                    .doOnError(e -> usageTracker.recordUsage(usageModel, "chat", scenario,
+                        0, 0, true, 0, describeError(e)));
+            }));
+    }
+
+    private Mono<String> chatOnce(String modelName, List<Map<String, String>> messages,
+                                  float temperature, int maxTokens,
+                                  Map<String, Object> responseFormat,
+                                  String reasoningMode) {
+        return languageModel(modelName).flatMap(model -> {
+            Object request = generateTextRequest(messages, temperature, maxTokens, responseFormat,
+                reasoningMode);
+            Object streamResult = invoke(model, "streamText", request.getClass(), request);
+            return asMono(invoke(streamResult, "text")).map(String::valueOf);
+        });
+    }
+
+    private Flux<String> chatStreamOnce(String modelName, List<Map<String, String>> messages,
+                                        float temperature, int maxTokens,
+                                        Map<String, Object> responseFormat,
+                                        String reasoningMode,
+                                        String usageModel, String scenario,
+                                        StringBuilder content) {
+        return languageModel(modelName).flatMapMany(model -> {
+            Object request = generateTextRequest(messages, temperature, maxTokens, responseFormat,
+                reasoningMode);
+            Object streamResult = invoke(model, "streamText", request.getClass(), request);
+            Flux<String> textStream = asFlux(invoke(streamResult, "textStream"))
+                .map(String::valueOf);
+            Mono<?> result = asMono(invoke(streamResult, "result"))
+                .doOnNext(value -> recordChatUsage(usageModel, scenario, value, messages,
+                    content.toString(), false));
+            return textStream.concatWith(result.then(Mono.<String>empty()));
+        });
+    }
+
+    private Flux<LlmClient.StreamEvent> chatStreamEventsOnce(String modelName,
+                                                             List<Map<String, String>> messages,
+                                                             float temperature, int maxTokens,
+                                                             Map<String, Object> responseFormat,
+                                                             String reasoningMode,
+                                                             String usageModel, String scenario,
+                                                             StringBuilder content) {
+        return languageModel(modelName).flatMapMany(model -> {
+            Object request = generateTextRequest(messages, temperature, maxTokens, responseFormat,
+                reasoningMode);
+            Object streamResult = invoke(model, "streamText", request.getClass(), request);
+            Object fullStreamValue = invoke(streamResult, "fullStream");
+            Flux<LlmClient.StreamEvent> events;
+            if (fullStreamValue instanceof Flux<?> fullStream) {
+                events = fullStream.handle((part, sink) -> {
+                    String type = stringValue(invoke(part, "getType"));
+                    String delta = stringValue(invoke(part, "getDelta"));
+                    switch (type) {
+                        case "text-delta" -> sink.next(LlmClient.StreamEvent.text(delta));
+                        case "reasoning-start" -> sink.next(new LlmClient.StreamEvent(
+                            LlmClient.StreamEvent.REASONING_START, ""));
+                        case "reasoning-delta" -> sink.next(new LlmClient.StreamEvent(
+                            LlmClient.StreamEvent.REASONING_DELTA, delta));
+                        case "reasoning-end" -> sink.next(new LlmClient.StreamEvent(
+                            LlmClient.StreamEvent.REASONING_END, ""));
+                        default -> { }
+                    }
+                });
+            } else {
+                events = asFlux(invoke(streamResult, "textStream"))
+                    .map(String::valueOf)
+                    .map(LlmClient.StreamEvent::text);
+            }
+            Mono<?> result = asMono(invoke(streamResult, "result"))
+                .doOnNext(value -> recordChatUsage(usageModel, scenario, value, messages,
+                    content.toString(), false));
+            return events.concatWith(result.then(Mono.empty()));
+        });
     }
 
     public Mono<float[]> embed(String modelName, String text, int dimensions, String scenario) {
-        String usageModel = usageModel(modelName, "ai-foundation-embedding");
-        return embeddingModel(modelName)
-            .flatMap(model -> {
-                Object request = embeddingRequest(List.of(text), dimensions);
-                return asMono(invoke(model, "embed", request.getClass(), request));
-            })
-            .timeout(EMBEDDING_TIMEOUT)
-            .doOnNext(response -> recordEmbeddingUsage(usageModel, scenario, response, List.of(text), false))
-            .map(this::firstEmbedding)
-            .doOnError(e -> usageTracker.recordUsage(usageModel, "embed", scenario, 0, 0, true, 0, describeError(e)));
+        return usageModel(modelName, "embeddingModelName", "ai-foundation-embedding")
+            .flatMap(usageModel -> embeddingModel(modelName)
+                .flatMap(model -> {
+                    Object request = embeddingRequest(List.of(text), dimensions);
+                    return asMono(invoke(model, "embed", request.getClass(), request));
+                })
+                .timeout(EMBEDDING_TIMEOUT)
+                .doOnNext(response -> recordEmbeddingUsage(usageModel, scenario, response, List.of(text), false))
+                .map(this::firstEmbedding)
+                .doOnError(e -> usageTracker.recordUsage(usageModel, "embed", scenario, 0, 0, true, 0, describeError(e))));
     }
 
     public Mono<List<float[]>> embedBatch(String modelName, List<String> texts, int dimensions, String scenario) {
-        String usageModel = usageModel(modelName, "ai-foundation-embedding");
-        return embeddingModel(modelName)
-            .flatMap(model -> {
-                Object request = embeddingRequest(texts, dimensions);
-                return asMono(invoke(model, "embed", request.getClass(), request));
-            })
-            .timeout(EMBEDDING_TIMEOUT)
-            .doOnNext(response -> recordEmbeddingUsage(usageModel, scenario, response, texts, false))
-            .map(this::embeddings)
-            .doOnError(e -> usageTracker.recordUsage(usageModel, "embed", scenario, 0, 0, true, 0, describeError(e)));
+        return usageModel(modelName, "embeddingModelName", "ai-foundation-embedding")
+            .flatMap(usageModel -> embeddingModel(modelName)
+                .flatMap(model -> {
+                    Object request = embeddingRequest(texts, dimensions);
+                    return asMono(invoke(model, "embed", request.getClass(), request));
+                })
+                .timeout(EMBEDDING_TIMEOUT)
+                .doOnNext(response -> recordEmbeddingUsage(usageModel, scenario, response, texts, false))
+                .map(this::embeddings)
+                .doOnError(e -> usageTracker.recordUsage(usageModel, "embed", scenario, 0, 0, true, 0, describeError(e))));
     }
 
     public Mono<List<LlmClient.RerankResult>> rerank(String modelName, String query,
                                                      List<String> documents, int topN,
                                                      String scenario) {
-        String usageModel = usageModel(modelName, "ai-foundation-rerank");
-        return rerankingModel(modelName)
-            .flatMap(model -> {
-                Object request = rerankRequest(query, documents, topN);
-                return asMono(invoke(model, "rerank", request.getClass(), request));
-            })
-            .timeout(RERANK_TIMEOUT)
-            .doOnNext(response -> recordRerankUsage(usageModel, scenario, response, query, documents, false))
-            .map(this::rerankResults)
-            .doOnError(e -> usageTracker.recordUsage(usageModel, "rerank", scenario, 0, 0, true, 0, describeError(e)));
+        return usageModel(modelName, "rerankModelName", "ai-foundation-rerank")
+            .flatMap(usageModel -> rerankingModel(modelName)
+                .flatMap(model -> {
+                    Object request = rerankRequest(query, documents, topN);
+                    return asMono(invoke(model, "rerank", request.getClass(), request));
+                })
+                .timeout(RERANK_TIMEOUT)
+                .doOnNext(response -> recordRerankUsage(usageModel, scenario, response, query, documents, false))
+                .map(this::rerankResults)
+                .doOnError(e -> usageTracker.recordUsage(usageModel, "rerank", scenario, 0, 0, true, 0, describeError(e))));
     }
 
     private Mono<Object> languageModel(String modelName) {
@@ -155,31 +276,57 @@ public class AiFoundationClient {
 
     private Object generateTextRequest(List<Map<String, String>> messages,
                                        float temperature, int maxTokens,
-                                       Map<String, Object> responseFormat) {
+                                       Map<String, Object> responseFormat,
+                                       String reasoningMode) {
         Object builder = staticInvoke(loadClass(GENERATE_TEXT_REQUEST), "builder");
-        String system = systemMessage(messages);
-        if (!system.isBlank()) {
-            invoke(builder, "system", String.class, system);
+        List<Object> modelMessages = modelMessages(messages);
+        if (modelMessages.isEmpty()) {
+            invoke(builder, "prompt", String.class, promptFromMessages(messages));
+        } else {
+            invoke(builder, "messages", List.class, modelMessages);
         }
-        invoke(builder, "prompt", String.class, promptFromMessages(messages));
         invoke(builder, "temperature", Double.class, (double) temperature);
         invoke(builder, "maxOutputTokens", Integer.class, maxTokens);
         if (responseFormat != null && !responseFormat.isEmpty()) {
             invoke(builder, "providerOptions", Map.class, Map.of("openai", Map.of("response_format", responseFormat)));
         }
+        applyReasoning(builder, reasoningMode);
         return invoke(builder, "build");
     }
 
-    private String systemMessage(List<Map<String, String>> messages) {
-        if (messages == null) {
-            return "";
+    private void applyReasoning(Object builder, String reasoningMode) {
+        String factory = switch (reasoningMode == null ? "default" : reasoningMode) {
+            case "disabled" -> "disabled";
+            case "enabled" -> "enabled";
+            default -> null;
+        };
+        if (factory == null) {
+            return;
         }
-        return messages.stream()
-            .filter(message -> "system".equalsIgnoreCase(message.getOrDefault("role", "")))
-            .map(message -> message.getOrDefault("content", ""))
-            .filter(content -> !content.isBlank())
-            .findFirst()
-            .orElse("");
+        try {
+            Class<?> reasoningType = loadClass(REASONING_OPTIONS);
+            Object reasoning = staticInvoke(reasoningType, factory);
+            invoke(builder, "reasoning", reasoningType, reasoning);
+        } catch (IllegalStateException e) {
+            // Older AI Foundation releases do not expose typed reasoning controls.
+            log.debug("AI Foundation 当前版本不支持思考模式参数，已跟随模型默认", e);
+        }
+    }
+
+    private boolean shouldFallbackReasoning(String reasoningMode, Throwable error) {
+        if (reasoningMode == null || "default".equals(reasoningMode)) {
+            return false;
+        }
+        Throwable current = error;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null && message.contains("reasoning")
+                && message.contains("not supported by provider type")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private String promptFromMessages(List<Map<String, String>> messages) {
@@ -412,8 +559,29 @@ public class AiFoundationClient {
         return Flux.error(new IllegalStateException("AI Foundation SDK 返回值不是 Flux"));
     }
 
-    private String usageModel(String modelName, String fallback) {
-        return modelName == null || modelName.isBlank() ? fallback : modelName;
+    private Mono<String> usageModel(String modelName, String defaultSlotField, String fallback) {
+        if (modelName != null && !modelName.isBlank()) {
+            return Mono.just(modelName);
+        }
+        return defaultModelName(defaultSlotField)
+            .filter(name -> !name.isBlank())
+            .defaultIfEmpty(fallback)
+            .onErrorReturn(fallback);
+    }
+
+    private Mono<String> defaultModelName(String defaultSlotField) {
+        return extensionClient.fetch(ConfigMap.class, AI_FOUNDATION_CONFIG_MAP)
+            .map(ConfigMap::getData)
+            .map(data -> data == null ? "" : data.getOrDefault(DEFAULT_MODEL_SLOTS_KEY, ""))
+            .filter(json -> json != null && !json.isBlank())
+            .map(json -> {
+                try {
+                    JsonNode node = OBJECT_MAPPER.readTree(json);
+                    return node.path(defaultSlotField).asText("");
+                } catch (Exception e) {
+                    throw new IllegalStateException("读取 AI Foundation 默认模型失败", e);
+                }
+            });
     }
 
     private String stringValue(Object value) {
@@ -482,11 +650,21 @@ public class AiFoundationClient {
         while (cur instanceof RuntimeException && cur.getCause() != null) {
             cur = cur.getCause();
         }
+        if (cur instanceof WebClientResponseException responseException) {
+            String body = responseException.getResponseBodyAsString();
+            String bodySuffix = body == null || body.isBlank() ? "" : " body=" + body;
+            String request = responseException.getRequest() == null ? ""
+                : " from " + responseException.getRequest().getMethod() + " "
+                    + responseException.getRequest().getURI();
+            String msg = responseException.getStatusCode() + " " + responseException.getStatusText()
+                + request + bodySuffix;
+            return msg.length() > 500 ? msg.substring(0, 500) + "..." : msg;
+        }
         String msg = cur.getMessage();
         if (msg == null || msg.isBlank()) {
             msg = cur.getClass().getSimpleName();
         }
-        return msg.length() > 200 ? msg.substring(0, 200) + "..." : msg;
+        return msg.length() > 500 ? msg.substring(0, 500) + "..." : msg;
     }
 
     private long estimateMessageTokens(List<Map<String, String>> messages) {

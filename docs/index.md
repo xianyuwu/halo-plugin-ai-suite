@@ -1,6 +1,6 @@
 # AI 智能套件文档中心
 
-> 适用版本：AI 智能套件 0.3.0、Halo 2.25+
+> 适用版本：AI 智能套件 0.3.2、Halo 2.25+
 
 这里是 AI 智能套件的完整文档入口。根目录的 `README.md` 用于介绍产品和帮助第一次安装；本目录负责操作手册、生产运维、系统架构、API 和二次开发。
 
@@ -16,6 +16,8 @@
 | 配置自定义问答意图 | [意图路由使用手册](user-guide/intent-routing.md) |
 | 理解 RAG 怎样工作 | [RAG 管线](architecture/rag-pipeline.md) |
 | 理解整个系统 | [系统架构](architecture/overview.md) |
+| 核对当前版本能力 | [当前版本能力清单](reference/current-version.md) |
+| 配置深度思考 | [深度思考与推理过程](user-guide/reasoning-mode.md) |
 | 查询所有配置默认值 | [配置参考](reference/configuration-reference.md) |
 | 对接流式接口 | [SSE 协议](api/sse-protocol.md) |
 | 定位运行故障 | [故障排查](operations/troubleshooting.md) |
@@ -35,6 +37,7 @@
 
 - [模型、切片与检索配置](user-guide/models-and-retrieval.md)
 - [访客问答与浮窗](user-guide/rag-chat.md)
+- [深度思考与推理过程](user-guide/reasoning-mode.md)
 - [AI 搜索](user-guide/ai-search.md)
 - [索引中心](user-guide/knowledge-index.md)
 - [AI 脑图](user-guide/mindmap.md)
@@ -57,6 +60,7 @@
 ### 系统架构
 
 - [系统架构总览](architecture/overview.md)
+- [项目模块地图](architecture/project-map.md)
 - [RAG 管线](architecture/rag-pipeline.md)
 - [意图路由架构](architecture/intent-routing.md)
 - [数据存储与生命周期](architecture/data-storage.md)
@@ -68,6 +72,7 @@
 - [Console API](api/console-api.md)
 - [SSE 协议](api/sse-protocol.md)
 - [配置参考](reference/configuration-reference.md)
+- [当前版本能力清单](reference/current-version.md)
 - [用量场景参考](reference/usage-scenarios.md)
 - [兼容矩阵](reference/compatibility-matrix.md)
 - [自定义 Extension 参考](reference/extension-resources.md)
@@ -80,16 +85,6 @@
 - [新增意图处理器](development/adding-intent-processor.md)
 - [发布流程](development/release-process.md)
 
-## 后续文档路线
-
-核心产品、运维、架构、API 和开发文档已经建立。重要架构决策记录在 `docs/adr/`：
-
-- [ADR-001：使用 Halo 内置 Lucene](adr/001-use-lucene.md)
-- [ADR-002：ConfigMap 与 Secret 分离配置](adr/002-configmap-secret-storage.md)
-- [ADR-003：访客 SSE 使用 POST](adr/003-post-sse-api.md)
-- [ADR-004：可配置意图路由](adr/004-configurable-intent-routing.md)
-- [ADR-005：可选适配 Halo AI Foundation](adr/005-ai-foundation-adapter.md)
-
 ## 文档事实来源
 
 当描述与代码不一致时，按以下优先级核对：
@@ -98,8 +93,6 @@
 2. `plugin.yaml`、RoleTemplate 和 Gradle 配置。
 3. 本目录中的版本化文档。
 4. 根目录 `README.md`。
-
-`AGENTS.md` 是开发协作说明，`CLAUDE.md` 是历史开发笔记，都不作为公开功能和 API 的最终事实来源。
 
 ## 文档贡献规范
 

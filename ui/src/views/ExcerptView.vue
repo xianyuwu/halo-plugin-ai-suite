@@ -104,18 +104,18 @@
                 <tbody>
                   <template v-for="item in articleList" :key="item.postName">
                     <tr>
-                      <td class="ai-cell-check">
+                      <td class="ai-cell-check" data-label="选择">
                         <input type="checkbox" :value="item.postName" v-model="selected" />
                       </td>
-                      <td class="article-title-cell">
+                      <td class="article-title-cell" data-label="文章标题">
                         <div class="article-title">{{ item.title }}</div>
                         <div v-if="item.hasExcerpt" class="article-excerpt-preview">{{ item.excerpt }}</div>
                       </td>
-                      <td class="ai-cell-date">{{ formatDate(item.publishTime) }}</td>
-                      <td>
+                      <td class="ai-cell-date" data-label="发布时间">{{ formatDate(item.publishTime) }}</td>
+                      <td class="status-cell" data-label="状态">
                         <span class="ai-status-badge" :class="excerptStatusClass(item)">{{ excerptStatusLabel(item) }}</span>
                       </td>
-                      <td class="actions-cell-td">
+                      <td class="actions-cell-td" data-label="操作">
                         <div class="actions-cell">
                         <VButton v-if="!item.hasExcerpt" type="primary" size="xs" :loading="generating === item.postName" @click="generateOne(item.postName)">
                           {{ generating === item.postName ? '生成中...' : '生成' }}
@@ -594,7 +594,11 @@ onMounted(() => { loadArticles(); loadExcerptConfig(); });
 }
 
 /* 文章管理表格 */
-.ai-table-wrap { overflow: hidden; }
+.ai-table-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
 
 .ai-batch-toolbar {
   display: flex;
@@ -654,6 +658,7 @@ onMounted(() => { loadArticles(); loadExcerptConfig(); });
 
 .ai-table {
   width: 100%;
+  min-width: 760px;
   border-collapse: collapse;
   font-size: 14px;
 }
@@ -794,5 +799,160 @@ onMounted(() => { loadArticles(); loadExcerptConfig(); });
   color: #4b5563;
   line-height: 1.7;
   padding: 0;
+}
+
+@media (max-width: 1024px) {
+  .ai-excerpt-cols {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 760px) {
+  .ai-batch-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ai-search-bar {
+    max-width: none;
+    width: 100%;
+  }
+
+  .ai-batch-actions {
+    margin-left: 0;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .ai-table-wrap {
+    overflow: visible;
+  }
+
+  .ai-table {
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .ai-table thead {
+    display: none;
+  }
+
+  .ai-table tbody,
+  .ai-table tr,
+  .ai-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .ai-table tbody {
+    padding: 10px;
+    background: #f8fafc;
+  }
+
+  .ai-table tbody tr {
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .ai-table tbody tr:hover {
+    background: #fff;
+  }
+
+  .ai-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 38px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right;
+  }
+
+  .ai-table td::before {
+    content: attr(data-label);
+    flex: 0 0 72px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 650;
+    text-align: left;
+  }
+
+  .ai-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .article-title-cell {
+    display: block !important;
+    padding: 13px 12px !important;
+    text-align: left !important;
+  }
+
+  .article-title-cell::before {
+    display: none;
+  }
+
+  .article-title,
+  .article-excerpt-preview {
+    max-width: none;
+    line-height: 1.55;
+  }
+
+  .article-excerpt-preview {
+    -webkit-line-clamp: 3;
+  }
+
+  .ai-cell-check {
+    justify-content: flex-start !important;
+  }
+
+  .ai-cell-check::before {
+    flex: 0 0 auto !important;
+    margin-right: 12px;
+  }
+
+  .status-cell,
+  .ai-cell-date {
+    text-align: right;
+  }
+
+  .actions-cell-td {
+    align-items: flex-start !important;
+  }
+
+  .actions-cell {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  .ai-table-footer {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 12px;
+  }
+
+  .ai-filter-stat {
+    line-height: 1.8;
+  }
+
+  .ai-pagination-controls {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .ai-config-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-toggle-row {
+    padding: 12px;
+  }
 }
 </style>

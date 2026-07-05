@@ -22,13 +22,21 @@
       <!-- 左列：配置 -->
       <div class="ai-section-block">
         <!-- 写作模型配置 -->
-        <SectionCard title="写作模型" :icon-component="RiRobotLine" headerTitle="模型配置" headerDesc="配置写作辅助使用的 AI Foundation 语言模型资源名，留空则复用「模型配置」页的对话模型">
+        <SectionCard title="写作模型" :icon-component="RiRobotLine" headerTitle="模型配置" headerDesc="选择写作辅助使用的 AI Foundation 语言模型，留空则复用「模型配置」页的对话模型">
           <div class="ai-card-body">
             <div class="ai-form-grid" style="margin-top: 16px;">
               <div class="ai-form-field">
-                <label class="ai-field-label">写作模型资源名</label>
-                <input type="text" class="ai-input" v-model="form.writingModel" placeholder="留空复用对话模型" :disabled="saving" />
-                <span class="ai-helper-text">模型供应商、密钥和连接能力由 Halo AI Foundation 统一管理</span>
+                <label class="ai-field-label">写作模型</label>
+                <select class="ai-input ai-select" v-model="form.writingModel" :disabled="saving || modelOptionsLoading">
+                  <option value="">复用模型配置页的对话模型</option>
+                  <option v-for="option in languageOptions" :key="option.name" :value="option.name">
+                    {{ modelOptionLabel(option) }}
+                  </option>
+                  <option v-if="unknownSelectedModel" :value="form.writingModel">
+                    当前配置：{{ form.writingModel }}
+                  </option>
+                </select>
+                <span class="ai-helper-text">{{ writingModelHint }}</span>
               </div>
               <div class="ai-form-field">
                 <label class="ai-field-label">最大输出 Token</label>
@@ -138,6 +146,19 @@ import RiRobotLine from "~icons/ri/robot-line";
 import RiListCheck3 from "~icons/ri/list-check-3";
 import RiBookOpenLine from "~icons/ri/book-open-line";
 
+const AI_FOUNDATION_API = "/apis/console.api.aifoundation.halo.run/v1alpha1";
+
+interface ModelOption {
+  name: string;
+  modelId?: string;
+  displayName?: string;
+  features?: string[];
+  provider?: {
+    displayName?: string;
+    providerTypeDisplayName?: string;
+  };
+}
+
 // 写作辅助默认配置
 const WRITING_DEFAULTS = {
   enabled: true,
@@ -190,8 +211,32 @@ const form = reactive({ ...WRITING_DEFAULTS });
 const saving = ref(false);
 const saveMsg = ref("");
 const saveOk = ref(false);
+const modelOptionsLoading = ref(false);
+const modelOptionsError = ref("");
+const languageOptions = ref<ModelOption[]>([]);
 // 自动保存的 debounce 句柄（开关切换时用，避免连续点多次触发多次保存）
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+const selectedWritingModel = computed(() =>
+  languageOptions.value.find((option) => option.name === form.writingModel) || null
+);
+
+const unknownSelectedModel = computed(() => !!form.writingModel && !selectedWritingModel.value);
+
+const writingModelHint = computed(() => {
+  if (modelOptionsError.value) return modelOptionsError.value;
+  if (!form.writingModel) return "留空时复用模型配置页的对话模型";
+  if (!selectedWritingModel.value) return "当前保存的模型未出现在可用列表中，请检查 AI Foundation 配置";
+  const modelId = selectedWritingModel.value.modelId ? `供应商模型 ID：${selectedWritingModel.value.modelId}` : "";
+  const features = selectedWritingModel.value.features?.length ? `能力：${selectedWritingModel.value.features.join(", ")}` : "";
+  return [modelId, features].filter(Boolean).join("；") || "已选择 AI Foundation 语言模型";
+});
+
+function modelOptionLabel(option: ModelOption) {
+  const modelName = option.displayName || option.modelId || option.name;
+  const provider = option.provider?.displayName || option.provider?.providerTypeDisplayName;
+  return provider ? `${modelName} · ${provider}` : modelName;
+}
 
 function resetDefaults() {
   Object.assign(form, WRITING_DEFAULTS);
@@ -233,10 +278,31 @@ async function autoSave() {
 }
 
 onMounted(async () => {
-  await loadGroup("writing", form);
+  await Promise.all([loadGroup("writing", form), loadLanguageOptions()]);
   // 同步总开关到模块级 ref
   setWritingEnabled(form.enabled);
 });
+
+async function loadLanguageOptions() {
+  modelOptionsLoading.value = true;
+  modelOptionsError.value = "";
+  try {
+    const params = new URLSearchParams({
+      modelType: "language",
+      available: "true",
+      enabled: "true",
+    });
+    const resp = await fetch(`${AI_FOUNDATION_API}/model-options?${params.toString()}`);
+    if (!resp.ok) {
+      throw new Error(`模型列表接口返回 HTTP ${resp.status}`);
+    }
+    languageOptions.value = await resp.json();
+  } catch (e: any) {
+    modelOptionsError.value = "无法读取 AI Foundation 模型列表：" + (e?.message || "未知错误");
+  } finally {
+    modelOptionsLoading.value = false;
+  }
+}
 </script>
 
 <style scoped>
@@ -295,6 +361,7 @@ onMounted(async () => {
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
+  flex-shrink: 0;
 }
 
 .ai-switch-track {
@@ -384,4 +451,25 @@ onMounted(async () => {
   margin-left: 4px;
 }
 
+@media (max-width: 960px) {
+  .ai-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .ai-writing-topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .ai-switch-label {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .ai-guide-steps,
+  .ai-guide-tips {
+    padding-left: 18px;
+    line-height: 1.8;
+  }
+}
 </style>

@@ -11,20 +11,22 @@
 
 | 页面 | 决定什么 | 典型变更影响 |
 | --- | --- | --- |
-| 模型配置 | Chat、Embedding、Rerank、Query Rewrite 服务 | Embedding 变化需重建索引 |
+| 模型配置 | AI Foundation 语言、Embedding、Rerank、Query Rewrite 模型资源名 | Embedding 变化需重建索引 |
 | 切片设置 | 文章怎样拆成可检索片段 | 变化后需重建受影响文章 |
 | 检索策略 | keyword/vector/hybrid、候选数和阈值 | 保存后对新请求生效 |
 | 检索增强 | Rewrite、HyDE、Rerank、跨语言 | 增加效果、延迟和费用 |
 
 ## 推荐的首次配置
 
-1. 配置 Chat 与 Embedding 模型并分别测试。
+1. 先在 Halo AI Foundation 配置语言模型与 Embedding 模型，再在 AI 智能套件中选择对应模型资源名并测试。
 2. 保持默认切片：500 字符、50 字符重叠、标题与句子感知开启。
 3. 使用 `hybrid`，`topK=20`、`topN=5`。
 4. 完成全量索引并建立一组可验证问题。
 5. 只有基础结果稳定后，再逐项开启增强能力。
 
 ## 切片怎样调
+
+![切片设置](../../assets/readme/screenshots/console-chunking.jpg)
 
 | 现象 | 调整方向 |
 | --- | --- |
@@ -37,6 +39,8 @@
 切片参数的修改不会转换已有索引。完成修改后，在索引中心执行单篇或全量重建。
 
 ## 三种检索模式
+
+![检索策略](../../assets/readme/screenshots/console-retrieval.jpg)
 
 - `keyword`：不需要 Embedding，适合专有名词和精确字符串。
 - `vector`：只用语义向量；Embedding 缺失时没有检索结果。
@@ -58,8 +62,8 @@
 
 | 能力 | 新增调用 |
 | --- | --- |
-| Query Rewrite | 一次 Chat 调用 |
-| HyDE | 一次 Chat + 一次 Embedding |
+| Query Rewrite | 一次语言模型调用 |
+| HyDE | 一次语言模型 + 一次 Embedding |
 | 保留原查询 | 额外检索，混合模式可能额外 Embedding |
 | 跨语言 | 翻译/改写与额外检索 |
 | Rerank | 一次 Rerank 调用 |

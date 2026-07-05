@@ -1,99 +1,117 @@
-<svg width="1600" height="1000" viewBox="0 0 1600 1000" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="1600" height="1100" viewBox="0 0 1600 1100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>AI 智能套件系统全景架构</title>
+  <desc>展示使用角色、体验入口、API 权限边界、业务能力、意图与 RAG 双路径编排、共享基础能力、Halo AI Foundation 模型网关，以及持久化、可重建和运行时数据。</desc>
   <defs>
-    <linearGradient id="canvas" x1="80" y1="20" x2="1520" y2="980" gradientUnits="userSpaceOnUse"><stop stop-color="#0B1220"/><stop offset="0.55" stop-color="#111C35"/><stop offset="1" stop-color="#17143A"/></linearGradient>
-    <linearGradient id="plugin" x1="88" y1="344" x2="1200" y2="820" gradientUnits="userSpaceOnUse"><stop stop-color="#172554" stop-opacity="0.7"/><stop offset="1" stop-color="#312E81" stop-opacity="0.38"/></linearGradient>
+    <linearGradient id="canvas" x1="70" y1="20" x2="1530" y2="1080" gradientUnits="userSpaceOnUse"><stop stop-color="#0B1220"/><stop offset=".55" stop-color="#111C35"/><stop offset="1" stop-color="#17143A"/></linearGradient>
+    <linearGradient id="plugin" x1="64" y1="340" x2="1136" y2="940" gradientUnits="userSpaceOnUse"><stop stop-color="#172554" stop-opacity=".72"/><stop offset="1" stop-color="#312E81" stop-opacity=".38"/></linearGradient>
     <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#3B82F6"/><stop offset="1" stop-color="#7C3AED"/></linearGradient>
-    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#EEF2FF"/></linearGradient>
-    <linearGradient id="core" x1="390" y1="560" x2="890" y2="680" gradientUnits="userSpaceOnUse"><stop stop-color="#2563EB"/><stop offset="0.52" stop-color="#4F46E5"/><stop offset="1" stop-color="#7C3AED"/></linearGradient>
-    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" stroke="#C7D2FE" stroke-opacity="0.04"/></pattern>
-    <filter id="shadow" x="-20%" y="-30%" width="140%" height="170%"><feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#020617" flood-opacity="0.32"/></filter>
+    <linearGradient id="core" x1="94" y1="624" x2="1104" y2="744" gradientUnits="userSpaceOnUse"><stop stop-color="#2563EB"/><stop offset=".52" stop-color="#4F46E5"/><stop offset="1" stop-color="#7C3AED"/></linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" stroke="#C7D2FE" stroke-opacity=".04"/></pattern>
+    <filter id="shadow" x="-20%" y="-30%" width="140%" height="170%"><feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#020617" flood-opacity=".32"/></filter>
     <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="18"/></filter>
-    <marker id="arrowBlue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#60A5FA"/></marker>
-    <marker id="arrowPurple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#A78BFA"/></marker>
-    <marker id="arrowGreen" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#34D399"/></marker>
+    <marker id="blueArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#60A5FA"/></marker>
+    <marker id="purpleArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#A78BFA"/></marker>
+    <marker id="greenArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#34D399"/></marker>
   </defs>
 
-  <rect width="1600" height="1000" rx="32" fill="url(#canvas)"/><rect width="1600" height="1000" rx="32" fill="url(#grid)"/>
-  <circle cx="1300" cy="110" r="220" fill="#7C3AED" fill-opacity="0.08" filter="url(#glow)"/><circle cx="210" cy="900" r="250" fill="#0284C7" fill-opacity="0.06" filter="url(#glow)"/>
+  <rect width="1600" height="1100" rx="32" fill="url(#canvas)"/><rect width="1600" height="1100" rx="32" fill="url(#grid)"/>
+  <circle cx="1300" cy="120" r="220" fill="#7C3AED" fill-opacity=".08" filter="url(#glow)"/><circle cx="210" cy="1010" r="250" fill="#0284C7" fill-opacity=".06" filter="url(#glow)"/>
 
-  <!-- Header -->
-  <g transform="translate(60 44)">
-    <g transform="scale(.43)"><rect width="128" height="128" rx="28" fill="url(#brand)"/><line x1="64" y1="30" x2="64" y2="42" stroke="white" stroke-width="4" stroke-linecap="round"/><circle cx="64" cy="27" r="5.5" fill="#FDE047"/><rect x="36" y="42" width="56" height="46" rx="13" fill="url(#face)"/><circle cx="54" cy="62" r="5.5" fill="#3B82F6"/><circle cx="74" cy="62" r="5.5" fill="#3B82F6"/><circle cx="54" cy="76" r="2.6" fill="#7C3AED"/><circle cx="64" cy="76" r="2.6" fill="#7C3AED"/><circle cx="74" cy="76" r="2.6" fill="#7C3AED"/><rect x="60" y="88" width="8" height="6" fill="white"/><rect x="46" y="94" width="36" height="10" rx="5" fill="white" opacity=".92"/></g>
-    <text x="76" y="24" fill="#F8FAFC" font-family="Inter, PingFang SC, sans-serif" font-size="28" font-weight="750">AI 智能套件 · 系统架构</text>
-    <text x="76" y="50" fill="#94A3B8" font-family="Inter, PingFang SC, sans-serif" font-size="15">Halo 2.25+ · Reactive WebFlux · RAG + Intent Routing + Content Operations</text>
+  <!-- 标题与图例 -->
+  <g transform="translate(60 42)" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif">
+    <rect width="56" height="56" rx="14" fill="url(#brand)"/><circle cx="28" cy="17" r="3.5" fill="#FDE047"/><path d="M28 20v5M17 27h22v18H17z" stroke="white" stroke-width="2"/><circle cx="23" cy="35" r="2" fill="white"/><circle cx="33" cy="35" r="2" fill="white"/>
+    <text x="76" y="25" fill="#F8FAFC" font-size="28" font-weight="750">AI 智能套件 · 系统全景架构</text>
+    <text x="76" y="50" fill="#94A3B8" font-size="15">Halo 2.25+ · Spring WebFlux · RAG · 意图路由 · 内容运营</text>
   </g>
-  <g transform="translate(1270 54)"><circle cx="5" cy="5" r="5" fill="#60A5FA"/><text x="18" y="10" fill="#CBD5E1" font-family="Inter, PingFang SC, sans-serif" font-size="13">同步调用</text><circle cx="106" cy="5" r="5" fill="#A78BFA"/><text x="119" y="10" fill="#CBD5E1" font-family="Inter, PingFang SC, sans-serif" font-size="13">AI 调用</text><circle cx="198" cy="5" r="5" fill="#34D399"/><text x="211" y="10" fill="#CBD5E1" font-family="Inter, PingFang SC, sans-serif" font-size="13">数据流</text></g>
+  <g transform="translate(1260 53)" font-family="Inter, PingFang SC, sans-serif" font-size="13"><circle cx="5" cy="5" r="5" fill="#60A5FA"/><text x="18" y="10" fill="#CBD5E1">业务调用</text><circle cx="100" cy="5" r="5" fill="#A78BFA"/><text x="113" y="10" fill="#CBD5E1">模型调用</text><circle cx="195" cy="5" r="5" fill="#34D399"/><text x="208" y="10" fill="#CBD5E1">数据流</text></g>
 
-  <!-- Users -->
+  <!-- 使用角色 -->
   <g font-family="Inter, PingFang SC, sans-serif" filter="url(#shadow)">
-    <rect x="174" y="116" width="210" height="58" rx="29" fill="#1E293B" stroke="#475569"/><circle cx="208" cy="145" r="14" fill="#38BDF8" fill-opacity=".15"/><path d="M202 148c3-6 9-6 12 0M208 140a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke="#7DD3FC" stroke-width="2" stroke-linecap="round"/><text x="235" y="151" fill="#E2E8F0" font-size="17" font-weight="650">博客访客</text>
-    <rect x="490" y="116" width="235" height="58" rx="29" fill="#1E293B" stroke="#475569"/><circle cx="524" cy="145" r="14" fill="#818CF8" fill-opacity=".15"/><path d="M518 151h12M520 136h8v15h-8z" stroke="#A5B4FC" stroke-width="2"/><text x="551" y="151" fill="#E2E8F0" font-size="17" font-weight="650">作者 / 编辑</text>
-    <rect x="832" y="116" width="235" height="58" rx="29" fill="#1E293B" stroke="#475569"/><circle cx="866" cy="145" r="14" fill="#C084FC" fill-opacity=".15"/><path d="M859 151l5-6 5 3 6-9M859 153h16" stroke="#D8B4FE" stroke-width="2" stroke-linecap="round"/><text x="893" y="151" fill="#E2E8F0" font-size="17" font-weight="650">站长 / 运营者</text>
+    <rect x="174" y="116" width="210" height="58" rx="29" fill="#1E293B" stroke="#475569"/><circle cx="208" cy="145" r="14" fill="#38BDF8" fill-opacity=".15"/><path d="M202 148c3-6 9-6 12 0M208 140a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke="#7DD3FC" stroke-width="2"/><text x="235" y="151" fill="#E2E8F0" font-size="17" font-weight="650">博客访客</text>
+    <rect x="490" y="116" width="235" height="58" rx="29" fill="#1E293B" stroke="#475569"/><circle cx="524" cy="145" r="14" fill="#C084FC" fill-opacity=".15"/><path d="M517 151l5-6 5 3 6-9M517 153h16" stroke="#D8B4FE" stroke-width="2"/><text x="551" y="151" fill="#E2E8F0" font-size="17" font-weight="650">站长 / 运营者</text>
+    <rect x="832" y="116" width="235" height="58" rx="29" fill="#1E293B" stroke="#475569"/><circle cx="866" cy="145" r="14" fill="#818CF8" fill-opacity=".15"/><path d="M860 151h12M862 136h8v15h-8z" stroke="#A5B4FC" stroke-width="2"/><text x="893" y="151" fill="#E2E8F0" font-size="17" font-weight="650">作者 / 编辑</text>
   </g>
 
-  <!-- Channels -->
-  <text x="64" y="213" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700" letter-spacing="2">EXPERIENCE CHANNELS</text>
+  <!-- 体验入口 -->
+  <text x="64" y="213" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700" letter-spacing="2">体验入口</text>
   <g filter="url(#shadow)" font-family="Inter, PingFang SC, sans-serif">
-    <rect x="64" y="230" width="340" height="92" rx="18" fill="#0F2942" stroke="#0EA5E9" stroke-opacity=".65"/><rect x="82" y="249" width="46" height="46" rx="13" fill="#0EA5E9" fill-opacity=".17"/><path d="M94 260h22v17h-13l-6 6v-6h-3z" stroke="#7DD3FC" stroke-width="2" stroke-linejoin="round"/><text x="146" y="263" fill="#F0F9FF" font-size="19" font-weight="700">Halo 主题前台</text><text x="146" y="288" fill="#7DD3FC" font-size="14">智能问答 · AI 搜索 · 文章脑图</text>
+    <rect x="64" y="230" width="340" height="92" rx="18" fill="#0F2942" stroke="#0EA5E9" stroke-opacity=".65"/><rect x="82" y="249" width="46" height="46" rx="13" fill="#0EA5E9" fill-opacity=".17"/><path d="M94 260h22v17h-13l-6 6v-6h-3z" stroke="#7DD3FC" stroke-width="2"/><text x="146" y="263" fill="#F0F9FF" font-size="19" font-weight="700">Halo 主题前台</text><text x="146" y="288" fill="#7DD3FC" font-size="14">智能问答 · AI 搜索 · 文章脑图</text>
     <rect x="430" y="230" width="340" height="92" rx="18" fill="#171E4A" stroke="#6366F1" stroke-opacity=".7"/><rect x="448" y="249" width="46" height="46" rx="13" fill="#6366F1" fill-opacity=".2"/><path d="M459 261h24v19h-24zM459 266h24" stroke="#A5B4FC" stroke-width="2"/><text x="512" y="263" fill="#EEF2FF" font-size="19" font-weight="700">Halo Console</text><text x="512" y="288" fill="#A5B4FC" font-size="14">配置 · 索引 · 评测 · 运营管理</text>
-    <rect x="796" y="230" width="340" height="92" rx="18" fill="#281744" stroke="#A855F7" stroke-opacity=".65"/><rect x="814" y="249" width="46" height="46" rx="13" fill="#A855F7" fill-opacity=".18"/><path d="M826 278l18-18M825 263h7M838 276h7" stroke="#D8B4FE" stroke-width="2" stroke-linecap="round"/><text x="878" y="263" fill="#FAF5FF" font-size="19" font-weight="700">Tiptap 编辑器</text><text x="878" y="288" fill="#D8B4FE" font-size="14">多轮写作辅助 · 大纲生成</text>
+    <rect x="796" y="230" width="340" height="92" rx="18" fill="#281744" stroke="#A855F7" stroke-opacity=".65"/><rect x="814" y="249" width="46" height="46" rx="13" fill="#A855F7" fill-opacity=".18"/><path d="M826 278l18-18M825 263h7M838 276h7" stroke="#D8B4FE" stroke-width="2"/><text x="878" y="263" fill="#FAF5FF" font-size="19" font-weight="700">Tiptap 编辑器</text><text x="878" y="288" fill="#D8B4FE" font-size="14">多轮写作辅助 · 大纲生成</text>
   </g>
-  <path d="M279 174V228M608 174V228M950 174V228" stroke="#60A5FA" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <path d="M279 174V228M608 174V228M950 174V228" stroke="#60A5FA" stroke-width="2" marker-end="url(#blueArrow)"/>
 
-  <!-- Plugin boundary -->
-  <rect x="64" y="354" width="1072" height="494" rx="26" fill="url(#plugin)" stroke="#6366F1" stroke-opacity=".65" stroke-width="2"/>
-  <rect x="84" y="337" width="284" height="34" rx="17" fill="#312E81" stroke="#818CF8"/><text x="103" y="359" fill="#E0E7FF" font-family="Inter, PingFang SC, sans-serif" font-size="14" font-weight="700" letter-spacing="1">AI SUITE PLUGIN · HALO JVM</text>
-  <path d="M234 322V352M600 322V352M966 322V352" stroke="#60A5FA" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <!-- 插件边界 -->
+  <rect x="64" y="354" width="1072" height="606" rx="26" fill="url(#plugin)" stroke="#6366F1" stroke-opacity=".65" stroke-width="2"/>
+  <rect x="84" y="337" width="264" height="34" rx="17" fill="#312E81" stroke="#818CF8"/><text x="103" y="359" fill="#E0E7FF" font-family="Inter, PingFang SC, sans-serif" font-size="14" font-weight="700">AI 智能套件 · Halo JVM</text>
+  <path d="M234 322V352M600 322V352M966 322V352" stroke="#60A5FA" stroke-width="2" marker-end="url(#blueArrow)"/>
 
-  <!-- Business domains -->
-  <text x="94" y="404" fill="#A5B4FC" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700" letter-spacing="2">BUSINESS CAPABILITIES</text>
+  <!-- API 边界 -->
+  <text x="94" y="400" fill="#A5B4FC" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700" letter-spacing="2">API 与权限边界</text>
   <g font-family="Inter, PingFang SC, sans-serif">
-    <rect x="94" y="422" width="314" height="116" rx="18" fill="#082F49" fill-opacity=".7" stroke="#38BDF8" stroke-opacity=".55"/><circle cx="124" cy="452" r="15" fill="#38BDF8" fill-opacity=".18"/><path d="M117 452h14M124 445v14" stroke="#7DD3FC" stroke-width="2"/><text x="149" y="458" fill="#E0F2FE" font-size="18" font-weight="700">访客智能</text><text x="116" y="488" fill="#BAE6FD" font-size="14">RAG 问答 · AI 搜索 · 引用溯源</text><text x="116" y="513" fill="#7DD3FC" font-size="14">脑图 · 多轮会话 · 反馈采集</text>
-    <rect x="442" y="422" width="314" height="116" rx="18" fill="#1E1B4B" fill-opacity=".78" stroke="#818CF8" stroke-opacity=".6"/><circle cx="472" cy="452" r="15" fill="#818CF8" fill-opacity=".18"/><path d="M465 458l14-14M465 447h5M475 455h5" stroke="#C7D2FE" stroke-width="2"/><text x="497" y="458" fill="#EEF2FF" font-size="18" font-weight="700">内容智能</text><text x="464" y="488" fill="#C7D2FE" font-size="14">写作辅助 · AI 摘要 · 大纲生成</text><text x="464" y="513" fill="#A5B4FC" font-size="14">文章切片 · 关键词 · 索引维护</text>
-    <rect x="790" y="422" width="314" height="116" rx="18" fill="#3B1753" fill-opacity=".58" stroke="#C084FC" stroke-opacity=".58"/><circle cx="820" cy="452" r="15" fill="#C084FC" fill-opacity=".17"/><path d="M813 458l5-7 5 4 7-11" stroke="#E9D5FF" stroke-width="2" stroke-linecap="round"/><text x="845" y="458" fill="#FAF5FF" font-size="18" font-weight="700">运营智能</text><text x="812" y="488" fill="#E9D5FF" font-size="14">内容缺口 · 选题建议 · 旧文更新</text><text x="812" y="513" fill="#D8B4FE" font-size="14">效果评测 · 问答记录 · 用量分析</text>
+    <rect x="94" y="414" width="314" height="70" rx="16" fill="#0B3148" stroke="#38BDF8" stroke-opacity=".55"/><text x="116" y="443" fill="#E0F2FE" font-size="16" font-weight="700">公开 API</text><text x="116" y="466" fill="#7DD3FC" font-size="13">匿名授权 · POST · SSE 流式响应</text>
+    <rect x="442" y="414" width="314" height="70" rx="16" fill="#1E2355" stroke="#818CF8" stroke-opacity=".6"/><text x="464" y="443" fill="#EEF2FF" font-size="16" font-weight="700">Console API</text><text x="464" y="466" fill="#A5B4FC" font-size="13">管理员 RBAC · 配置与业务管理</text>
+    <rect x="790" y="414" width="314" height="70" rx="16" fill="#3B1753" stroke="#C084FC" stroke-opacity=".58"/><text x="812" y="443" fill="#FAF5FF" font-size="16" font-weight="700">编辑器扩展点</text><text x="812" y="466" fill="#D8B4FE" font-size="13">Tiptap Extension · 当前用户权限</text>
   </g>
 
-  <!-- Orchestration core -->
-  <path d="M251 538V576M599 538V576M947 538V576" stroke="#A78BFA" stroke-width="2" marker-end="url(#arrowPurple)"/>
+  <!-- 业务能力 -->
+  <text x="94" y="516" fill="#A5B4FC" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700" letter-spacing="2">业务能力</text>
+  <g font-family="Inter, PingFang SC, sans-serif">
+    <rect x="94" y="530" width="314" height="82" rx="18" fill="#082F49" fill-opacity=".7" stroke="#38BDF8" stroke-opacity=".55"/><text x="116" y="560" fill="#E0F2FE" font-size="18" font-weight="700">访客智能</text><text x="116" y="588" fill="#7DD3FC" font-size="14">RAG 问答 · AI 搜索 · 引用 · 反馈</text>
+    <rect x="442" y="530" width="314" height="82" rx="18" fill="#1E1B4B" fill-opacity=".78" stroke="#818CF8" stroke-opacity=".6"/><text x="464" y="560" fill="#EEF2FF" font-size="18" font-weight="700">内容智能</text><text x="464" y="588" fill="#A5B4FC" font-size="14">写作辅助 · AI 摘要 · 脑图 · 大纲</text>
+    <rect x="790" y="530" width="314" height="82" rx="18" fill="#3B1753" fill-opacity=".58" stroke="#C084FC" stroke-opacity=".58"/><text x="812" y="560" fill="#FAF5FF" font-size="18" font-weight="700">运营智能</text><text x="812" y="588" fill="#D8B4FE" font-size="14">内容缺口 · 效果评测 · 日志 · 用量</text>
+  </g>
+
+  <!-- 双路径编排 -->
+  <path d="M251 612V630M599 612V630M947 612V630" stroke="#A78BFA" stroke-width="2" marker-end="url(#purpleArrow)"/>
   <g filter="url(#shadow)" font-family="Inter, PingFang SC, sans-serif">
-    <rect x="94" y="578" width="1010" height="104" rx="22" fill="url(#core)"/>
-    <text x="120" y="610" fill="#C7D2FE" font-size="12" font-weight="750" letter-spacing="2">AI ORCHESTRATION CORE</text>
-    <rect x="120" y="625" width="260" height="38" rx="11" fill="#0F172A" fill-opacity=".48"/><circle cx="141" cy="644" r="5" fill="#FDE047"/><text x="157" y="650" fill="white" font-size="15" font-weight="650">意图识别与 Pipeline 编排</text>
-    <rect x="398" y="625" width="260" height="38" rx="11" fill="#0F172A" fill-opacity=".48"/><circle cx="419" cy="644" r="5" fill="#67E8F9"/><text x="435" y="650" fill="white" font-size="15" font-weight="650">RAG 检索与上下文构建</text>
-    <rect x="676" y="625" width="200" height="38" rx="11" fill="#0F172A" fill-opacity=".48"/><circle cx="697" cy="644" r="5" fill="#C4B5FD"/><text x="713" y="650" fill="white" font-size="15" font-weight="650">统一 LLM Client</text>
-    <rect x="894" y="625" width="184" height="38" rx="11" fill="#0F172A" fill-opacity=".48"/><circle cx="915" cy="644" r="5" fill="#FDBA74"/><text x="931" y="650" fill="white" font-size="15" font-weight="650">响应与引用组装</text>
+    <rect x="94" y="632" width="1010" height="150" rx="22" fill="url(#core)"/>
+    <text x="120" y="662" fill="#C7D2FE" font-size="12" font-weight="750" letter-spacing="2">AI 编排核心 · 意图与 RAG 双路径</text>
+    <rect x="120" y="688" width="190" height="70" rx="12" fill="#0F172A" fill-opacity=".52"/><circle cx="141" cy="723" r="5" fill="#FDE047"/><text x="157" y="718" fill="white" font-size="15" font-weight="650">请求路由</text><text x="157" y="739" fill="#FEF08A" font-size="12">指定路由 / 意图识别</text>
+    <rect x="350" y="681" width="220" height="36" rx="10" fill="#0F172A" fill-opacity=".52"/><circle cx="371" cy="699" r="5" fill="#FDBA74"/><text x="387" y="704" fill="white" font-size="13" font-weight="650">意图 Pipeline · 实时数据卡片</text>
+    <rect x="350" y="729" width="220" height="36" rx="10" fill="#0F172A" fill-opacity=".52"/><circle cx="371" cy="747" r="5" fill="#67E8F9"/><text x="387" y="752" fill="white" font-size="13" font-weight="650">RAG Pipeline · 检索与上下文</text>
+    <rect x="820" y="688" width="258" height="70" rx="12" fill="#0F172A" fill-opacity=".52"/><circle cx="841" cy="723" r="5" fill="#C4B5FD"/><text x="857" y="718" fill="white" font-size="14" font-weight="650">统一响应协议</text><text x="857" y="739" fill="#DDD6FE" font-size="11">回答 · 引用 · 推理 · 结构化结果</text>
   </g>
+  <path d="M310 723H330L348 699M330 723L348 747M570 699H740C778 699 780 709 818 709M570 747H740C778 747 780 737 818 737" stroke="#E0E7FF" stroke-opacity=".72" stroke-width="1.6" marker-end="url(#purpleArrow)"/>
 
-  <!-- Shared platform -->
-  <path d="M599 682V714" stroke="#60A5FA" stroke-width="2" marker-end="url(#arrowBlue)"/>
-  <text x="94" y="724" fill="#A5B4FC" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700" letter-spacing="2">SHARED PLATFORM</text>
+  <!-- 共享基础能力 -->
+  <text x="94" y="796" fill="#A5B4FC" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700" letter-spacing="2">共享基础能力</text>
   <g font-family="Inter, PingFang SC, sans-serif">
-    <rect x="94" y="740" width="230" height="76" rx="16" fill="#0F223A" stroke="#38BDF8" stroke-opacity=".45"/><text x="116" y="770" fill="#E0F2FE" font-size="16" font-weight="700">混合检索</text><text x="116" y="795" fill="#7DD3FC" font-size="13">BM25 · HNSW · RRF</text>
-    <rect x="344" y="740" width="230" height="76" rx="16" fill="#1B2048" stroke="#818CF8" stroke-opacity=".45"/><text x="366" y="770" fill="#EEF2FF" font-size="16" font-weight="700">模型治理</text><text x="366" y="795" fill="#A5B4FC" font-size="13">Chat · Embed · Rerank</text>
-    <rect x="594" y="740" width="230" height="76" rx="16" fill="#332044" stroke="#C084FC" stroke-opacity=".45"/><text x="616" y="770" fill="#FAF5FF" font-size="16" font-weight="700">安全与配额</text><text x="616" y="795" fill="#D8B4FE" font-size="13">RBAC · 限流 · 权限</text>
-    <rect x="844" y="740" width="260" height="76" rx="16" fill="#3B2518" stroke="#FB923C" stroke-opacity=".5"/><text x="866" y="770" fill="#FFF7ED" font-size="16" font-weight="700">观测与质量</text><text x="866" y="795" fill="#FDBA74" font-size="13">Usage · Trace · Log · Eval</text>
+    <rect x="94" y="812" width="230" height="92" rx="16" fill="#0F223A" stroke="#38BDF8" stroke-opacity=".45"/><text x="116" y="843" fill="#E0F2FE" font-size="16" font-weight="700">知识与索引管线</text><text x="116" y="868" fill="#7DD3FC" font-size="13">切片 · 关键词 · 增量索引</text><text x="116" y="888" fill="#7DD3FC" font-size="13">BM25 · HNSW · RRF</text>
+    <rect x="344" y="812" width="230" height="92" rx="16" fill="#1B2048" stroke="#818CF8" stroke-opacity=".45"/><text x="366" y="843" fill="#EEF2FF" font-size="16" font-weight="700">模型接入</text><text x="366" y="868" fill="#A5B4FC" font-size="13">统一 LLM Client</text><text x="366" y="888" fill="#A5B4FC" font-size="13">Chat · Embed · Rerank · Rewrite</text>
+    <rect x="594" y="812" width="230" height="92" rx="16" fill="#332044" stroke="#C084FC" stroke-opacity=".45"/><text x="616" y="843" fill="#FAF5FF" font-size="16" font-weight="700">安全与配额</text><text x="616" y="868" fill="#D8B4FE" font-size="13">RBAC · 访客限流</text><text x="616" y="888" fill="#D8B4FE" font-size="13">用量预扣 · 每日上限</text>
+    <rect x="844" y="812" width="260" height="92" rx="16" fill="#3B2518" stroke="#FB923C" stroke-opacity=".5"/><text x="866" y="843" fill="#FFF7ED" font-size="16" font-weight="700">观测与质量</text><text x="866" y="868" fill="#FDBA74" font-size="13">Usage · Trace · ChatLog</text><text x="866" y="888" fill="#FDBA74" font-size="13">反馈 · 评测 · 任务记录</text>
   </g>
+  <path d="M599 782V810" stroke="#60A5FA" stroke-width="2" marker-end="url(#blueArrow)"/>
 
-  <!-- External model plane -->
-  <rect x="1180" y="230" width="356" height="586" rx="24" fill="#15152C" stroke="#8B5CF6" stroke-opacity=".55"/>
-  <text x="1210" y="266" fill="#C4B5FD" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700" letter-spacing="2">EXTERNAL AI SERVICES</text>
+  <!-- 模型网关与供应商 -->
+  <rect x="1180" y="230" width="356" height="674" rx="24" fill="#15152C" stroke="#8B5CF6" stroke-opacity=".55"/>
+  <text x="1210" y="266" fill="#C4B5FD" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700" letter-spacing="2">模型能力与供应商</text>
   <g font-family="Inter, PingFang SC, sans-serif" filter="url(#shadow)">
-    <rect x="1210" y="290" width="296" height="98" rx="18" fill="#251B4B" stroke="#8B5CF6" stroke-opacity=".6"/><circle cx="1244" cy="325" r="17" fill="#8B5CF6" fill-opacity=".2"/><path d="M1237 325h14M1244 318v14" stroke="#C4B5FD" stroke-width="2"/><text x="1273" y="324" fill="#F5F3FF" font-size="17" font-weight="700">Chat Completion</text><text x="1273" y="350" fill="#C4B5FD" font-size="13">回答 · 改写 · HyDE · 生成</text>
-    <rect x="1210" y="410" width="296" height="98" rx="18" fill="#132D40" stroke="#0EA5E9" stroke-opacity=".55"/><circle cx="1244" cy="445" r="17" fill="#0EA5E9" fill-opacity=".18"/><path d="M1236 445h16M1240 439v12M1248 439v12" stroke="#7DD3FC" stroke-width="2"/><text x="1273" y="444" fill="#F0F9FF" font-size="17" font-weight="700">Embedding</text><text x="1273" y="470" fill="#7DD3FC" font-size="13">文章向量 · 查询向量</text>
-    <rect x="1210" y="530" width="296" height="98" rx="18" fill="#34203A" stroke="#D946EF" stroke-opacity=".5"/><circle cx="1244" cy="565" r="17" fill="#D946EF" fill-opacity=".17"/><path d="M1237 571l5-7 5 3 5-9" stroke="#F0ABFC" stroke-width="2" stroke-linecap="round"/><text x="1273" y="564" fill="#FDF4FF" font-size="17" font-weight="700">Rerank</text><text x="1273" y="590" fill="#F0ABFC" font-size="13">候选文档语义精排</text>
+    <rect x="1210" y="288" width="296" height="110" rx="18" fill="#0F172A" stroke="#818CF8"/><text x="1234" y="322" fill="#F5F3FF" font-size="17" font-weight="700">Halo AI Foundation</text><text x="1234" y="349" fill="#A5B4FC" font-size="13">必需插件依赖 · 统一模型能力网关</text><text x="1234" y="373" fill="#A5B4FC" font-size="13">供应商、密钥与默认模型管理</text>
+    <rect x="1210" y="438" width="296" height="104" rx="18" fill="#251B4B" stroke="#8B5CF6" stroke-opacity=".6"/><circle cx="1244" cy="475" r="17" fill="#8B5CF6" fill-opacity=".2"/><path d="M1237 475h14M1244 468v14" stroke="#C4B5FD" stroke-width="2"/><text x="1273" y="474" fill="#F5F3FF" font-size="17" font-weight="700">对话模型（Chat）</text><text x="1273" y="500" fill="#C4B5FD" font-size="13">回答 · 改写 · HyDE · 内容生成</text>
+    <rect x="1210" y="566" width="296" height="104" rx="18" fill="#132D40" stroke="#0EA5E9" stroke-opacity=".55"/><circle cx="1244" cy="603" r="17" fill="#0EA5E9" fill-opacity=".18"/><path d="M1236 603h16M1240 597v12M1248 597v12" stroke="#7DD3FC" stroke-width="2"/><text x="1273" y="602" fill="#F0F9FF" font-size="17" font-weight="700">向量模型（Embedding）</text><text x="1273" y="628" fill="#7DD3FC" font-size="13">文章向量 · 查询向量</text>
+    <rect x="1210" y="694" width="296" height="104" rx="18" fill="#34203A" stroke="#D946EF" stroke-opacity=".5"/><circle cx="1244" cy="731" r="17" fill="#D946EF" fill-opacity=".17"/><path d="M1237 737l5-7 5 3 5-9" stroke="#F0ABFC" stroke-width="2"/><text x="1273" y="730" fill="#FDF4FF" font-size="17" font-weight="700">重排序模型（Rerank）</text><text x="1273" y="756" fill="#F0ABFC" font-size="13">候选文档语义精排</text>
   </g>
-  <rect x="1210" y="660" width="296" height="120" rx="18" fill="#0F172A" stroke="#64748B"/><text x="1234" y="695" fill="#E2E8F0" font-family="Inter, PingFang SC, sans-serif" font-size="15" font-weight="700">Halo AI Foundation</text><text x="1234" y="723" fill="#94A3B8" font-family="Inter, PingFang SC, sans-serif" font-size="13">语言模型 · Embedding</text><text x="1234" y="746" fill="#94A3B8" font-family="Inter, PingFang SC, sans-serif" font-size="13">Rerank · 供应商密钥</text>
-  <path d="M1104 630H1178" stroke="#A78BFA" stroke-width="2.5" marker-end="url(#arrowPurple)"/>
+  <path d="M1104 707H1152V343H1208" stroke="#A78BFA" stroke-width="2.5" marker-end="url(#purpleArrow)"/>
+  <path d="M1210 343H1192V746" stroke="#A78BFA" stroke-opacity=".68" stroke-width="1.8"/>
+  <path d="M1192 490H1208" stroke="#A78BFA" stroke-opacity=".68" stroke-width="1.8" marker-end="url(#purpleArrow)"/>
+  <path d="M1192 618H1208" stroke="#A78BFA" stroke-opacity=".68" stroke-width="1.8" marker-end="url(#purpleArrow)"/>
+  <path d="M1192 746H1208" stroke="#A78BFA" stroke-opacity=".68" stroke-width="1.8" marker-end="url(#purpleArrow)"/>
 
-  <!-- Data plane -->
-  <text x="64" y="886" fill="#6EE7B7" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700" letter-spacing="2">HALO DATA &amp; KNOWLEDGE PLANE</text>
+  <!-- 数据与生命周期 -->
+  <text x="64" y="1000" fill="#6EE7B7" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700" letter-spacing="2">Halo 数据与知识层</text>
   <g font-family="Inter, PingFang SC, sans-serif">
-    <rect x="64" y="902" width="1472" height="66" rx="19" fill="#082C2A" stroke="#10B981" stroke-opacity=".55"/>
-    <circle cx="96" cy="935" r="12" fill="#34D399" fill-opacity=".2"/><path d="M90 931h12M90 936h12M90 941h8" stroke="#6EE7B7" stroke-width="2" stroke-linecap="round"/><text x="120" y="941" fill="#D1FAE5" font-size="15" font-weight="700">Halo 内容</text><text x="215" y="941" fill="#6EE7B7" font-size="13">Post · Tag · Category · Counter</text>
-    <line x1="450" y1="920" x2="450" y2="950" stroke="#34D399" stroke-opacity=".35"/>
-    <text x="480" y="941" fill="#D1FAE5" font-size="15" font-weight="700">Extension Store</text><text x="625" y="941" fill="#6EE7B7" font-size="13">ChatLog · IntentRoute · Evaluation · AgentTask</text>
-    <line x1="1010" y1="920" x2="1010" y2="950" stroke="#34D399" stroke-opacity=".35"/>
-    <text x="1040" y="941" fill="#D1FAE5" font-size="15" font-weight="700">Lucene 索引</text><text x="1145" y="941" fill="#6EE7B7" font-size="13">文档字段 · BM25 · HNSW 向量</text>
+    <rect x="64" y="1016" width="1472" height="62" rx="19" fill="#082C2A" stroke="#10B981" stroke-opacity=".55"/>
+    <text x="90" y="1044" fill="#D1FAE5" font-size="14" font-weight="700">Halo 内容</text><text x="90" y="1063" fill="#6EE7B7" font-size="11">Post · Tag · Category · Counter</text>
+    <line x1="348" y1="1030" x2="348" y2="1066" stroke="#34D399" stroke-opacity=".35"/>
+    <text x="374" y="1044" fill="#D1FAE5" font-size="14" font-weight="700">ConfigMap</text><text x="374" y="1063" fill="#6EE7B7" font-size="11">业务配置 · 需要备份</text>
+    <line x1="590" y1="1030" x2="590" y2="1066" stroke="#34D399" stroke-opacity=".35"/>
+    <text x="616" y="1044" fill="#D1FAE5" font-size="14" font-weight="700">Extension Store</text><text x="616" y="1063" fill="#6EE7B7" font-size="11">ChatLog · Route · Eval · Agent</text>
+    <line x1="920" y1="1030" x2="920" y2="1066" stroke="#34D399" stroke-opacity=".35"/>
+    <text x="946" y="1044" fill="#D1FAE5" font-size="14" font-weight="700">Lucene 索引</text><text x="946" y="1063" fill="#67E8F9" font-size="11">切片 · BM25 · HNSW · 可重建</text>
+    <line x1="1218" y1="1030" x2="1218" y2="1066" stroke="#34D399" stroke-opacity=".35"/>
+    <text x="1244" y="1044" fill="#D1FAE5" font-size="14" font-weight="700">运行时状态</text><text x="1244" y="1063" fill="#94A3B8" font-size="11">限流 · TraceCache · 活动任务</text>
   </g>
-  <path d="M245 848V900M600 848V900M960 848V900" stroke="#34D399" stroke-width="2" marker-end="url(#arrowGreen)"/>
+  <path d="M245 960V1014M600 960V1014M960 960V1014" stroke="#34D399" stroke-width="2" marker-end="url(#greenArrow)"/>
 </svg>

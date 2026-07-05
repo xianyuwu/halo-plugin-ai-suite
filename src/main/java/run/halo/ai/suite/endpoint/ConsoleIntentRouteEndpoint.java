@@ -15,11 +15,13 @@ import run.halo.ai.suite.extension.IntentRoute.PipelineStep;
 import run.halo.ai.suite.intent.PipelineExecutor;
 import run.halo.ai.suite.rag.PipelineTrace;
 import run.halo.ai.suite.service.IntentRouteService;
+import run.halo.ai.suite.service.IntentRouteGenerationService;
 import run.halo.ai.suite.service.IntentRouteService.IntentRouteDto;
 import run.halo.ai.suite.service.IntentRouteService.SaveIntentRequest;
 import run.halo.app.core.extension.endpoint.CustomEndpoint;
 import run.halo.app.extension.GroupVersion;
 import run.halo.app.extension.ReactiveExtensionClient;
+import run.halo.app.extension.Metadata;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -40,6 +42,7 @@ import java.util.Map;
 public class ConsoleIntentRouteEndpoint implements CustomEndpoint {
 
     private final IntentRouteService intentRouteService;
+    private final IntentRouteGenerationService generationService;
     private final PipelineExecutor pipelineExecutor;
     private final ReactiveExtensionClient client;
 
@@ -47,6 +50,8 @@ public class ConsoleIntentRouteEndpoint implements CustomEndpoint {
     public RouterFunction<ServerResponse> endpoint() {
         return RouterFunctions.route()
             .GET("/intent-routes", this::handleList)
+            .POST("/intent-routes/generate", this::handleGenerate)
+            .POST("/intent-routes/simulate", this::handleSimulate)
             .GET("/intent-routes/{id}", this::handleGet)
             .POST("/intent-routes", this::handleSave)
             .PUT("/intent-routes/{id}", this::handleUpdate)
@@ -54,6 +59,52 @@ public class ConsoleIntentRouteEndpoint implements CustomEndpoint {
             // 试跑预览：跑一遍该意图的 pipeline，返回每步 trace（in/out/posts）
             .POST("/intent-routes/{id}/preview", this::handlePreview)
             .build();
+    }
+
+    private Mono<ServerResponse> handleGenerate(ServerRequest request) {
+        return request.bodyToMono(GenerateRequest.class)
+            .flatMap(body -> generationService.generate(body.requirement()))
+            .flatMap(result -> ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON).bodyValue(result))
+            .onErrorResume(IllegalArgumentException.class, e -> ServerResponse.badRequest()
+                .contentType(MediaType.APPLICATION_JSON).bodyValue(Map.of("error", e.getMessage())))
+            .onErrorResume(e -> {
+                log.warn("[IntentRouteGenerate] 生成失败: {}", e.getMessage(), e);
+                return ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .contentType(MediaType.APPLICATION_JSON).bodyValue(Map.of("error", "AI 生成失败"));
+            });
+    }
+
+    private Mono<ServerResponse> handleSimulate(ServerRequest request) {
+        return request.bodyToMono(SimulateRequest.class)
+            .flatMap(body -> {
+                if (body.draft() == null) {
+                    return Mono.error(new IllegalArgumentException("路由草稿不能为空"));
+                }
+                intentRouteService.validateDraft(body.draft());
+                String query = body.query() != null ? body.query().trim() : "";
+                if (query.isEmpty() || query.length() > 1000) {
+                    return Mono.error(new IllegalArgumentException("测试问题必填且不能超过 1000 个字符"));
+                }
+                IntentRoute route = toTemporaryRoute(body.draft());
+                PipelineTrace trace = new PipelineTrace(query, "ai-generated-draft");
+                return pipelineExecutor.execute(route, query, List.of(), trace)
+                    .map(posts -> {
+                        Map<String, Object> result = new LinkedHashMap<>(serializeTrace(trace));
+                        result.put("matched", matchesDraft(body.draft(), query));
+                        result.put("issues", generationService.inspectDraft(body.draft()));
+                        result.put("resultCount", posts.size());
+                        return result;
+                    });
+            })
+            .flatMap(result -> ServerResponse.ok().contentType(MediaType.APPLICATION_JSON).bodyValue(result))
+            .onErrorResume(IllegalArgumentException.class, e -> ServerResponse.badRequest()
+                .contentType(MediaType.APPLICATION_JSON).bodyValue(Map.of("error", e.getMessage())))
+            .onErrorResume(e -> {
+                log.warn("[IntentRouteSimulate] 模拟失败: {}", e.getMessage(), e);
+                return ServerResponse.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .contentType(MediaType.APPLICATION_JSON).bodyValue(Map.of("error", "模拟失败: " + e.getMessage()));
+            });
     }
 
     @Override
@@ -174,6 +225,41 @@ public class ConsoleIntentRouteEndpoint implements CustomEndpoint {
     }
 
     record PreviewRequest(String query) {}
+    record GenerateRequest(String requirement) {}
+    record SimulateRequest(SaveIntentRequest draft, String query) {}
+
+    private static IntentRoute toTemporaryRoute(SaveIntentRequest draft) {
+        IntentRoute route = new IntentRoute();
+        Metadata metadata = new Metadata();
+        metadata.setName("ai-generated-draft");
+        route.setMetadata(metadata);
+        IntentRoute.Spec spec = new IntentRoute.Spec();
+        spec.setDisplayName(draft.displayName());
+        spec.setDescription(draft.description());
+        spec.setEnabled(false);
+        spec.setPriority(draft.priority());
+        spec.setBuiltin(false);
+        spec.setTriggerPatterns(draft.triggerPatterns());
+        spec.setLlmFallback(draft.llmFallback());
+        spec.setLlmFallbackHint(draft.llmFallbackHint());
+        spec.setPipeline(draft.pipeline());
+        spec.setOutputTemplate(draft.outputTemplate());
+        route.setSpec(spec);
+        return route;
+    }
+
+    private static boolean matchesDraft(SaveIntentRequest draft, String query) {
+        if (draft.triggerPatterns() == null) return false;
+        for (String value : draft.triggerPatterns()) {
+            try {
+                if (java.util.regex.Pattern.compile(value, java.util.regex.Pattern.CASE_INSENSITIVE)
+                    .matcher(query).find()) return true;
+            } catch (RuntimeException ignored) {
+                // validateDraft 已负责报告非法正则。
+            }
+        }
+        return false;
+    }
 
     /** PUT 时用路径上的 id 覆盖 body 里的 id，避免不一致. */
     private static SaveIntentRequest overrideId(SaveIntentRequest body, String id) {

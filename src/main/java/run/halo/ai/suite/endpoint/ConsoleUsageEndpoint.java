@@ -38,8 +38,13 @@ import java.util.Map;
  *   <li>GET  /usage/today       → 当日实时内存读</li>
  *   <li>GET  /usage/stats       → 历史聚合(range=today|7d|30d)</li>
  *   <li>GET  /usage/calls       → 模型 API 调用明细</li>
+ *   <li>GET  /usage/failure-diagnostics → 失败原因聚合诊断</li>
  *   <li>GET  /usage/limits      → 读 limits 配置</li>
  *   <li>POST /usage/limits      → 写 limits 配置</li>
+ *   <li>GET  /usage/cleanup     → 读用量清理配置</li>
+ *   <li>POST /usage/cleanup/hidden → 保存隐藏模型列表</li>
+ *   <li>POST /usage/cleanup/merge  → 合并历史模型用量</li>
+ *   <li>POST /usage/cleanup/delete → 删除历史模型用量</li>
  * </ul>
  */
 @Slf4j
@@ -61,8 +66,13 @@ public class ConsoleUsageEndpoint implements CustomEndpoint {
             .GET("/usage/today", this::handleToday)
             .GET("/usage/stats", this::handleStats)
             .GET("/usage/calls", this::handleCalls)
+            .GET("/usage/failure-diagnostics", this::handleFailureDiagnostics)
             .GET("/usage/limits", this::handleGetLimits)
             .POST("/usage/limits", this::handleSaveLimits)
+            .GET("/usage/cleanup", this::handleGetCleanup)
+            .POST("/usage/cleanup/hidden", this::handleSaveHiddenModels)
+            .POST("/usage/cleanup/merge", this::handleMergeModelUsage)
+            .POST("/usage/cleanup/delete", this::handleDeleteModelUsage)
             .build();
     }
 
@@ -147,6 +157,211 @@ public class ConsoleUsageEndpoint implements CustomEndpoint {
                 .bodyValue(body))
             .onErrorResume(e -> ServerResponse.status(500)
                 .bodyValue(Map.of("error", e.getMessage())));
+    }
+
+    private Mono<ServerResponse> handleFailureDiagnostics(ServerRequest request) {
+        String model = request.queryParam("model").orElse("").trim();
+        java.time.LocalDate today = java.time.LocalDate.now(java.time.ZoneId.systemDefault());
+        java.time.LocalDate start;
+        java.time.LocalDate end;
+        try {
+            start = java.time.LocalDate.parse(request.queryParam("start")
+                .orElse(today.minusDays(6).toString()));
+            end = java.time.LocalDate.parse(request.queryParam("end")
+                .orElse(today.toString()));
+        } catch (Exception e) {
+            return ServerResponse.badRequest().bodyValue(
+                Map.of("error", "invalid date format, use YYYY-MM-DD"));
+        }
+        if (end.isBefore(start)) {
+            return ServerResponse.badRequest().bodyValue(Map.of("error", "end must be >= start"));
+        }
+        long span = java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1;
+        if (span > usageTracker.getCallLogRetentionDays()) {
+            return ServerResponse.badRequest().bodyValue(Map.of(
+                "error", "diagnostic range max " + usageTracker.getCallLogRetentionDays() + " days"
+            ));
+        }
+        java.time.LocalDate earliest = today.minusDays(usageTracker.getCallLogRetentionDays() - 1L);
+        if (start.isBefore(earliest)) {
+            start = earliest;
+        }
+
+        java.time.LocalDate finalStart = start;
+        java.time.LocalDate finalEnd = end;
+        return Mono.fromCallable(() -> buildFailureDiagnostics(finalStart, finalEnd, model))
+            .subscribeOn(Schedulers.boundedElastic())
+            .flatMap(body -> ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(body))
+            .onErrorResume(e -> ServerResponse.status(500)
+                .bodyValue(Map.of("error", e.getMessage())));
+    }
+
+    private Map<String, Object> buildFailureDiagnostics(java.time.LocalDate start,
+                                                        java.time.LocalDate end,
+                                                        String model) {
+        var failures = usageTracker.getFailedCallLogs(start, end, model);
+        Map<String, Long> typeCounts = new LinkedHashMap<>();
+        Map<String, Long> scenarioCounts = new LinkedHashMap<>();
+        Map<String, Long> diagnosisCounts = new LinkedHashMap<>();
+        Map<String, String> diagnosisExamples = new LinkedHashMap<>();
+
+        for (var log : failures) {
+            String type = text(log.type()).isBlank() ? "unknown" : text(log.type());
+            String scenario = text(log.scenario()).isBlank() ? "unknown" : text(log.scenario());
+            String diagnosis = diagnoseFailure(type, log.error());
+            typeCounts.merge(type, 1L, Long::sum);
+            scenarioCounts.merge(scenario, 1L, Long::sum);
+            diagnosisCounts.merge(diagnosis, 1L, Long::sum);
+            diagnosisExamples.putIfAbsent(diagnosis, text(log.error()));
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("start", start.toString());
+        body.put("end", end.toString());
+        body.put("total", failures.size());
+        body.put("byType", bucketList(typeCounts, this::typeLabel));
+        body.put("byScenario", bucketList(scenarioCounts, this::scenarioLabel));
+        body.put("byDiagnosis", diagnosisBucketList(diagnosisCounts, diagnosisExamples));
+        body.put("recent", failures.stream()
+            .sorted((a, b) -> text(b.time()).compareTo(text(a.time())))
+            .limit(8)
+            .map(log -> {
+                Map<String, Object> item = new LinkedHashMap<>();
+                String type = text(log.type()).isBlank() ? "unknown" : text(log.type());
+                String scenario = text(log.scenario()).isBlank() ? "unknown" : text(log.scenario());
+                String diagnosis = diagnoseFailure(type, log.error());
+                item.put("time", log.time());
+                item.put("model", log.model());
+                item.put("type", type);
+                item.put("typeLabel", typeLabel(type));
+                item.put("scenario", scenario);
+                item.put("scenarioLabel", scenarioLabel(scenario));
+                item.put("diagnosis", diagnosis);
+                item.put("diagnosisLabel", diagnosisLabel(diagnosis));
+                item.put("suggestion", diagnosisSuggestion(diagnosis));
+                item.put("error", text(log.error()));
+                return item;
+            })
+            .toList());
+        return body;
+    }
+
+    private List<Map<String, Object>> bucketList(Map<String, Long> counts,
+                                                 java.util.function.Function<String, String> labeler) {
+        return counts.entrySet().stream()
+            .sorted((a, b) -> Long.compare(b.getValue(), a.getValue()))
+            .map(entry -> {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("key", entry.getKey());
+                item.put("label", labeler.apply(entry.getKey()));
+                item.put("count", entry.getValue());
+                return item;
+            })
+            .toList();
+    }
+
+    private List<Map<String, Object>> diagnosisBucketList(Map<String, Long> counts,
+                                                          Map<String, String> examples) {
+        return counts.entrySet().stream()
+            .sorted((a, b) -> Long.compare(b.getValue(), a.getValue()))
+            .map(entry -> {
+                String key = entry.getKey();
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("key", key);
+                item.put("label", diagnosisLabel(key));
+                item.put("count", entry.getValue());
+                item.put("suggestion", diagnosisSuggestion(key));
+                item.put("example", examples.getOrDefault(key, ""));
+                return item;
+            })
+            .toList();
+    }
+
+    private String diagnoseFailure(String type, String error) {
+        String msg = text(error).toLowerCase(java.util.Locale.ROOT);
+        String normalizedType = text(type).toLowerCase(java.util.Locale.ROOT);
+        if (msg.contains("dimension") || msg.contains("维度")) return "embedding_dimensions";
+        if ("embed".equals(normalizedType) || msg.contains("embedding")) return "embedding_model";
+        if ("rerank".equals(normalizedType) || msg.contains("rerank") || msg.contains("reranking")) return "rerank_model";
+        if (msg.contains("response_format") || msg.contains("json_object")) return "response_format";
+        if (msg.contains("timeout") || msg.contains("timed out") || msg.contains("超时")) return "timeout";
+        if (msg.contains("401") || msg.contains("unauthorized") || msg.contains("api key") || msg.contains("apikey")) return "auth";
+        if (msg.contains("403") || msg.contains("forbidden")) return "permission";
+        if (msg.contains("429") || msg.contains("rate limit") || msg.contains("too many")) return "rate_limit";
+        if (msg.contains("model") && (msg.contains("not found") || msg.contains("not exist") || msg.contains("不存在"))) return "model_unavailable";
+        if (msg.contains("aimodelservice") || msg.contains("ai foundation")) return "ai_foundation_service";
+        if (msg.contains("not mono") || msg.contains("not flux") || msg.contains("sdk")) return "sdk_compatibility";
+        return "unknown";
+    }
+
+    private String diagnosisLabel(String key) {
+        return switch (key) {
+            case "embedding_dimensions" -> "Embedding 维度不匹配";
+            case "embedding_model" -> "Embedding 模型配置异常";
+            case "rerank_model" -> "Rerank 模型配置异常";
+            case "response_format" -> "JSON 输出格式不兼容";
+            case "timeout" -> "模型调用超时";
+            case "auth" -> "鉴权失败";
+            case "permission" -> "权限或模型访问受限";
+            case "rate_limit" -> "供应商限流";
+            case "model_unavailable" -> "模型不可用或名称错误";
+            case "ai_foundation_service" -> "AI Foundation 服务不可用";
+            case "sdk_compatibility" -> "AI Foundation SDK 兼容性异常";
+            default -> "未归类错误";
+        };
+    }
+
+    private String diagnosisSuggestion(String key) {
+        return switch (key) {
+            case "embedding_dimensions" -> "检查模型配置里的嵌入维度是否与 AI Foundation 当前 Embedding 模型一致；必要时清空并重建知识库索引。";
+            case "embedding_model" -> "确认 AI Foundation 已配置可用的 Embedding 模型，且 AI Suite 模型配置中没有误选语言模型。";
+            case "rerank_model" -> "确认 AI Foundation 已配置 Rerank 类型模型；如果供应商不支持 Rerank，先关闭重排序增强。";
+            case "response_format" -> "当前模型可能不支持 response_format/json_object；可换支持 JSON mode 的语言模型，或后续改为 prompt 约束解析。";
+            case "timeout" -> "检查供应商响应速度、网络连通性和批量大小；索引/关键词提取类任务可降低批量或 token 上限。";
+            case "auth" -> "检查 AI Foundation 中该供应商的 API Key、Base URL 和模型权限。";
+            case "permission" -> "检查供应商账号是否有该模型访问权限，或模型是否需要单独开通。";
+            case "rate_limit" -> "供应商侧限流，建议降低并发、缩小批量，或换更高配额的模型凭据。";
+            case "model_unavailable" -> "确认 AI Foundation 下拉选择的模型仍存在、已启用，并且名称没有被供应商下线。";
+            case "ai_foundation_service" -> "确认官方 AI Foundation 插件已安装、启用，并已完成默认模型配置。";
+            case "sdk_compatibility" -> "AI Foundation 插件版本可能与当前适配代码不一致，需要检查官方插件 API 变更。";
+            default -> "打开调用明细查看原始错误；如果集中在某个场景，可按场景进一步排查模型能力与参数。";
+        };
+    }
+
+    private String typeLabel(String type) {
+        return switch (type) {
+            case "chat" -> "Chat";
+            case "embed" -> "Embedding";
+            case "rerank" -> "Rerank";
+            default -> type == null || type.isBlank() ? "未知" : type;
+        };
+    }
+
+    private String scenarioLabel(String scenario) {
+        return switch (scenario) {
+            case "model_test" -> "模型连通性测试";
+            case "visitor_qa" -> "访客问答";
+            case "hot_articles" -> "热门文章推荐";
+            case "search_answer" -> "搜索综合回答";
+            case "search_query_rewrite" -> "搜索查询改写";
+            case "search_hyde" -> "HyDE 检索生成";
+            case "search_cross_language" -> "跨语言检索翻译";
+            case "search_embedding" -> "搜索向量化";
+            case "search_rerank" -> "搜索重排序";
+            case "index_embedding" -> "文章索引向量化";
+            case "keyword_extract" -> "生成关键词";
+            case "mindmap_generate" -> "AI 脑图生成";
+            case "summary_generate" -> "AI 摘要生成";
+            case "writing_assist" -> "写作辅助";
+            case "evaluation_answer" -> "效果评测 · 生成回答";
+            case "evaluation_judge" -> "效果评测 · AI 评分";
+            case "agent_content_gap" -> "运营智能体 · 内容缺口分析";
+            case "intent_detect" -> "意图识别";
+            case "intent_pipeline" -> "意图路由";
+            default -> scenario == null || scenario.isBlank() ? "未标记" : scenario;
+        };
     }
 
     @Override
@@ -480,13 +695,151 @@ public class ConsoleUsageEndpoint implements CustomEndpoint {
         catch (NumberFormatException e) { return 0; }
     }
 
+    private Mono<ServerResponse> handleGetCleanup(ServerRequest request) {
+        return readUsageCleanup()
+            .flatMap(body -> ServerResponse.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(body));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Mono<ServerResponse> handleSaveHiddenModels(ServerRequest request) {
+        return request.bodyToMono(Map.class)
+            .flatMap(body -> {
+                List<String> hiddenModels = normalizeStringList(body.get("hiddenModels"));
+                Map<String, Object> cleanup = new LinkedHashMap<>();
+                cleanup.put("hiddenModels", hiddenModels);
+                return persistUsageCleanup(cleanup)
+                    .then(ServerResponse.ok().bodyValue(Map.of("saved", true)));
+            })
+            .onErrorResume(e -> ServerResponse.status(500)
+                .bodyValue(Map.of("saved", false, "error", e.getMessage())));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Mono<ServerResponse> handleMergeModelUsage(ServerRequest request) {
+        return request.bodyToMono(Map.class)
+            .flatMap(body -> {
+                String sourceModel = text(body.get("sourceModel"));
+                String targetModel = text(body.get("targetModel"));
+                java.time.LocalDate start = parseDate(text(body.get("start")));
+                java.time.LocalDate end = parseDate(text(body.get("end")));
+                if (sourceModel.isBlank() || targetModel.isBlank()) {
+                    return ServerResponse.badRequest().bodyValue(Map.of("error", "sourceModel and targetModel are required"));
+                }
+                if (end.isBefore(start)) {
+                    return ServerResponse.badRequest().bodyValue(Map.of("error", "end must be >= start"));
+                }
+                return Mono.fromCallable(() -> usageTracker.mergeModelUsage(start, end, sourceModel, targetModel))
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .flatMap(result -> ServerResponse.ok().bodyValue(Map.of(
+                        "merged", true,
+                        "changedDays", result.changedDays(),
+                        "affectedCalls", result.affectedCalls(),
+                        "affectedLogs", result.affectedLogs()
+                    )));
+            })
+            .onErrorResume(e -> ServerResponse.status(500)
+                .bodyValue(Map.of("merged", false, "error", e.getMessage())));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Mono<ServerResponse> handleDeleteModelUsage(ServerRequest request) {
+        return request.bodyToMono(Map.class)
+            .flatMap(body -> {
+                String model = text(body.get("model"));
+                java.time.LocalDate start = parseDate(text(body.get("start")));
+                java.time.LocalDate end = parseDate(text(body.get("end")));
+                if (model.isBlank()) {
+                    return ServerResponse.badRequest().bodyValue(Map.of("error", "model is required"));
+                }
+                if (end.isBefore(start)) {
+                    return ServerResponse.badRequest().bodyValue(Map.of("error", "end must be >= start"));
+                }
+                return Mono.fromCallable(() -> usageTracker.deleteModelUsage(start, end, model))
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .flatMap(result -> ServerResponse.ok().bodyValue(Map.of(
+                        "deleted", true,
+                        "changedDays", result.changedDays(),
+                        "affectedCalls", result.affectedCalls(),
+                        "affectedLogs", result.affectedLogs()
+                    )));
+            })
+            .onErrorResume(e -> ServerResponse.status(500)
+                .bodyValue(Map.of("deleted", false, "error", e.getMessage())));
+    }
+
+    private String text(Object value) {
+        return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private java.time.LocalDate parseDate(String value) {
+        if (value == null || value.isBlank()) {
+            return java.time.LocalDate.now(java.time.ZoneId.systemDefault());
+        }
+        return java.time.LocalDate.parse(value);
+    }
+
+    private List<String> normalizeStringList(Object value) {
+        java.util.LinkedHashSet<String> result = new java.util.LinkedHashSet<>();
+        if (value instanceof List<?> list) {
+            for (Object item : list) {
+                String text = text(item);
+                if (!text.isBlank()) result.add(text);
+            }
+        }
+        return new java.util.ArrayList<>(result);
+    }
+
+    private Mono<Map<String, Object>> readUsageCleanup() {
+        return extensionClient.fetch(ConfigMap.class, CONFIG_MAP_NAME)
+            .switchIfEmpty(extensionClient.fetch(ConfigMap.class, LEGACY_CONFIG_MAP_NAME))
+            .map(cm -> {
+                Map<String, Object> body = new LinkedHashMap<>();
+                List<String> hiddenModels = List.of();
+                String json = cm.getData() == null ? "" : cm.getData().getOrDefault("usageCleanup", "");
+                if (json != null && !json.isBlank()) {
+                    try {
+                        var node = objectMapper.readTree(json);
+                        if (node.path("hiddenModels").isArray()) {
+                            java.util.ArrayList<String> list = new java.util.ArrayList<>();
+                            node.path("hiddenModels").forEach(item -> {
+                                String model = item.asText("");
+                                if (!model.isBlank()) list.add(model);
+                            });
+                            hiddenModels = list;
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+                body.put("hiddenModels", hiddenModels);
+                return body;
+            })
+            .defaultIfEmpty(Map.of("hiddenModels", List.of()));
+    }
+
+    private Mono<Void> persistUsageCleanup(Map<String, Object> cleanup) {
+        String json;
+        try {
+            json = objectMapper.writeValueAsString(cleanup);
+        } catch (Exception e) {
+            return Mono.error(e);
+        }
+        return updateConfigMapData("usageCleanup", json);
+    }
+
     /** 只更新 usageLimits 字段, 保留 ConfigMap 其他字段 */
     private Mono<Void> persistUsageLimits(String json) {
+        return updateConfigMapData("usageLimits", json);
+    }
+
+    /** 更新指定 ConfigMap data 字段, 保留其他字段 */
+    private Mono<Void> updateConfigMapData(String key, String value) {
         return extensionClient.fetch(ConfigMap.class, CONFIG_MAP_NAME)
             .flatMap(cm -> {
                 var data = cm.getData();
                 if (data == null) data = new LinkedHashMap<>();
-                data.put("usageLimits", json);
+                data.put(key, value);
                 cm.setData(data);
                 return extensionClient.update(cm);
             })
@@ -499,10 +852,10 @@ public class ConsoleUsageEndpoint implements CustomEndpoint {
                     .map(legacy -> {
                         Map<String, String> data = new LinkedHashMap<>();
                         if (legacy.getData() != null) data.putAll(legacy.getData());
-                        data.put("usageLimits", json);
+                        data.put(key, value);
                         return data;
                     })
-                    .defaultIfEmpty(new LinkedHashMap<>(Map.of("usageLimits", json)))
+                    .defaultIfEmpty(new LinkedHashMap<>(Map.of(key, value)))
                     .flatMap(data -> {
                         cm.setData(data);
                         return extensionClient.create(cm);

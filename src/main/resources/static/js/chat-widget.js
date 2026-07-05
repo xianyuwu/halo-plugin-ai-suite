@@ -14,9 +14,12 @@
   if (!isContainerMode && document.getElementById("ai-chat-trigger")) return;
 
   var configApiBase = "/apis/api.ai-suite.halo.run/v1alpha1";
+  // v1alpha2 使用独立路由，避免 Halo 热更新时继续命中旧版聊天 Endpoint。
+  var chatApiBase = "/apis/api.ai-suite.halo.run/v1alpha2";
 
   var config = {
     apiBase: configApiBase,
+    chatApiBase: chatApiBase,
     position: "right-bottom",
     color: "#7C3BED",
     theme: "auto", // auto / light / dark
@@ -30,6 +33,8 @@
     triggerShape: "square",
     stream: true,
     allowGuest: true,
+    allowVisitorReasoning: true,
+    reasoningDefaultEnabled: false,
     searchTheme: "inherit",
     searchColor: "",
   };
@@ -163,7 +168,14 @@
       '</svg>清除对话上下文</button></div>' +
     '<div class="ai-chat-input-area">' +
       '<textarea class="ai-chat-input" placeholder="输入你的问题…" rows="1"></textarea>' +
-      '<button class="ai-chat-send" aria-label="发送">' + ICON.send + '</button>' +
+      '<div class="ai-chat-composer-footer">' +
+        '<div class="ai-chat-reasoning-option" hidden>' +
+          '<button class="ai-chat-reasoning-switch" type="button" aria-pressed="false" title="可能增加响应时间和 Token 消耗">' +
+            '<span class="ai-reasoning-switch-icon">✦</span><span>深度思考</span>' +
+          '</button>' +
+        '</div>' +
+        '<button class="ai-chat-send" aria-label="发送">' + ICON.send + '</button>' +
+      '</div>' +
     '</div>' +
     '<div class="ai-chat-disclaimer">内容由 AI 生成，请仔细甄别</div>' +
     '<div class="ai-chat-privacy-banner" style="display:none"><span>🔒 对话内容可能被记录，请勿输入个人隐私信息</span><button class="ai-chat-privacy-close" aria-label="关闭">✕</button></div>' +
@@ -186,6 +198,9 @@
   var messagesEl = chatWindow.querySelector(".ai-chat-messages");
   var inputEl = chatWindow.querySelector(".ai-chat-input");
   var sendBtn = chatWindow.querySelector(".ai-chat-send");
+  var reasoningOption = chatWindow.querySelector(".ai-chat-reasoning-option");
+  var reasoningSwitch = chatWindow.querySelector(".ai-chat-reasoning-switch");
+  var reasoningEnabled = false;
   var closeBtn = chatWindow.querySelector(".ai-chat-close");
 
   // 反馈评论弹窗（替换 window.prompt，提供更友好的输入体验）
@@ -483,7 +498,7 @@
    * 同时出现在 message 和 history 中。历史仍做数量和单条长度控制，避免无效上下文
    * 挤占模型 token，并确保请求体稳定落在 WebFlux 解码上限以内。
    */
-  function buildChatBody(text) {
+  function buildChatBody(text, intentRouteId) {
     var MAX_HISTORY = 12;
     var MAX_MSG_LEN = 2000;
 
@@ -495,7 +510,25 @@
     var pruned = history.slice(0, -1).slice(-MAX_HISTORY).map(function (m) {
       return { role: m.role, content: truncate(m.content || "") };
     });
-    return { message: text, history: pruned };
+    var body = { message: text, history: pruned };
+    if (intentRouteId) body.intentRouteId = intentRouteId;
+    if (config.allowVisitorReasoning) body.reasoningEnabled = reasoningEnabled;
+    return body;
+  }
+
+  function syncReasoningSwitch() {
+    if (!reasoningOption || !reasoningSwitch) return;
+    reasoningOption.hidden = !config.allowVisitorReasoning || !config.allowGuest;
+    reasoningSwitch.setAttribute("aria-pressed", reasoningEnabled ? "true" : "false");
+    reasoningSwitch.classList.toggle("active", reasoningEnabled);
+  }
+
+  if (reasoningSwitch) {
+    reasoningSwitch.addEventListener("click", function () {
+      if (!config.allowVisitorReasoning || isStreaming) return;
+      reasoningEnabled = !reasoningEnabled;
+      syncReasoningSwitch();
+    });
   }
 
   /**
@@ -752,7 +785,7 @@
     }
   }
 
-  function sendMessage(presetText) {
+  function sendMessage(presetText, intentRouteId) {
     var text = (typeof presetText === "string" ? presetText : inputEl.value).trim();
     if (!text || isStreaming) return;
 
@@ -769,10 +802,11 @@
     isStreaming = true;
     sendBtn.disabled = true;
 
-    if (config.stream) {
-      streamChat(text);
+    // 推理过程只能通过 SSE 分类事件展示。
+    if (config.stream || reasoningEnabled) {
+      streamChat(text, intentRouteId);
     } else {
-      normalChat(text);
+      normalChat(text, intentRouteId);
     }
   }
 
@@ -782,9 +816,10 @@
    *
    * 回调约定:
    *   onCitation(citations)  —— event:citations 触发, 入参是已 JSON.parse 的数组
+   *   onStructuredResult(result) —— event:structured_result 触发
    *   onToken(text)          —— 普通 token 事件触发, 入参是单 token 字符串
    *                            (若是 {"content":"..."} 包装, 会自动解包取 content)
-   *   onDone()               —— 流结束时 (reader.read done) 触发一次
+   *   onDone()               —— 收到 [DONE] 或正常 EOF 时触发一次
    *   onError(err)           —— 流读出错时触发
    *
    * 之所以抽这个函数, 是为了让 streamChat 和搜索结果页 AI 卡片共用同一套
@@ -793,7 +828,11 @@
   function parseSseStream(response, callbacks) {
     callbacks = callbacks || {};
     var onCitation = callbacks.onCitation || function () {};
+    var onStructuredResult = callbacks.onStructuredResult || function () {};
     var onToken = callbacks.onToken || function () {};
+    var onReasoningStart = callbacks.onReasoningStart || function () {};
+    var onReasoningDelta = callbacks.onReasoningDelta || function () {};
+    var onReasoningEnd = callbacks.onReasoningEnd || function () {};
     var onLogId = callbacks.onLogId || function () {};
     var onDone = callbacks.onDone || function () {};
     var onError = callbacks.onError || function () {};
@@ -801,11 +840,28 @@
     var reader = response.body.getReader();
     var decoder = new TextDecoder();
     var buffer = "";
+    var finished = false;
+
+    function finishOnce() {
+      if (finished) return;
+      finished = true;
+      onDone();
+      // [DONE] 是应用层终止标记，不再等待底层连接如何关闭。
+      // 预览 iframe 中连接关闭偶尔会被报告为读取异常，必须在此前停止读取。
+      try {
+        var cancelResult = reader.cancel();
+        if (cancelResult && typeof cancelResult.catch === "function") {
+          cancelResult.catch(function () {});
+        }
+      } catch (e) { /* reader 可能已关闭 */ }
+    }
 
     function read() {
+      if (finished) return;
       reader.read().then(function (result) {
+        if (finished) return;
         if (result.done) {
-          onDone();
+          finishOnce();
           return;
         }
         buffer += decoder.decode(result.value, { stream: true });
@@ -830,11 +886,25 @@
 
           if (eventType === "citations") {
             try { onCitation(JSON.parse(eventData)); } catch (e) { /* ignore */ }
+          } else if (eventType === "structured_result") {
+            try { onStructuredResult(JSON.parse(eventData)); } catch (e) { /* ignore */ }
           } else if (eventType === "logId") {
             // 后端在 [DONE] 之前推一个 logId 事件 — 用于后续反馈关联
             onLogId(eventData);
+          } else if (eventType === "reasoning_start") {
+            onReasoningStart();
+          } else if (eventType === "reasoning_delta") {
+            try {
+              var reasoningData = JSON.parse(eventData);
+              onReasoningDelta(typeof reasoningData.content === "string" ? reasoningData.content : "");
+            } catch (e) {
+              onReasoningDelta(eventData);
+            }
+          } else if (eventType === "reasoning_end") {
+            onReasoningEnd();
           } else if (eventData === "[DONE]") {
-            // 流结束标记, 等 reader.read() 真正 done 时再调 onDone
+            finishOnce();
+            return;
           } else {
             try {
               var token;
@@ -850,15 +920,16 @@
             }
           }
         }
-        read();
+        if (!finished) read();
       }, function (err) {
-        onError(err);
+        // [DONE] 之后的 socket/iframe 关闭不是业务失败。
+        if (!finished) onError(err);
       });
     }
     read();
   }
 
-  function streamChat(text) {
+  function streamChat(text, intentRouteId) {
     // 思考中三点动画（独立元素，首 token 到达时移除）
     var typingEl = config.showRetrievalStatus
       ? addTypingIndicator("🔍 正在检索文章...")
@@ -866,8 +937,11 @@
     var assistantEl = null;
     var content = "";
     var citations = [];
+    var structuredResult = null;
+    var reasoning = "";
+    var reasoningPanel = null;
     var pendingLogId = null;   // logId 可能先于 assistantEl 到达，用闭包暂存
-    var requestBody = buildChatBody(text);
+    var requestBody = buildChatBody(text, intentRouteId);
 
     function ensureAssistantEl() {
       if (assistantEl) return;
@@ -879,7 +953,25 @@
       }
     }
 
-    fetch(config.apiBase + "/chat/stream", {
+    function ensureReasoningPanel() {
+      ensureAssistantEl();
+      if (reasoningPanel) return reasoningPanel;
+      var contentWrap = assistantEl.closest ? assistantEl.closest(".ai-chat-content") : null;
+      if (!contentWrap) return null;
+      var details = document.createElement("details");
+      details.className = "ai-chat-reasoning";
+      var summary = document.createElement("summary");
+      summary.innerHTML = '<span class="ai-reasoning-status"></span><span class="ai-reasoning-title">正在思考…</span><span class="ai-reasoning-toggle">查看过程</span>';
+      var body = document.createElement("div");
+      body.className = "ai-chat-reasoning-body";
+      details.appendChild(summary);
+      details.appendChild(body);
+      contentWrap.insertBefore(details, assistantEl);
+      reasoningPanel = { details: details, title: summary.querySelector(".ai-reasoning-title"), body: body };
+      return reasoningPanel;
+    }
+
+    fetch(config.chatApiBase + "/chat/stream", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -898,9 +990,30 @@
               typingEl.textContent = "📄 已找到 " + c.length + " 篇相关文章" + (titles ? "：" + titles + more : "");
             }
           },
+          onStructuredResult: function (result) {
+            structuredResult = result;
+            if (typingEl && result && result.items && result.items.length) {
+              typingEl.textContent = "📑 已整理 " + result.items.length + " 篇站内文章";
+            }
+          },
           onLogId: function (id) {
             pendingLogId = id;
             if (assistantEl) assistantEl._logId = id;
+          },
+          onReasoningStart: function () {
+            ensureReasoningPanel();
+            scrollToBottom();
+          },
+          onReasoningDelta: function (delta) {
+            if (!delta) return;
+            reasoning += delta;
+            var panel = ensureReasoningPanel();
+            if (panel) panel.body.textContent = reasoning;
+            scrollToBottom();
+          },
+          onReasoningEnd: function () {
+            var panel = ensureReasoningPanel();
+            if (panel) panel.title.textContent = "思考过程";
           },
           onToken: function (token) {
             content += token;
@@ -910,10 +1023,15 @@
           },
           onDone: function () {
             ensureAssistantEl();
-            finishStream(assistantEl, content, citations);
+            finishStream(assistantEl, content, citations, structuredResult);
           },
           onError: function () {
             ensureAssistantEl();
+            if (content || structuredResult) {
+              renderAssistant(assistantEl, content);
+              finishStream(assistantEl, content, citations, structuredResult);
+              return;
+            }
             assistantEl.textContent = "⚠️ AI 助手暂时不可用，请稍后再试。";
             finishStream(assistantEl, "", []);
           }
@@ -926,14 +1044,14 @@
       });
   }
 
-  function normalChat(text) {
-    fetch(config.apiBase + "/chat", {
+  function normalChat(text, intentRouteId) {
+    fetch(config.chatApiBase + "/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Accept": "application/json"
       },
-      body: JSON.stringify(buildChatBody(text))
+      body: JSON.stringify(buildChatBody(text, intentRouteId))
     })
       .then(function (res) {
         if (!res.ok) throw new Error("服务器错误: " + res.status);
@@ -941,8 +1059,8 @@
       })
       .then(function (data) {
         var reply = data.reply || "⚠️ AI 助手暂时无法回答，请稍后再试。";
-        addMessage("assistant", reply);
-        history.push({ role: "assistant", content: reply });
+        var assistantEl = addMessage("assistant", reply);
+        finishStream(assistantEl, reply, data.citations || [], data.structuredResult || null);
       })
       .catch(function () {
         addMessage("assistant", "⚠️ AI 助手暂时不可用，请稍后再试。");
@@ -954,7 +1072,7 @@
       });
   }
 
-  function finishStream(el, content, citations) {
+  function finishStream(el, content, citations, structuredResult) {
     isStreaming = false;
     sendBtn.disabled = false;
     inputEl.focus();
@@ -966,6 +1084,10 @@
 
     // 4 按钮工具条 — 气泡外的 content wrapper 内
     appendMsgActions(target, el._logId, content);
+
+    // 结构化结果本身就是平台数据来源，卡片已包含可点击链接，
+    // 不再叠加一份 citations 抽屉。
+    if (renderStructuredResult(el, structuredResult)) return;
 
     if (!config.showReferences) return;
     if (citations && citations.length > 0) {
@@ -1017,6 +1139,107 @@
       el.appendChild(section);
       scrollToBottom();
     }
+  }
+
+  /**
+   * 渲染后端发送的结构化意图结果。
+   * 全程使用 DOM API 写入文本和属性，不信任返回数据中的 HTML。
+   */
+  function renderStructuredResult(el, result) {
+    if (!result || result.type !== "article-list"
+        || !Array.isArray(result.items) || result.items.length === 0) {
+      return false;
+    }
+    var old = el.querySelector(".ai-structured-result");
+    if (old) old.remove();
+
+    var section = document.createElement("section");
+    section.className = "ai-structured-result ai-structured-" + safeVariant(result.variant);
+
+    var heading = document.createElement("div");
+    heading.className = "ai-structured-heading";
+    var headingText = document.createElement("div");
+    headingText.className = "ai-structured-heading-text";
+    var title = document.createElement("strong");
+    title.textContent = result.title || "文章推荐";
+    headingText.appendChild(title);
+    if (result.description) {
+      var description = document.createElement("span");
+      description.textContent = result.description;
+      headingText.appendChild(description);
+    }
+    var count = document.createElement("span");
+    count.className = "ai-structured-count";
+    count.textContent = result.items.length + " 篇";
+    heading.appendChild(headingText);
+    heading.appendChild(count);
+    section.appendChild(heading);
+
+    var list = document.createElement("div");
+    list.className = "ai-structured-list";
+    result.items.forEach(function (item, index) {
+      var card = document.createElement(item.url ? "a" : "div");
+      card.className = "ai-structured-card";
+      card.setAttribute("data-rank", String(item.rank || index + 1));
+      if (item.url) {
+        card.href = item.url;
+        card.target = "_blank";
+        card.rel = "noopener noreferrer";
+      }
+
+      var accent = document.createElement("span");
+      accent.className = "ai-structured-accent";
+      card.appendChild(accent);
+
+      if (result.variant === "ranking") {
+        var rank = document.createElement("span");
+        rank.className = "ai-structured-rank";
+        rank.textContent = String(item.rank || index + 1);
+        card.appendChild(rank);
+      }
+
+      var body = document.createElement("span");
+      body.className = "ai-structured-card-body";
+      var itemTitle = document.createElement("strong");
+      itemTitle.className = "ai-structured-card-title";
+      itemTitle.textContent = item.title || "未命名文章";
+      body.appendChild(itemTitle);
+
+      var metaText = [];
+      if (item.publishTime) metaText.push(item.publishTime);
+      if (result.variant === "latest") metaText.push("最新发布");
+      if (result.variant === "tag") metaText.push("标签匹配");
+      if (result.variant === "category") metaText.push("分类匹配");
+      if (metaText.length) {
+        var meta = document.createElement("span");
+        meta.className = "ai-structured-card-meta";
+        meta.textContent = metaText.join(" · ");
+        body.appendChild(meta);
+      }
+      if (item.excerpt) {
+        var excerpt = document.createElement("span");
+        excerpt.className = "ai-structured-card-excerpt";
+        excerpt.textContent = item.excerpt;
+        body.appendChild(excerpt);
+      }
+      card.appendChild(body);
+
+      var arrow = document.createElement("span");
+      arrow.className = "ai-structured-arrow";
+      arrow.setAttribute("aria-hidden", "true");
+      arrow.textContent = "↗";
+      card.appendChild(arrow);
+      list.appendChild(card);
+    });
+    section.appendChild(list);
+    el.appendChild(section);
+    scrollToBottom();
+    return true;
+  }
+
+  function safeVariant(value) {
+    return /^(ranking|latest|tag|category|recommendation)$/.test(value || "")
+      ? value : "recommendation";
   }
 
   /**
@@ -1217,23 +1440,63 @@
     if (!items || !items.length) return;
     var wrap = document.createElement("div");
     wrap.className = "ai-chat-shortcuts";
-    // 简单的 emoji 映射
-    var icons = ["📝", "🤖", "🔍", "💡", "🌍", "📖"];
-    var cards = items.map(function (q, i) {
-      var icon = icons[i % icons.length];
-      return '<button class="ai-shortcut-card" type="button">' +
-        '<span class="ai-shortcut-card-icon">' + icon + '</span>' +
-        '<span class="ai-shortcut-card-text">' + escapeHtml(q) + '</span>' +
-        '</button>';
-    }).join("");
-    wrap.innerHTML = cards;
-    // 绑定点击事件
-    var buttons = wrap.querySelectorAll(".ai-shortcut-card");
-    buttons.forEach(function (btn, i) {
-      btn.addEventListener("click", function () { sendMessage(items[i]); });
+    items.forEach(function (raw, index) {
+      // 兼容旧 widget-config 返回的字符串数组。
+      var item = typeof raw === "string"
+        ? { id: "legacy-" + index, label: raw, query: raw, icon: "sparkles", intentRouteId: "" }
+        : raw;
+      if (!item || !item.query) return;
+      var button = document.createElement("button");
+      button.className = "ai-shortcut-card";
+      button.type = "button";
+
+      var icon = document.createElement("span");
+      icon.className = "ai-shortcut-card-icon ai-shortcut-icon-" + shortcutIconName(item.icon);
+      icon.textContent = shortcutIconText(item.icon);
+
+      var content = document.createElement("span");
+      content.className = "ai-shortcut-card-content";
+      var label = document.createElement("span");
+      label.className = "ai-shortcut-card-text";
+      label.textContent = item.label || item.query;
+      content.appendChild(label);
+      if (item.label && item.query && item.label !== item.query) {
+        var query = document.createElement("span");
+        query.className = "ai-shortcut-card-query";
+        query.textContent = item.query;
+        content.appendChild(query);
+      }
+
+      var arrow = document.createElement("span");
+      arrow.className = "ai-shortcut-card-arrow";
+      arrow.textContent = "→";
+      button.appendChild(icon);
+      button.appendChild(content);
+      button.appendChild(arrow);
+      button.addEventListener("click", function () {
+        sendMessage(item.query, item.intentRouteId || "");
+      });
+      wrap.appendChild(button);
     });
+    if (!wrap.children.length) return;
     messagesEl.appendChild(wrap);
     scrollToBottom();
+  }
+
+  function shortcutIconName(icon) {
+    return /^(fire|clock|tag|category|search|sparkles)$/.test(icon || "")
+      ? icon : "sparkles";
+  }
+
+  function shortcutIconText(icon) {
+    return {
+      fire: "🔥",
+      clock: "🕒",
+      tag: "🏷️",
+      category: "📂",
+      search: "🔍",
+      sparkles: "✨"
+    }[shortcutIconName(icon)];
   }
 
   function scrollToBottom() {
@@ -1290,7 +1553,7 @@
   }
 
   /**
-   * 提交反馈(点赞 / 点踩) — GET /chat/feedback?logId=...&type=...&comment=...
+   * 提交反馈(点赞 / 点踩) — POST /chat/feedback?logId=...&type=...&comment=...
    *
    * 200 字内中文 URL 编码约 600 字节，远低于上限。
    *
@@ -1321,7 +1584,7 @@
       "&type=" + encodeURIComponent(type) +
       "&comment=" + encodeURIComponent(comment || "");
     var url = apiBase + "/chat/feedback?" + params;
-    fetch(url)
+    fetch(url, { method: "POST" })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (data && data.success) {
@@ -1423,7 +1686,7 @@
   // ===== 初始化：拉取配置 → 渲染 UI =====
 
   function init() {
-    fetch(config.apiBase + "/widget-config")
+    fetch(config.chatApiBase + "/widget-config")
       .then(function (res) { return res.json(); })
       .then(function (data) {
         if (data) {
@@ -1443,6 +1706,9 @@
           if (data.triggerShape) config.triggerShape = data.triggerShape;
           config.stream = data.stream !== false;
           config.allowGuest = data.allowGuest !== false;
+          config.allowVisitorReasoning = data.allowVisitorReasoning === true;
+          config.reasoningDefaultEnabled = data.reasoningDefaultEnabled === true;
+          reasoningEnabled = config.allowVisitorReasoning && config.reasoningDefaultEnabled;
           config.showReferences = data.showReferences !== false;
           config.showRetrievalStatus = data.showRetrievalStatus === true;
           config.showPrivacyTip = data.showPrivacyTip === true;
@@ -1455,6 +1721,7 @@
       .catch(function () { /* 用默认配置 */ })
       .finally(function () {
         applyConfig();
+        syncReasoningSwitch();
         var isEmbed = window.location.search.indexOf("ai-embed=1") >= 0;
         if (isContainerMode) {
           // 容器模式：直接挂载到外部指定的容器，等同于 embed 模式
@@ -1534,7 +1801,15 @@
 
   // ===== Console 预览：接收 postMessage 实时更新外观 =====
   window.addEventListener("message", function (e) {
-    if (!e.data || e.data.type !== "ai-preview-config") return;
+    if (!e.data) return;
+    if (e.data.type === "ai-preview-query") {
+      var previewPayload = e.data.payload || {};
+      if (typeof previewPayload.query === "string" && previewPayload.query.trim()) {
+        sendMessage(previewPayload.query, previewPayload.intentRouteId || "");
+      }
+      return;
+    }
+    if (e.data.type !== "ai-preview-config") return;
     var data = e.data.payload;
     if (!data) return;
 
@@ -1575,6 +1850,11 @@
       config.allowGuest = data.allowGuest;
       var inputArea = chatWindow.querySelector(".ai-chat-input-area");
       if (inputArea) inputArea.style.display = data.allowGuest ? "" : "none";
+    }
+    if (data.allowVisitorReasoning !== undefined) {
+      config.allowVisitorReasoning = data.allowVisitorReasoning === true;
+      reasoningEnabled = config.allowVisitorReasoning && data.reasoningDefaultEnabled === true;
+      syncReasoningSwitch();
     }
   });
 
@@ -1779,7 +2059,11 @@
           aiBody._content = "";
         },
         onError: function () {
-          aiBody.innerHTML = '<div class="ai-search-ai-error">AI 暂时不可用</div>';
+          if (aiBody._content) {
+            renderAssistant(aiBody, aiBody._content);
+          } else {
+            aiBody.innerHTML = '<div class="ai-search-ai-error">AI 暂时不可用</div>';
+          }
         }
       });
     }).catch(function (e) {

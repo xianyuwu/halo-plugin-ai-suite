@@ -7,6 +7,8 @@ const USAGE_LIMITS_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/usage/lim
 const USAGE_TODAY_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/usage/today";
 const USAGE_STATS_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/usage/stats";
 const USAGE_CALLS_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/usage/calls";
+const USAGE_CLEANUP_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/usage/cleanup";
+const USAGE_FAILURE_DIAGNOSTICS_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/usage/failure-diagnostics";
 
 /**
  * 从后端加载指定 group 的配置，填充到 reactive form
@@ -20,8 +22,10 @@ export async function loadGroup(group: string, form: Record<string, any>) {
       Object.keys(form).forEach((k) => {
         if (g[k] !== undefined) form[k] = g[k];
       });
+      return g;
     }
   } catch {}
+  return {};
 }
 
 /**
@@ -199,6 +203,76 @@ export async function loadUsageStats(
   }
 }
 
+export interface UsageCleanupConfig {
+  hiddenModels: string[];
+}
+
+export interface UsageCleanupResult {
+  changedDays: number;
+  affectedCalls: number;
+  affectedLogs: number;
+}
+
+export async function loadUsageCleanup(): Promise<UsageCleanupConfig> {
+  try {
+    const resp = await fetch(USAGE_CLEANUP_API);
+    if (!resp.ok) return { hiddenModels: [] };
+    const data = await resp.json();
+    return {
+      hiddenModels: Array.isArray(data.hiddenModels) ? data.hiddenModels : [],
+    };
+  } catch {
+    return { hiddenModels: [] };
+  }
+}
+
+export async function saveHiddenUsageModels(hiddenModels: string[]): Promise<void> {
+  const resp = await fetch(`${USAGE_CLEANUP_API}/hidden`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ hiddenModels }),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || data.saved === false) {
+    throw new Error(data.error || "隐藏模型保存失败");
+  }
+}
+
+export async function mergeUsageModel(params: {
+  sourceModel: string;
+  targetModel: string;
+  start: string;
+  end: string;
+}): Promise<UsageCleanupResult> {
+  const resp = await fetch(`${USAGE_CLEANUP_API}/merge`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || data.merged === false) {
+    throw new Error(data.error || "模型用量合并失败");
+  }
+  return data as UsageCleanupResult;
+}
+
+export async function deleteUsageModel(params: {
+  model: string;
+  start: string;
+  end: string;
+}): Promise<UsageCleanupResult> {
+  const resp = await fetch(`${USAGE_CLEANUP_API}/delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || data.deleted === false) {
+    throw new Error(data.error || "模型用量删除失败");
+  }
+  return data as UsageCleanupResult;
+}
+
 export interface UsageCallLog {
   id: string;
   date: string;
@@ -228,6 +302,37 @@ export interface UsageCallsResponse {
   items: UsageCallLog[];
 }
 
+export interface UsageFailureBucket {
+  key: string;
+  label: string;
+  count: number;
+  suggestion?: string;
+  example?: string;
+}
+
+export interface UsageFailureRecent {
+  time: string;
+  model: string;
+  type: string;
+  typeLabel: string;
+  scenario: string;
+  scenarioLabel: string;
+  diagnosis: string;
+  diagnosisLabel: string;
+  suggestion: string;
+  error: string;
+}
+
+export interface UsageFailureDiagnostics {
+  start: string;
+  end: string;
+  total: number;
+  byType: UsageFailureBucket[];
+  byScenario: UsageFailureBucket[];
+  byDiagnosis: UsageFailureBucket[];
+  recent: UsageFailureRecent[];
+}
+
 export async function loadUsageCalls(params: {
   model: string;
   start: string;
@@ -255,4 +360,21 @@ export async function loadUsageCalls(params: {
     throw new Error(`请求失败：${resp.status}`);
   }
   return (await resp.json()) as UsageCallsResponse;
+}
+
+export async function loadUsageFailureDiagnostics(params: {
+  start: string;
+  end: string;
+  model?: string;
+}): Promise<UsageFailureDiagnostics> {
+  const query = new URLSearchParams({
+    start: params.start,
+    end: params.end,
+    model: params.model || "",
+  });
+  const resp = await fetch(`${USAGE_FAILURE_DIAGNOSTICS_API}?${query.toString()}`);
+  if (!resp.ok) {
+    throw new Error(`请求失败：${resp.status}`);
+  }
+  return (await resp.json()) as UsageFailureDiagnostics;
 }

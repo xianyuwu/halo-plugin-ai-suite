@@ -28,6 +28,7 @@ import java.net.InetSocketAddress;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -37,8 +38,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * 访客聊天 API — 公开接口，无需认证
  *
  * SSE 流格式（Phase 3 增强）：
- * 1. 第一个事件：event:citations  data:[{title, postId}, ...]
- * 2. 后续事件：data:token（逐字输出）
+ * 1. event:citations  data:[{title, postId}, ...]
+ * 2. event:structured_result data:{type, variant, items}（意图结构化结果，可选）
+ * 3. 后续事件：data:token（逐字输出）
  *
  * 前端 widget 解析 event:citations 事件来显示引用来源
  */
@@ -67,7 +69,6 @@ public class PublicChatEndpoint implements CustomEndpoint {
             .POST("/chat/stream", this::handleStreamChatPost)
             .POST("/chat", this::handleChatPost)
             .POST("/chat/feedback", this::handleFeedback)
-            .GET("/chat/feedback", this::handleFeedback)
             .GET("/widget-config", this::handleWidgetConfig)
             .build();
     }
@@ -82,21 +83,29 @@ public class PublicChatEndpoint implements CustomEndpoint {
      *
      * 发送顺序：
      * 1. event: citations → 引用来源（如果有）
-     * 2. data: {"content":"token"} → LLM 逐 chunk 推送（JSON 包装，保留前后空格与换行）
-     * 3. data: [DONE] → 结束标记
+     * 2. event: structured_result → 意图 Pipeline 的可信平台数据（可选）
+     * 3. data: {"content":"token"} → LLM 逐 chunk 推送（JSON 包装，保留前后空格与换行）
+     * 4. data: [DONE] → 结束标记
      *
      * 关键：直接桥接 LlmClient.chatStream() 的 Flux<String>，
      * 不再等大模型完整返回后再 split，避免"流式假象"。
      */
     /** 流式对话核心逻辑 */
-    private Mono<ServerResponse> doStreamChat(ServerRequest request, String message, List<Map<String, String>> history) {
+    private Mono<ServerResponse> doStreamChat(ServerRequest request, String message,
+                                              List<Map<String, String>> history,
+                                              String intentRouteId,
+                                              Boolean reasoningEnabled) {
         // 前置校验: 后台关闭访客聊天(allowGuest=false)时, 拒绝匿名调用, 防止绕过前端隐藏直调 API 触发 LLM 成本
         return ensureGuestChatAllowed().flatMap(allowed -> allowed
-            ? doStreamChatInternal(request, message, history)
+            ? resolveReasoningMode(reasoningEnabled).flatMap(reasoningMode ->
+                doStreamChatInternal(request, message, history, intentRouteId, reasoningMode))
             : forbiddenStream("访客聊天功能已关闭"));
     }
 
-    private Mono<ServerResponse> doStreamChatInternal(ServerRequest request, String message, List<Map<String, String>> history) {
+    private Mono<ServerResponse> doStreamChatInternal(ServerRequest request, String message,
+                                                      List<Map<String, String>> history,
+                                                      String intentRouteId,
+                                                      String reasoningMode) {
         final String logId = UUID.randomUUID().toString();
         final StringBuilder answerBuf = new StringBuilder();
         final AtomicBoolean logWritten = new AtomicBoolean(false);
@@ -106,7 +115,8 @@ public class PublicChatEndpoint implements CustomEndpoint {
         // clientIp 通过方法参数透传到 ChatService → LlmClient.enforceLimit.
         // 不走 reactor context: SSE body 的订阅链不在入口 .contextWrite 的下游,
         // context 注入不进去, 实测 enforceLimit 永远读到 null (访客限流形同虚设).
-        return chatService.chatStreamWithDebug(message, history, clientIp)
+        return chatService.chatStreamWithDebug(message, history, clientIp, intentRouteId,
+                reasoningMode)
             .flatMap(chatResp -> {
                 // 缓存 trace 到内存，点踩时取出写入 ChatLog
                 traceCache.put(logId, chatResp.trace());
@@ -125,13 +135,38 @@ public class PublicChatEndpoint implements CustomEndpoint {
                     );
                 }
 
+                // 意图 Pipeline 的结构化展示数据。旧前端会忽略未知 event，因此向后兼容。
+                Flux<ServerSentEvent<String>> structuredFrame = Flux.empty();
+                if (chatResp.structuredResult() != null) {
+                    structuredFrame = Flux.just(
+                        ServerSentEvent.<String>builder()
+                            .event("structured_result")
+                            .data(toJsonSafe(chatResp.structuredResult()))
+                            .build()
+                    );
+                }
+
                 // 2) 真流式 token 帧: 在流式过程中累积 answerBuf, 流结束异步写日志
-                Flux<ServerSentEvent<String>> tokenFrames = chatResp.stream()
-                    .filter(token -> token != null && !token.isEmpty())
-                    .doOnNext(answerBuf::append)
-                    .map(token -> ServerSentEvent.<String>builder()
-                        .data(wrapToken(token))
-                        .build());
+                Flux<ServerSentEvent<String>> tokenFrames = chatResp.eventStream()
+                    .filter(event -> event != null)
+                    .handle((event, sink) -> {
+                        if (event.isText()) {
+                            String token = event.content();
+                            if (token != null && !token.isEmpty()) {
+                                answerBuf.append(token);
+                                sink.next(ServerSentEvent.<String>builder()
+                                    .data(wrapToken(token))
+                                    .build());
+                            }
+                            return;
+                        }
+                        String data = event.content() == null || event.content().isEmpty()
+                            ? "{}" : wrapToken(event.content());
+                        sink.next(ServerSentEvent.<String>builder()
+                            .event(event.type())
+                            .data(data)
+                            .build());
+                    });
 
                 // 3) logId 帧(在 [DONE] 之前) — 新协议,旧前端 EventSource 忽略未知 event
                 Flux<ServerSentEvent<String>> logIdFrame = Flux.just(
@@ -144,6 +179,7 @@ public class PublicChatEndpoint implements CustomEndpoint {
                 );
 
                 Flux<ServerSentEvent<String>> sseStream = citationFrame
+                    .concatWith(structuredFrame)
                     .concatWith(tokenFrames)
                     .concatWith(logIdFrame)
                     .concatWith(doneFrame)
@@ -207,9 +243,7 @@ public class PublicChatEndpoint implements CustomEndpoint {
     }
 
     /**
-     * 反馈提交:GET /chat/feedback?logId=...&type=...&comment=...
-     *
-     * <p>POST 和 GET 都由插件自己的匿名 RoleTemplate 授权，GET 保留给旧前端兼容。
+     * 反馈提交：POST /chat/feedback?logId=...&type=...&comment=...
      */
     private Mono<ServerResponse> handleFeedback(ServerRequest request) {
         String logId = limit(request.queryParam("logId").orElse("").trim(), MAX_FEEDBACK_LOG_ID_CHARS);
@@ -328,23 +362,36 @@ public class PublicChatEndpoint implements CustomEndpoint {
 
     /** 非流式对话核心逻辑. clientIp 走方法参数(访客限流用) */
     private Mono<ServerResponse> doChat(String message, List<Map<String, String>> history,
-                                        String clientIp) {
+                                        String clientIp, String intentRouteId) {
         // 前置校验: 后台关闭访客聊天时拒绝, 防止绕过前端隐藏直调 API
         return ensureGuestChatAllowed().flatMap(allowed -> allowed
-            ? doChatInternal(message, history, clientIp)
+            ? doChatInternal(message, history, clientIp, intentRouteId)
             : forbiddenJson("访客聊天功能已关闭"));
     }
 
     private Mono<ServerResponse> doChatInternal(String message, List<Map<String, String>> history,
-                                                String clientIp) {
-        return chatService.chat(message, history, clientIp)
+                                                String clientIp, String intentRouteId) {
+        return chatService.chatStreamWithCitations(message, history, clientIp, intentRouteId)
+            .flatMap(chatResp -> chatResp.stream().collectList()
+                .map(parts -> {
+                    Map<String, Object> body = new HashMap<>();
+                    body.put("reply", String.join("", parts));
+                    body.put("citations", chatResp.citations() != null
+                        ? chatResp.citations() : List.of());
+                    if (chatResp.structuredResult() != null) {
+                        body.put("structuredResult", chatResp.structuredResult());
+                    }
+                    return body;
+                }))
             .onErrorResume(e -> {
                 log.error("[PublicChatEndpoint] 对话失败: {}", e.getMessage());
-                return Mono.just("抱歉，AI 服务暂时不可用，请稍后重试。");
+                return Mono.just(Map.<String, Object>of(
+                    "reply", "抱歉，AI 服务暂时不可用，请稍后重试。",
+                    "citations", List.of()));
             })
-            .flatMap(reply -> ServerResponse.ok()
+            .flatMap(body -> ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(Map.of("reply", reply))
+                .bodyValue(body)
             );
     }
 
@@ -362,6 +409,18 @@ public class PublicChatEndpoint implements CustomEndpoint {
                 log.warn("[PublicChatEndpoint] 读取 chatConfig 失败, 默认拒绝访客聊天: {}", e.getMessage());
                 return Mono.just(false);
             });
+    }
+
+    private Mono<String> resolveReasoningMode(Boolean requested) {
+        return aiProperties.getChatConfig()
+            .map(config -> {
+                if (!config.isAllowVisitorReasoning()) return "disabled";
+                boolean enabled = requested != null
+                    ? requested : config.isReasoningDefaultEnabled();
+                return enabled ? "enabled" : "disabled";
+            })
+            .defaultIfEmpty("disabled")
+            .onErrorReturn("disabled");
     }
 
     /** SSE 路径的拒绝响应 — 发送 error 事件后 [DONE] */
@@ -386,27 +445,29 @@ public class PublicChatEndpoint implements CustomEndpoint {
      *
      * Body 格式：{"message":"...", "history":[{"role":"user","content":"..."}, ...]}
      */
-    private Mono<ServerResponse> handleStreamChatPost(ServerRequest request) {
+    Mono<ServerResponse> handleStreamChatPost(ServerRequest request) {
         return request.bodyToMono(ChatRequestBody.class)
-            .defaultIfEmpty(new ChatRequestBody("", List.of()))
+            .defaultIfEmpty(new ChatRequestBody("", List.of(), "", null))
             .flatMap(body -> {
                 try {
                     ChatRequest chatReq = normalizeChatRequest(body.message(), body.history());
-                    return doStreamChat(request, chatReq.message, chatReq.history);
+                    return doStreamChat(request, chatReq.message, chatReq.history,
+                        normalizeIntentRouteId(body.intentRouteId()), body.reasoningEnabled());
                 } catch (IllegalArgumentException e) {
                     return validationErrorStream(e.getMessage());
                 }
             });
     }
 
-    private Mono<ServerResponse> handleChatPost(ServerRequest request) {
+    Mono<ServerResponse> handleChatPost(ServerRequest request) {
         String clientIp = extractIp(request);
         return request.bodyToMono(ChatRequestBody.class)
-            .defaultIfEmpty(new ChatRequestBody("", List.of()))
+            .defaultIfEmpty(new ChatRequestBody("", List.of(), "", null))
             .flatMap(body -> {
                 try {
                     ChatRequest chatReq = normalizeChatRequest(body.message(), body.history());
-                    return doChat(chatReq.message, chatReq.history, clientIp);
+                    return doChat(chatReq.message, chatReq.history, clientIp,
+                        normalizeIntentRouteId(body.intentRouteId()));
                 } catch (IllegalArgumentException e) {
                     return validationErrorJson(e.getMessage());
                 }
@@ -416,7 +477,7 @@ public class PublicChatEndpoint implements CustomEndpoint {
     /**
      * 返回浮窗配置 — 供前端 JS 调用
      */
-    private Mono<ServerResponse> handleWidgetConfig(ServerRequest request) {
+    Mono<ServerResponse> handleWidgetConfig(ServerRequest request) {
         return Mono.zip(aiProperties.getChatConfig(), aiProperties.getRetrievalConfig(),
                 aiProperties.getSearchConfig(), aiProperties.getMindMapConfig())
             .flatMap(tuple -> {
@@ -424,16 +485,20 @@ public class PublicChatEndpoint implements CustomEndpoint {
                 var retrievalConfig = tuple.getT2();
                 var searchConfig = tuple.getT3();
                 var mindMapConfig = tuple.getT4();
-                // 把多行 shortcutQuestions 文本拆成数组，去重去空，限制最多 6 条
-                List<String> shortcuts = new ArrayList<>();
-                String raw = chatConfig.getShortcutQuestions();
-                if (raw != null && !raw.isBlank()) {
-                    for (String line : raw.split("\\r?\\n")) {
-                        String q = line.trim();
-                        if (!q.isEmpty() && !shortcuts.contains(q)) {
-                            shortcuts.add(q);
-                            if (shortcuts.size() >= 6) break;
-                        }
+                List<Map<String, Object>> shortcuts = new ArrayList<>();
+                if (chatConfig.getShortcutItems() != null) {
+                    for (var item : chatConfig.getShortcutItems()) {
+                        if (shortcuts.size() >= 6) break;
+                        if (item == null || !item.isEnabled()) continue;
+                        String query = limit(item.getQuery(), 200).trim();
+                        if (query.isEmpty()) continue;
+                        Map<String, Object> shortcut = new LinkedHashMap<>();
+                        shortcut.put("id", limit(item.getId(), 80));
+                        shortcut.put("label", limit(item.getLabel(), 30));
+                        shortcut.put("query", query);
+                        shortcut.put("icon", normalizeShortcutIcon(item.getIcon()));
+                        shortcut.put("intentRouteId", limit(item.getIntentRouteId(), 80));
+                        shortcuts.add(shortcut);
                     }
                 }
                 Map<String, Object> body = new HashMap<>();
@@ -476,6 +541,9 @@ public class PublicChatEndpoint implements CustomEndpoint {
                 body.put("stream", chatConfig.isStreamOutput());
                 body.put("allowGuest", chatConfig.isAllowGuest());
                 body.put("showRetrievalStatus", chatConfig.isShowRetrievalStatus());
+                body.put("allowVisitorReasoning", chatConfig.isAllowVisitorReasoning());
+                body.put("reasoningDefaultEnabled", chatConfig.isAllowVisitorReasoning()
+                    && chatConfig.isReasoningDefaultEnabled());
                 body.put("showPrivacyTip", chatConfig.isShowPrivacyTip());
                 body.put("showReferences", retrievalConfig.isShowReferences());
                 body.put("searchEnabled", searchConfig.isEnabled());
@@ -506,6 +574,22 @@ public class PublicChatEndpoint implements CustomEndpoint {
             return componentColor;
         }
         return chatColor != null && !chatColor.isBlank() ? chatColor : "#4F46E5";
+    }
+
+    private static String normalizeShortcutIcon(String icon) {
+        return switch (icon == null ? "" : icon) {
+            case "fire", "clock", "tag", "category", "search", "sparkles" -> icon;
+            default -> "sparkles";
+        };
+    }
+
+    private static String normalizeIntentRouteId(String value) {
+        if (value == null) return "";
+        String normalized = value.trim();
+        if (normalized.length() > 80 || !normalized.matches("[a-z0-9-]*")) {
+            throw new IllegalArgumentException("intentRouteId 格式不正确");
+        }
+        return normalized;
     }
 
     private ChatRequest normalizeChatRequest(String rawMessage, List<Map<String, String>> rawHistory) {
@@ -564,5 +648,10 @@ public class PublicChatEndpoint implements CustomEndpoint {
     record ChatRequest(String message, List<Map<String, String>> history) {}
 
     /** POST body — JSON 反序列化目标 */
-    record ChatRequestBody(String message, List<Map<String, String>> history) {}
+    record ChatRequestBody(
+        String message,
+        List<Map<String, String>> history,
+        String intentRouteId,
+        Boolean reasoningEnabled
+    ) {}
 }

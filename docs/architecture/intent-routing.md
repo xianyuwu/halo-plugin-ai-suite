@@ -4,7 +4,7 @@
 
 ## 为什么有意图路由
 
-RAG 擅长从文章片段中查找知识，但“最近发布了什么”“哪篇文章最热门”这类问题需要读取实时结构化数据并排序。意图路由把这些确定性请求从 RAG 分离出来，执行可配置 Pipeline，最后仍由 LLM 组织自然语言回答。
+RAG 擅长从文章片段中查找知识，但“最近发布了什么”“哪篇文章最热门”这类问题需要读取实时结构化数据并排序。意图路由把这些确定性请求从 RAG 分离出来，执行可配置 Pipeline，再直接返回确定性导语、文章引用和结构化卡片。除意图检测兜底或 Pipeline 本身包含 LLM 处理器外，命中意图后不会为了组织回答再次调用语言模型。
 
 ## 检测过程
 
@@ -60,7 +60,15 @@ onFailure=keep
 
 ## 输出阶段
 
-Pipeline 返回文章后，`ChatService` 构建意图专用 Prompt，使用路由的 `outputTemplate` 或默认模板，再以 `intent_pipeline` 用量场景调用 Chat 模型。文章 permalink 会转换为前端可以展示的 citations。
+Pipeline 返回文章后，`ChatService` 直接构造三部分结果：
+
+1. 根据路由类型和文章数量生成简短、确定性的导语；
+2. 将文章 permalink 转换为 `citations`；
+3. 将标题、摘要、发布时间、访问量和链接等可信平台数据转换为 `structured_result`。
+
+前台收到 `structured_result` 后渲染为彩色文章卡片。该阶段不再调用 Chat 模型，因此不会出现模型改写标题、遗漏候选文章或凭空补充文章的问题。SSE 事件顺序与字段见 [SSE 协议](../api/sse-protocol.md)。
+
+`outputTemplate` 仍保留在 Extension、Console 表单和 API 中，用于兼容已有路由及 AI 创建草稿；0.3.2 当前的结构化卡片输出不读取它，也不会因为配置该字段而增加一次回答生成调用。真正会产生 `intent_pipeline` 用量的是 `TOPIC_MATCH`、`LLM_TITLE_FILTER` 等含模型的处理器。
 
 ## 数据模型
 
@@ -72,7 +80,7 @@ IntentRoute.Spec
 ├── llmFallback / llmFallbackHint
 ├── pipeline[]
 │   └── type + params
-├── outputTemplate
+├── outputTemplate（兼容字段，当前不参与结构化卡片生成）
 └── updatedAt
 ```
 

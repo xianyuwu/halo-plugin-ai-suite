@@ -29,7 +29,8 @@ Accept: text/event-stream
   "history": [
     { "role": "user", "content": "你好" },
     { "role": "assistant", "content": "你好，有什么可以帮你？" }
-  ]
+  ],
+  "reasoningEnabled": true
 }
 ```
 
@@ -64,6 +65,19 @@ data:[{"title":"文章标题","postId":"post-name","url":"/archives/..."}]
 
 引用事件只在存在引用时发送。客户端不能假设第一帧一定是 citations。
 
+### structured_result
+
+命中意图路由且 Pipeline 返回站内文章时，访客聊天会在 token 之前发送结构化结果：
+
+```text
+event:structured_result
+data:{"type":"article-list","variant":"ranking","title":"热门文章","items":[...]}
+```
+
+`variant` 当前支持 `ranking`、`latest`、`tag`、`category` 和 `recommendation`。内置 Widget 会把它渲染为可点击文章卡片；自定义客户端应在不识别该事件时安全忽略，并继续处理后续 token。
+
+卡片中的标题、链接、摘要和发布时间直接来自 Halo 文章数据，不从大模型文本反向解析。
+
 ### token
 
 ```text
@@ -71,6 +85,23 @@ data:{"content":"回答片段"}
 ```
 
 token 使用 JSON 包装以保留前后空格和换行。客户端应解析 JSON 后拼接 `content`，不要直接把整个 `data:` 内容追加到页面。
+
+### reasoning_start / reasoning_delta / reasoning_end
+
+开启深度思考且模型返回推理内容时，服务会把结构化 reasoning 字段或文本中的 `<think>` / `<reasoning>` 统一转换为：
+
+```text
+event:reasoning_start
+data:{}
+
+event:reasoning_delta
+data:{"content":"推理片段"}
+
+event:reasoning_end
+data:{}
+```
+
+推理事件可能出现在普通 token 之前或之间。客户端应把它们放入独立、默认折叠的区域，不能混入最终回答。不支持这些事件的旧客户端可以安全忽略。完整说明见 [深度思考与推理过程](../user-guide/reasoning-mode.md)。
 
 ### logId
 
@@ -130,6 +161,6 @@ curl -N -X POST \
 POST /apis/api.ai-suite.halo.run/v1alpha1/chat/feedback?logId=...&type=like&comment=...
 ```
 
-为兼容旧前端，目前反馈接口同时保留 GET 和 POST；新调用方应优先使用 POST。
+反馈接口只接受 POST 请求。
 
 完整路由见 [API 总览](overview.md)、[Public API](public-api.md) 和 [Console API](console-api.md)。

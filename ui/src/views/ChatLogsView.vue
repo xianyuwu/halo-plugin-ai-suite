@@ -97,13 +97,13 @@
                 </thead>
                 <tbody>
                   <tr v-for="log in items" :key="log.id" @click="handleRowClick($event, log)" class="chat-logs-row" :class="{ 'row-selected': selectedIds.has(log.id) }">
-                    <td class="text-center" @click.stop>
+                    <td class="text-center chat-logs-cell-check" data-label="选择" @click.stop>
                       <input type="checkbox" :checked="selectedIds.has(log.id)" @change="toggleSelect(log.id)" />
                     </td>
-                    <td class="ai-cell-date">{{ formatTime(log.timestamp) }}</td>
-                    <td><code>{{ log.model }}</code></td>
-                    <td class="chat-logs-q">{{ truncate(log.question, 50) }}</td>
-                    <td class="ai-cell-center">
+                    <td class="ai-cell-date" data-label="时间">{{ formatTime(log.timestamp) }}</td>
+                    <td class="chat-logs-model" data-label="模型"><code>{{ log.model }}</code></td>
+                    <td class="chat-logs-q" data-label="问题">{{ truncate(log.question, 50) }}</td>
+                    <td class="ai-cell-center chat-logs-feedback" data-label="反馈">
                       <span v-if="log.feedback" :class="{
                         'chat-logs-fb-like': log.feedback.type === 'like',
                         'chat-logs-fb-dislike': log.feedback.type === 'dislike'
@@ -113,7 +113,7 @@
                       </span>
                       <span v-else class="chat-logs-fb-none">—</span>
                     </td>
-                    <td class="actions-cell" style="text-align: left;">
+                    <td class="actions-cell" data-label="操作" style="text-align: left;">
                       <VSpace spacing="sm">
                         <VButton size="xs" type="default" @click="openDetail(log)">详情</VButton>
                         <VButton size="xs" type="danger" @click="askDelete(log)">删除</VButton>
@@ -738,6 +738,14 @@ onMounted(() => {
 .chat-logs-row { cursor: pointer; }
 .row-selected td { background: #eff6ff !important; }
 .chat-logs-q { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-logs-model code {
+  display: inline-block;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
 .th-center { text-align: center; }
 .ai-cell-center { text-align: center; }
 .chat-logs-fb-like { color: #10b981; font-weight: 600; }
@@ -1231,7 +1239,15 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.ai-table-wrap { overflow: hidden; }
+.ai-table-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.chat-logs-table {
+  min-width: 860px;
+}
 
 /* ===== 表格底部：状态 + 分页 ===== */
 .ai-table-footer {
@@ -1267,5 +1283,157 @@ onMounted(() => {
   font-weight: 600;
   min-width: 60px;
   text-align: center;
+}
+
+@media (max-width: 900px) {
+  .ai-batch-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ai-filter-group {
+    flex-wrap: wrap;
+  }
+
+  .ai-filter-group select,
+  .ai-filter-group input {
+    flex: 1 1 150px;
+    max-width: none;
+  }
+
+  .ai-batch-actions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .detail-modal {
+    padding: 12px;
+  }
+
+  .detail-modal-dialog,
+  .trace-modal-dialog {
+    max-height: 92vh;
+  }
+}
+
+@media (max-width: 760px) {
+  .ai-table-wrap {
+    overflow: visible;
+  }
+
+  .chat-logs-table {
+    display: block;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .chat-logs-table thead {
+    display: none;
+  }
+
+  .chat-logs-table tbody,
+  .chat-logs-table tr,
+  .chat-logs-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .chat-logs-table tbody {
+    padding: 10px;
+    background: #f8fafc;
+  }
+
+  .chat-logs-table tbody tr {
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .chat-logs-table tbody tr:hover {
+    background: #fff;
+  }
+
+  .chat-logs-table td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 38px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right !important;
+  }
+
+  .chat-logs-table td::before {
+    content: attr(data-label);
+    flex: 0 0 72px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 650;
+    text-align: left;
+  }
+
+  .chat-logs-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .chat-logs-cell-check {
+    justify-content: flex-start !important;
+  }
+
+  .chat-logs-cell-check::before {
+    flex: 0 0 auto !important;
+    margin-right: 12px;
+  }
+
+  .chat-logs-q {
+    display: block !important;
+    padding: 13px 12px !important;
+    text-align: left !important;
+    white-space: normal;
+    line-height: 1.55;
+  }
+
+  .chat-logs-q::before {
+    display: none;
+  }
+
+  .chat-logs-model code {
+    max-width: min(220px, 55vw);
+  }
+
+  .actions-cell {
+    align-items: center !important;
+    justify-content: flex-end !important;
+    white-space: normal;
+  }
+
+  .ai-table .ai-empty {
+    display: block;
+    padding: 24px 12px;
+    text-align: center !important;
+  }
+
+  .ai-table .ai-empty::before {
+    display: none;
+  }
+
+  .ai-table-footer {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 12px;
+  }
+
+  .ai-pagination-controls {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .detail-meta-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 </style>

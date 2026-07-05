@@ -183,3 +183,85 @@
   overflow-y: auto;
   background: var(--ai-color-bg-page);
 }
+
+@media (max-width: 1180px) {
+  .ai-layout {
+    gap: 12px;
+    padding: 16px 14px 0;
+  }
+
+  .ai-sidebar {
+    width: 64px;
+    border-radius: var(--ai-radius-lg);
+  }
+
+  .ai-sidebar-header {
+    justify-content: center;
+    padding: 12px 8px;
+  }
+
+  .ai-brand,
+  .ai-nav-label,
+  .ai-nav-group-text {
+    display: none;
+  }
+
+  .ai-nav {
+    padding: 8px 7px 12px;
+    align-items: stretch;
+  }
+
+  .ai-nav-item,
+  .ai-nav-item-child {
+    min-height: 40px;
+    justify-content: center;
+    padding: 0;
+    gap: 0;
+  }
+
+  .ai-nav-item-child .ai-nav-icon,
+  .ai-nav-icon {
+    width: 20px;
+    font-size: 18px;
+  }
+
+  .ai-nav-item.active::before {
+    left: -7px;
+    height: 24px;
+  }
+
+  .ai-nav-group-label {
+    height: 8px;
+    margin: 4px 0;
+    padding: 0;
+  }
+
+  .ai-nav-divider {
+    margin: 8px 6px;
+  }
+}
+
+@media (max-width: 760px) {
+  .ai-layout {
+    gap: 10px;
+    padding: 12px 10px 0;
+  }
+
+  .ai-sidebar {
+    width: 56px;
+  }
+
+  .ai-logo {
+    width: 30px;
+    height: 30px;
+  }
+
+  .ai-nav {
+    padding: 7px 6px 10px;
+  }
+
+  .ai-nav-item,
+  .ai-nav-item-child {
+    min-height: 38px;
+  }
+}

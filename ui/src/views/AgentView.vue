@@ -589,6 +589,7 @@ onUnmounted(() => {
 .agent-run-card {
   display: grid;
   gap: 12px;
+  min-width: 0;
 }
 
 .agent-run-card label {
@@ -901,6 +902,8 @@ onUnmounted(() => {
   margin: 0;
   font-size: 16px;
   color: #111827;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .agent-priority {
@@ -1010,6 +1013,42 @@ onUnmounted(() => {
   .agent-hero,
   .agent-layout {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .agent-hero {
+    padding: 18px;
+  }
+  .agent-hero h2 {
+    font-size: 21px;
+  }
+  .agent-run-card {
+    width: 100%;
+  }
+  .agent-history-toolbar,
+  .agent-history-item,
+  .agent-gap-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .agent-history-actions {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .agent-history-main strong,
+  .agent-history-main span {
+    overflow-wrap: anywhere;
+  }
+  .agent-priority {
+    align-self: flex-start;
+  }
+  .agent-metrics {
+    grid-template-columns: 1fr;
+  }
+  .agent-evidence {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

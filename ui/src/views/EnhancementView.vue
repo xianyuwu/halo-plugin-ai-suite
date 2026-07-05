@@ -475,4 +475,36 @@ onMounted(async () => {
 @media (max-width: 1024px) {
   .ai-layout-main { flex-direction: column; }
 }
+
+@media (max-width: 720px) {
+  .ai-form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .ai-layout-main,
+  .ai-layout-left,
+  .ai-layout-right {
+    gap: 16px;
+  }
+  .ai-enhance-section {
+    padding: 14px;
+  }
+  .ai-enhance-header {
+    align-items: center;
+  }
+  .ai-range-labels {
+    font-size: 11px;
+  }
+  .ai-flow-steps {
+    padding: 8px 0;
+  }
+  .ai-flow-step {
+    gap: 12px;
+  }
+  .ai-flow-connector {
+    margin-left: 14px;
+  }
+}
 </style>

@@ -12,6 +12,7 @@ import run.halo.app.extension.ConfigMap;
 import run.halo.app.extension.ReactiveExtensionClient;
 
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -177,8 +178,8 @@ public class AIProperties {
         c.setCleanWhitespace(boolVal(node, "cleanWhitespace", true));
         c.setMinChunkSize(intVal(node, "minChunkSize", 50));
         c.setSentenceAware(boolVal(node, "sentenceAware", true));
-        c.setKeywordsMaxTokens(intVal(node, "keywordsMaxTokens", 1024));
-        c.setKeywordsBatchSize(intVal(node, "keywordsBatchSize", 20));
+        c.setKeywordsMaxTokens(intVal(node, "keywordsMaxTokens", 2048));
+        c.setKeywordsBatchSize(intVal(node, "keywordsBatchSize", 1));
         return c;
     }
 
@@ -219,6 +220,10 @@ public class AIProperties {
         c.setMaxTokens(intVal(node, "maxTokens", 2048));
         c.setHistoryTurns(intVal(node, "historyTurns", 5));
         c.setStreamOutput(boolVal(node, "streamOutput", true));
+        String legacyReasoningMode = textVal(node, "reasoningMode", "default").toLowerCase();
+        c.setAllowVisitorReasoning(boolVal(node, "allowVisitorReasoning", true));
+        c.setReasoningDefaultEnabled(boolVal(node, "reasoningDefaultEnabled",
+            "enabled".equals(legacyReasoningMode)));
         c.setWidgetPosition(textVal(node, "widgetPosition", "right-bottom"));
         c.setWidgetThemeColor(textVal(node, "widgetThemeColor", "#5387C4"));
         c.setWidgetIcon(textVal(node, "widgetIcon", "ri-chat-3-line"));
@@ -227,6 +232,55 @@ public class AIProperties {
         c.setWidgetTheme(textVal(node, "widgetTheme", "auto"));
         c.setWelcomeMessage(textVal(node, "welcomeMessage", "Hi! 有什么想了解的？"));
         c.setShortcutQuestions(textVal(node, "shortcutQuestions", ""));
+        List<ShortcutItem> shortcutItems = new ArrayList<>();
+        JsonNode shortcutNode = node != null ? node.path("shortcutItems") : null;
+        if (shortcutNode != null && shortcutNode.isArray()) {
+            for (JsonNode item : shortcutNode) {
+                if (shortcutItems.size() >= 6) break;
+                if (item == null || !item.isObject()) continue;
+                String query = textVal(item, "query", "").trim();
+                if (query.isEmpty()) continue;
+                ShortcutItem shortcut = new ShortcutItem();
+                shortcut.setId(textVal(item, "id", "shortcut-" + (shortcutItems.size() + 1)));
+                shortcut.setLabel(textVal(item, "label", query));
+                shortcut.setQuery(query);
+                shortcut.setIcon(textVal(item, "icon", "sparkles"));
+                shortcut.setIntentRouteId(textVal(item, "intentRouteId", ""));
+                shortcut.setEnabled(boolVal(item, "enabled", true));
+                shortcutItems.add(shortcut);
+            }
+        }
+        // 兼容旧版多行文本：读取时即映射成结构化项，无需手动迁移。
+        if (shortcutItems.isEmpty() && c.getShortcutQuestions() != null
+            && !c.getShortcutQuestions().isBlank()) {
+            for (String line : c.getShortcutQuestions().split("\\r?\\n")) {
+                String query = line.trim();
+                if (query.isEmpty() || shortcutItems.size() >= 6) continue;
+                ShortcutItem shortcut = new ShortcutItem();
+                shortcut.setId("legacy-" + (shortcutItems.size() + 1));
+                shortcut.setLabel(query);
+                shortcut.setQuery(query);
+                if (query.contains("热门") || query.contains("热文")) {
+                    shortcut.setIcon("fire");
+                    shortcut.setIntentRouteId("builtin-hot-articles");
+                } else if (query.contains("最新") || query.contains("最近")) {
+                    shortcut.setIcon("clock");
+                    shortcut.setIntentRouteId("builtin-latest-posts");
+                } else if (query.contains("标签")) {
+                    shortcut.setIcon("tag");
+                    shortcut.setIntentRouteId("builtin-by-tag");
+                } else if (query.contains("分类")) {
+                    shortcut.setIcon("category");
+                    shortcut.setIntentRouteId("builtin-by-category");
+                } else {
+                    shortcut.setIcon("sparkles");
+                    shortcut.setIntentRouteId("");
+                }
+                shortcut.setEnabled(true);
+                shortcutItems.add(shortcut);
+            }
+        }
+        c.setShortcutItems(shortcutItems);
         c.setWidgetWidth(intVal(node, "widgetWidth", 400));
         c.setWidgetHeight(intVal(node, "widgetHeight", 600));
         c.setWidgetTriggerAlign(textVal(node, "widgetTriggerAlign", "auto"));
@@ -408,6 +462,10 @@ public class AIProperties {
         private int maxTokens;
         private int historyTurns;
         private boolean streamOutput;
+        /** 是否允许访客在单次提问时开启深度思考。 */
+        private boolean allowVisitorReasoning;
+        /** 访客端深度思考开关的默认值。 */
+        private boolean reasoningDefaultEnabled;
         private String widgetPosition;
         private String widgetThemeColor;
         private String widgetIcon;
@@ -418,6 +476,8 @@ public class AIProperties {
         private String welcomeMessage;
         /** 快捷问题（多行文本，每行一个），显示在欢迎语下方点击可直接发送 */
         private String shortcutQuestions;
+        /** 结构化快捷问题；为空时自动从 shortcutQuestions 兼容映射。 */
+        private List<ShortcutItem> shortcutItems;
         private int widgetWidth;
         private int widgetHeight;
         /** 悬浮按钮对齐策略：auto（自动避让页面悬浮按钮）/ manual（强制用 widgetTriggerOffsetY） */
@@ -431,6 +491,16 @@ public class AIProperties {
         private boolean allowGuest;
         private boolean showPrivacyTip;
         private boolean showRetrievalStatus;
+    }
+
+    @Data
+    public static class ShortcutItem {
+        private String id;
+        private String label;
+        private String query;
+        private String icon;
+        private String intentRouteId;
+        private boolean enabled;
     }
 
     @Data

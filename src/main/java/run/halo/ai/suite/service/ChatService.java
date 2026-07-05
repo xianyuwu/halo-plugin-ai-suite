@@ -9,6 +9,7 @@ import run.halo.ai.suite.config.AIProperties;
 import run.halo.ai.suite.extension.IntentRoute;
 import run.halo.ai.suite.intent.PipelineExecutor;
 import run.halo.ai.suite.llm.LlmClient;
+import run.halo.ai.suite.llm.LlmClient.StreamEvent;
 import run.halo.ai.suite.llm.UsageScenario;
 import run.halo.ai.suite.rag.PipelineTrace;
 import run.halo.ai.suite.rag.RAGPipeline;
@@ -29,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -49,6 +51,7 @@ public class ChatService {
     private final ReactiveExtensionClient extensionClient;
     private final ExternalUrlSupplier externalUrlSupplier;
     private final IntentDetector intentDetector;
+    private final IntentRouteService intentRouteService;
     private final PipelineExecutor pipelineExecutor;
 
     // RAG 整体兜底超时：单步已各自超时，这里只是兜全管线异常
@@ -93,7 +96,7 @@ public class ChatService {
             })
             .flatMap(ragContext -> extractCitations(ragContext).map(citations -> {
                 if (ragContext.noMatch() && ragContext.fixedReply() != null) {
-                    return new ChatResponse(Flux.just(ragContext.fixedReply()), citations);
+                    return new ChatResponse(Flux.just(ragContext.fixedReply()), citations, null);
                 }
 
                 Flux<String> stream = aiProperties.getModelConfig()
@@ -125,7 +128,7 @@ public class ChatService {
                                 );
                             })
                     );
-                return new ChatResponse(stream, citations);
+                return new ChatResponse(stream, citations, null);
             }));
     }
 
@@ -144,7 +147,14 @@ public class ChatService {
     public Mono<ChatResponse> chatStreamWithCitations(String userMessage,
                                                        List<Map<String, String>> history,
                                                        String clientIp) {
-        return intentDetector.detect(userMessage, history)
+        return chatStreamWithCitations(userMessage, history, clientIp, null);
+    }
+
+    public Mono<ChatResponse> chatStreamWithCitations(String userMessage,
+                                                       List<Map<String, String>> history,
+                                                       String clientIp,
+                                                       String intentRouteId) {
+        return resolveIntent(userMessage, history, intentRouteId)
             .flatMap(intentOpt -> {
                 if (intentOpt.isPresent()) {
                     return chatStreamWithIntent(intentOpt.get(), userMessage, history,
@@ -154,9 +164,26 @@ public class ChatService {
             });
     }
 
+    private Mono<Optional<IntentRoute>> resolveIntent(String userMessage,
+                                                       List<Map<String, String>> history,
+                                                       String intentRouteId) {
+        if (intentRouteId == null || intentRouteId.isBlank()) {
+            return intentDetector.detect(userMessage, history);
+        }
+        String routeId = intentRouteId.trim();
+        return intentRouteService.listEnabledIntents()
+            .map(routes -> routes.stream()
+                .filter(route -> route.getMetadata() != null
+                    && routeId.equals(route.getMetadata().getName()))
+                .findFirst())
+            .flatMap(route -> route.isPresent()
+                ? Mono.just(route)
+                : Mono.error(new IllegalArgumentException("快捷问题绑定的意图不存在或已停用")));
+    }
+
     /**
-     * 意图路由分支 — 执行 pipeline 拿到 Post 列表，让 LLM 组织回答.
-     * <p>对前端完全透明：仍返回 {@link ChatResponse}，citations 由 Post 列表反查 permalink 生成.
+     * 意图路由分支 — 执行 pipeline 拿到 Post 列表，返回确定性导语和结构化卡片。
+     * 平台数据型回答不再为排版二次调用 LLM，避免模型余额、格式漂移影响卡片展示。
      */
     private Mono<ChatResponse> chatStreamWithIntent(IntentRoute route, String userMessage,
                                                      List<Map<String, String>> history,
@@ -171,25 +198,11 @@ public class ChatService {
         return pipelineExecutor.execute(route, userMessage, history, trace)
             .flatMap(posts -> buildIntentCitations(posts)
                 .map(citations -> {
-                    String systemPrompt = buildIntentPrompt(route, posts);
-                    Flux<String> stream = aiProperties.getModelConfig()
-                        .flatMapMany(modelConfig ->
-                            aiProperties.getChatConfig()
-                                .flatMapMany(chatConfig -> {
-                                    List<Map<String, String>> messages = buildMessages(
-                                        systemPrompt, 0, List.of(), userMessage);
-                                    return llmClient.chatStream(
-                                        modelConfig.getEffectiveChatModel(),
-                                        messages,
-                                        chatConfig.getTemperature(),
-                                        chatConfig.getMaxTokens(),
-                                        null,
-                                        clientIp,
-                                        UsageScenario.INTENT_PIPELINE
-                                    );
-                                })
-                        );
-                    return new ChatResponse(stream, citations);
+                    StructuredResult structured = buildStructuredResult(route, posts);
+                    return new ChatResponse(
+                        Flux.just(buildStructuredIntro(structured, posts.size())),
+                        citations,
+                        structured);
                 }));
     }
 
@@ -211,13 +224,14 @@ public class ChatService {
                     if (ragContext.noMatch() && ragContext.fixedReply() != null) {
                         return new ChatResponse(
                             Flux.just(ragContext.fixedReply()),
-                            citations
+                            citations,
+                            null
                         );
                     }
 
                     // 获取配置并构建流
                     // 由于 Flux 需要在 Mono 内创建，这里用 defer
-                    Flux<String> stream = aiProperties.getModelConfig()
+                    Flux<StreamEvent> eventStream = aiProperties.getModelConfig()
                         .flatMapMany(modelConfig ->
                             aiProperties.getChatConfig()
                                 .flatMapMany(chatConfig -> {
@@ -226,7 +240,7 @@ public class ChatService {
                                     List<Map<String, String>> messages = buildMessages(
                                         systemPrompt, chatConfig.getHistoryTurns(),
                                         history, userMessage);
-                                    return llmClient.chatStream(
+                                    return llmClient.chatStreamEvents(
                                         modelConfig.getEffectiveChatModel(),
                                         messages,
                                         chatConfig.getTemperature(),
@@ -238,7 +252,7 @@ public class ChatService {
                                 })
                         );
 
-                    return new ChatResponse(stream, citations);
+                    return ChatResponse.withEvents(eventStream, citations, null);
                 });
             });
     }
@@ -272,17 +286,7 @@ public class ChatService {
     private Mono<String> chatWithIntent(IntentRoute route, String userMessage,
                                         List<Map<String, String>> history, String clientIp) {
         return pipelineExecutor.execute(route, userMessage, history, null)
-            .flatMap(posts -> aiProperties.getModelConfig()
-                .flatMap(modelConfig -> aiProperties.getChatConfig()
-                    .flatMap(chatConfig -> llmClient.chat(
-                        modelConfig.getEffectiveChatModel(),
-                        buildMessages(buildIntentPrompt(route, posts), 0, List.of(), userMessage),
-                        chatConfig.getTemperature(),
-                        chatConfig.getMaxTokens(),
-                        null,
-                        clientIp,
-                        UsageScenario.INTENT_PIPELINE
-                    ))));
+            .map(posts -> buildStructuredIntro(buildStructuredResult(route, posts), posts.size()));
     }
 
     private Mono<String> chatWithRag(String userMessage, List<Map<String, String>> history,
@@ -496,16 +500,21 @@ public class ChatService {
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("以下是符合用户查询的博客文章数据。");
+        sb.append("以下是符合用户查询的博客文章数据。"
+            + "完整文章列表将由前端以结构化卡片展示，"
+            + "你只需生成简短的过渡文案。");
         if (template != null && !template.isBlank()) {
-            sb.append("\n\n## 输出要求\n").append(template).append("\n");
+            sb.append("\n\n## 意图补充要求\n")
+                .append("下列旧模板仅用于理解回答的语气和侧重点，"
+                    + "忽略其中的列表、编号、链接和排版指令：\n")
+                .append(template).append("\n");
         } else {
-            sb.append("请用编号列表格式输出，每篇标注标题（Markdown 链接）、"
-                + "发布日期（YYYY-MM-DD）、一句话点评（结合标题推测主题）。\n");
+            sb.append("请用自然、克制的语气介绍下面的卡片内容。\n");
         }
-        sb.append("\n规则：\n1. 标题用 Markdown 超链接 [标题](链接)，不要单独列出 URL\n");
-        sb.append("2. 不要编造列表中不存在的文章\n");
-        sb.append("3. 用 Markdown 列表或编号列表排版\n\n");
+        sb.append("\n规则：\n1. 文章数据会由前端以结构化卡片单独展示\n");
+        sb.append("2. 只输出 1-2 句简短导语或整体推荐理由\n");
+        sb.append("3. 禁止输出编号列表、文章标题、Markdown 链接或 URL\n");
+        sb.append("4. 不要编造列表中不存在的文章、浏览量或其他数据\n\n");
         sb.append("## 文章数据\n\n");
 
         for (int i = 0; i < posts.size(); i++) {
@@ -562,9 +571,118 @@ public class ChatService {
     }
 
     /**
+     * 把意图 Pipeline 产出的 Halo 文章转成稳定的前端展示协议。
+     * 展示类型由 Pipeline 语义决定，不依赖 LLM 输出的 Markdown 形状。
+     */
+    private StructuredResult buildStructuredResult(IntentRoute route, List<Post> posts) {
+        if (posts == null || posts.isEmpty()) {
+            return null;
+        }
+        List<String> stepTypes = route.getSpec() != null && route.getSpec().getPipeline() != null
+            ? route.getSpec().getPipeline().stream()
+                .map(IntentRoute.PipelineStep::getType)
+                .filter(type -> type != null && !type.isBlank())
+                .toList()
+            : List.of();
+
+        String variant;
+        String description;
+        if (stepTypes.contains("VISIT_SORT")) {
+            variant = "ranking";
+            description = "根据站点文章浏览热度排序";
+        } else if (stepTypes.contains("TAG_MATCH")) {
+            variant = "tag";
+            description = "根据标签与发布时间整理";
+        } else if (stepTypes.contains("CATEGORY_MATCH")) {
+            variant = "category";
+            description = "根据文章分类整理";
+        } else if (stepTypes.contains("TIME_SORT")) {
+            variant = "latest";
+            description = "按发布时间整理";
+        } else {
+            variant = "recommendation";
+            description = "根据站点内容整理";
+        }
+
+        String title = route.getSpec() != null ? route.getSpec().getDisplayName() : null;
+        if (title == null || title.isBlank()) {
+            title = "文章推荐";
+        }
+        List<StructuredItem> items = new ArrayList<>();
+        for (int i = 0; i < posts.size(); i++) {
+            Post post = posts.get(i);
+            String postId = post.getMetadata() != null ? post.getMetadata().getName() : "";
+            String itemTitle = post.getSpec() != null && post.getSpec().getTitle() != null
+                ? post.getSpec().getTitle() : "未命名文章";
+            String url = post.getStatus() != null && post.getStatus().getPermalink() != null
+                ? resolveFullUrl(post.getStatus().getPermalink()) : "";
+            String excerpt = "";
+            if (post.getSpec() != null && post.getSpec().getExcerpt() != null
+                && post.getSpec().getExcerpt().getRaw() != null) {
+                excerpt = post.getSpec().getExcerpt().getRaw().strip();
+                if (excerpt.length() > 120) {
+                    excerpt = excerpt.substring(0, 120) + "...";
+                }
+            }
+            String publishTime = post.getSpec() != null
+                && post.getSpec().getPublishTime() != null
+                ? post.getSpec().getPublishTime().toString().substring(0, 10) : "";
+            items.add(new StructuredItem(i + 1, postId, itemTitle, url, excerpt, publishTime));
+        }
+        return new StructuredResult("article-list", variant, title, description, items);
+    }
+
+    private String buildStructuredIntro(StructuredResult result, int postCount) {
+        if (result == null || postCount <= 0) {
+            return "暂时没有找到符合条件的站内文章，可以换个关键词再试试。";
+        }
+        return switch (result.variant()) {
+            case "ranking" -> "已根据站内文章浏览热度，为你整理了 " + postCount + " 篇热门文章。";
+            case "latest" -> "已按发布时间从近到远，为你整理了 " + postCount + " 篇文章。";
+            case "tag" -> "已根据站内标签，为你找到 " + postCount + " 篇相关文章。";
+            case "category" -> "已根据站内分类，为你找到 " + postCount + " 篇相关文章。";
+            default -> "已根据站内内容，为你整理了 " + postCount + " 篇文章。";
+        };
+    }
+
+    /**
      * 对话响应 — 包含 token 流和引用来源
      */
-    public record ChatResponse(Flux<String> stream, List<Map<String, String>> citations) {}
+    public record ChatResponse(
+        Flux<String> stream,
+        List<Map<String, String>> citations,
+        StructuredResult structuredResult,
+        Flux<StreamEvent> eventStream
+    ) {
+        public ChatResponse(Flux<String> stream, List<Map<String, String>> citations,
+                            StructuredResult structuredResult) {
+            this(stream, citations, structuredResult, stream.map(StreamEvent::text));
+        }
+
+        static ChatResponse withEvents(Flux<StreamEvent> events,
+                                       List<Map<String, String>> citations,
+                                       StructuredResult structuredResult) {
+            return new ChatResponse(events.filter(StreamEvent::isText).map(StreamEvent::content),
+                citations, structuredResult, events);
+        }
+    }
+
+    public record StructuredResult(
+        String type,
+        String variant,
+        String title,
+        String description,
+        List<StructuredItem> items
+    ) {}
+
+    public record StructuredItem(
+        int rank,
+        String postId,
+        String title,
+        String url,
+        String excerpt,
+        String publishTime
+    ) {}
 
     /**
      * 调试对话响应 — 在 ChatResponse 基础上增加管线追踪数据
@@ -572,8 +690,15 @@ public class ChatService {
     public record DebugChatResponse(
         Flux<String> stream,
         List<Map<String, String>> citations,
-        PipelineTrace trace
-    ) {}
+        StructuredResult structuredResult,
+        PipelineTrace trace,
+        Flux<StreamEvent> eventStream
+    ) {
+        public DebugChatResponse(Flux<String> stream, List<Map<String, String>> citations,
+                                 StructuredResult structuredResult, PipelineTrace trace) {
+            this(stream, citations, structuredResult, trace, stream.map(StreamEvent::text));
+        }
+    }
 
     /**
      * 调试模式流式对话 — 带管线追踪
@@ -583,8 +708,23 @@ public class ChatService {
     public Mono<DebugChatResponse> chatStreamWithDebug(String userMessage,
                                                          List<Map<String, String>> history,
                                                          String clientIp) {
+        return chatStreamWithDebug(userMessage, history, clientIp, null);
+    }
+
+    public Mono<DebugChatResponse> chatStreamWithDebug(String userMessage,
+                                                         List<Map<String, String>> history,
+                                                         String clientIp,
+                                                         String intentRouteId) {
+        return chatStreamWithDebug(userMessage, history, clientIp, intentRouteId, "disabled");
+    }
+
+    public Mono<DebugChatResponse> chatStreamWithDebug(String userMessage,
+                                                         List<Map<String, String>> history,
+                                                         String clientIp,
+                                                         String intentRouteId,
+                                                         String reasoningMode) {
         long intentStart = System.currentTimeMillis();
-        return intentDetector.detect(userMessage, history)
+        return resolveIntent(userMessage, history, intentRouteId)
             .flatMap(intentOpt -> {
                 String intentName = intentOpt.isPresent()
                     ? (intentOpt.get().getMetadata() != null
@@ -603,11 +743,14 @@ public class ChatService {
                     // 意图命中：走 pipeline（pipeline 内部每步会 addStage 到 trace）
                     return chatStreamWithIntent(intentOpt.get(), userMessage, history,
                         clientIp, trace)
-                        .map(resp -> new DebugChatResponse(resp.stream(), resp.citations(), trace));
+                        .map(resp -> new DebugChatResponse(
+                            resp.stream(), resp.citations(), resp.structuredResult(), trace,
+                            resp.eventStream()));
                 }
 
                 // 未命中：走带追踪的 RAG 流程
-                return chatStreamWithRagDebug(userMessage, history, clientIp, trace);
+                return chatStreamWithRagDebug(userMessage, history, clientIp, trace,
+                    reasoningMode);
             });
     }
 
@@ -616,7 +759,8 @@ public class ChatService {
      */
     private Mono<DebugChatResponse> chatStreamWithRagDebug(String userMessage,
                                                             List<Map<String, String>> history,
-                                                            String clientIp, PipelineTrace trace) {
+                                                            String clientIp, PipelineTrace trace,
+                                                            String reasoningMode) {
         return ragPipeline.retrieveWithTrace(userMessage, history)
             .timeout(RAG_OVERALL_TIMEOUT)
             .onErrorResume(e -> {
@@ -642,7 +786,7 @@ public class ChatService {
                         trace.addStage("inject_context", "注入上下文", injectStart, System.currentTimeMillis(),
                             "skipped", "跳过", "无匹配，使用固定回复", null);
                         return new DebugChatResponse(
-                            Flux.just(ragContext.fixedReply()), citations, trace);
+                            Flux.just(ragContext.fixedReply()), citations, null, trace);
                     }
 
                     if (!hasContext) {
@@ -658,7 +802,7 @@ public class ChatService {
                             injectData);
                     }
 
-                    Flux<String> stream = aiProperties.getModelConfig()
+                    Flux<StreamEvent> eventStream = aiProperties.getModelConfig()
                         .flatMapMany(modelConfig ->
                             aiProperties.getChatConfig()
                                 .flatMapMany(chatConfig -> {
@@ -667,19 +811,22 @@ public class ChatService {
                                     List<Map<String, String>> messages = buildMessages(
                                         systemPrompt, chatConfig.getHistoryTurns(),
                                         history, userMessage);
-                                    return llmClient.chatStream(
+                                    return llmClient.chatStreamEvents(
                                         modelConfig.getEffectiveChatModel(),
                                         messages,
                                         chatConfig.getTemperature(),
                                         chatConfig.getMaxTokens(),
                                         null,
                                         clientIp,
-                                        UsageScenario.VISITOR_QA
+                                        UsageScenario.VISITOR_QA,
+                                        reasoningMode
                                     );
                                 })
                         );
 
-                    return new DebugChatResponse(stream, citations, trace);
+                    return new DebugChatResponse(
+                        eventStream.filter(StreamEvent::isText).map(StreamEvent::content),
+                        citations, null, trace, eventStream);
                 });
             });
     }

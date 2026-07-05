@@ -42,10 +42,12 @@ public class LlmClient {
                              Map<String, Object> responseFormat,
                              String clientIp,
                              String scenario) {
-        return enforceLimit(model, "chat", clientIp)
-            .flatMap(reserved -> aiFoundationClient.chat(model, messages, temperature, maxTokens,
-                    responseFormat, scenario)
-                .doFinally(signal -> usageTracker.settle(model, reserved)));
+        return aiFoundationClient.chatUsageModelName(model)
+            .flatMap(usageModel -> enforceLimit(usageModel, "chat", clientIp)
+                .flatMap(reserved -> reasoningMode()
+                    .flatMap(reasoningMode -> aiFoundationClient.chat(model, messages, temperature, maxTokens,
+                        responseFormat, scenario, reasoningMode))
+                    .doFinally(signal -> usageTracker.settle(usageModel, reserved))));
     }
 
     public Flux<String> chatStream(String model,
@@ -54,10 +56,44 @@ public class LlmClient {
                                    Map<String, Object> responseFormat,
                                    String clientIp,
                                    String scenario) {
-        return Flux.defer(() -> enforceLimit(model, "chat", clientIp)
-            .flatMapMany(reserved -> aiFoundationClient.chatStream(model, messages, temperature, maxTokens,
-                    responseFormat, scenario)
-                .doFinally(signal -> usageTracker.settle(model, reserved))));
+        return Flux.defer(() -> aiFoundationClient.chatUsageModelName(model)
+            .flatMapMany(usageModel -> enforceLimit(usageModel, "chat", clientIp)
+                .flatMapMany(reserved -> reasoningMode()
+                    .flatMapMany(reasoningMode -> aiFoundationClient.chatStream(model, messages, temperature, maxTokens,
+                        responseFormat, scenario, reasoningMode))
+                    .doFinally(signal -> usageTracker.settle(usageModel, reserved)))));
+    }
+
+    /** Visitor-facing stream that preserves AI Foundation reasoning events when explicitly enabled. */
+    public Flux<StreamEvent> chatStreamEvents(String model,
+                                              List<Map<String, String>> messages,
+                                              float temperature, int maxTokens,
+                                              Map<String, Object> responseFormat,
+                                              String clientIp,
+                                              String scenario) {
+        return Flux.defer(() -> aiFoundationClient.chatUsageModelName(model)
+            .flatMapMany(usageModel -> enforceLimit(usageModel, "chat", clientIp)
+                .flatMapMany(reserved -> reasoningMode().flatMapMany(reasoningMode ->
+                    aiFoundationClient.chatStreamEvents(model, messages, temperature, maxTokens,
+                            responseFormat, scenario, reasoningMode)
+                        .filter(event -> "enabled".equals(reasoningMode) || event.isText()))
+                    .doFinally(signal -> usageTracker.settle(usageModel, reserved)))));
+    }
+
+    public Flux<StreamEvent> chatStreamEvents(String model,
+                                              List<Map<String, String>> messages,
+                                              float temperature, int maxTokens,
+                                              Map<String, Object> responseFormat,
+                                              String clientIp,
+                                              String scenario,
+                                              String reasoningMode) {
+        String effectiveMode = "enabled".equals(reasoningMode) ? "enabled" : "disabled";
+        return Flux.defer(() -> aiFoundationClient.chatUsageModelName(model)
+            .flatMapMany(usageModel -> enforceLimit(usageModel, "chat", clientIp)
+                .flatMapMany(reserved -> aiFoundationClient.chatStreamEvents(model, messages,
+                        temperature, maxTokens, responseFormat, scenario, effectiveMode)
+                    .filter(event -> "enabled".equals(effectiveMode) || event.isText())
+                    .doFinally(signal -> usageTracker.settle(usageModel, reserved)))));
     }
 
     public Mono<String> chatInternal(String model,
@@ -65,7 +101,8 @@ public class LlmClient {
                                      float temperature, int maxTokens,
                                      Map<String, Object> responseFormat,
                                      String scenario) {
-        return aiFoundationClient.chat(model, messages, temperature, maxTokens, responseFormat, scenario);
+        return reasoningMode().flatMap(reasoningMode -> aiFoundationClient.chat(model, messages,
+            temperature, maxTokens, responseFormat, scenario, reasoningMode));
     }
 
     public Flux<String> chatStreamInternal(String model,
@@ -73,7 +110,8 @@ public class LlmClient {
                                            float temperature, int maxTokens,
                                            Map<String, Object> responseFormat,
                                            String scenario) {
-        return aiFoundationClient.chatStream(model, messages, temperature, maxTokens, responseFormat, scenario);
+        return reasoningMode().flatMapMany(reasoningMode -> aiFoundationClient.chatStream(model, messages,
+            temperature, maxTokens, responseFormat, scenario, reasoningMode));
     }
 
     public Mono<float[]> embed(String model, String text, int dimensions, String scenario) {
@@ -103,5 +141,24 @@ public class LlmClient {
             }));
     }
 
+    private Mono<String> reasoningMode() {
+        return Mono.just("default");
+    }
+
     public record RerankResult(int index, float relevanceScore, String text) {}
+
+    public record StreamEvent(String type, String content) {
+        public static final String TEXT = "text";
+        public static final String REASONING_START = "reasoning_start";
+        public static final String REASONING_DELTA = "reasoning_delta";
+        public static final String REASONING_END = "reasoning_end";
+
+        public static StreamEvent text(String content) {
+            return new StreamEvent(TEXT, content);
+        }
+
+        public boolean isText() {
+            return TEXT.equals(type);
+        }
+    }
 }

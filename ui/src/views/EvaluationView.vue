@@ -167,11 +167,11 @@
                 </thead>
                 <tbody>
                   <tr v-for="item in runRecords.slice(0, 5)" :key="item.runId">
-                    <td style="text-align: left;">{{ item.name || item.runId }}</td>
-                    <td><span :class="scoreClass(item.summary?.avgScore ?? 0)">{{ (item.summary?.avgScore ?? 0).toFixed(2) }}</span></td>
-                    <td>{{ (item.summary?.retrievalHitRate ?? 0).toFixed(0) }}%</td>
-                    <td>{{ formatTime(item.startedAt) }}</td>
-                    <td><VButton size="xs" type="default" @click="selectRun(item.runId)">查看</VButton></td>
+                    <td data-label="运行名称" class="eval-card-title">{{ item.name || item.runId }}</td>
+                    <td data-label="综合分"><span :class="scoreClass(item.summary?.avgScore ?? 0)">{{ (item.summary?.avgScore ?? 0).toFixed(2) }}</span></td>
+                    <td data-label="检索命中">{{ (item.summary?.retrievalHitRate ?? 0).toFixed(0) }}%</td>
+                    <td data-label="时间">{{ formatTime(item.startedAt) }}</td>
+                    <td data-label="操作"><VButton size="xs" type="default" @click="selectRun(item.runId)">查看</VButton></td>
                   </tr>
                   <tr v-if="runRecords.length === 0">
                     <td colspan="5" class="eval-empty-cell">暂无实验记录</td>
@@ -212,16 +212,16 @@
               </thead>
               <tbody>
                 <tr v-for="ds in datasets" :key="ds.id" class="eval-dataset-row" @click="editDataset(ds)">
-                  <td style="text-align: left; font-weight: 600;">
+                  <td data-label="名称" class="eval-card-title">
                     <span class="eval-dataset-name-link">{{ ds.name || ds.id }}</span>
                   </td>
-                  <td class="text-center">{{ ds.cases.length }}</td>
-                  <td class="text-center">
+                  <td data-label="用例数" class="text-center">{{ ds.cases.length }}</td>
+                  <td data-label="类型" class="text-center">
                     <span v-if="ds.defaultDataset" class="eval-badge-default">默认</span>
                     <span v-else class="eval-badge-custom">自定义</span>
                   </td>
-                  <td class="text-center" style="font-size: 12px; color: #6b7280;">{{ formatUpdatedAt(ds.updatedAt) }}</td>
-                  <td @click.stop>
+                  <td data-label="最后更新" class="text-center eval-muted-cell">{{ formatUpdatedAt(ds.updatedAt) }}</td>
+                  <td data-label="操作" @click.stop>
                     <VSpace :spacing="4">
                       <VButton size="xs" type="default" @click="copyDataset(ds)">复制</VButton>
                       <VButton
@@ -303,20 +303,20 @@
               </thead>
               <tbody>
                 <tr v-for="(item, index) in pagedCases" :key="item.localId">
-                  <td class="text-center" style="color: #9ca3af;">{{ pageStart + index + 1 }}</td>
-                  <td style="text-align: left;" class="eval-case-td-question">
+                  <td data-label="#" class="text-center eval-muted-cell">{{ pageStart + index + 1 }}</td>
+                  <td data-label="问题" class="eval-case-td-question eval-card-title">
                     <span :class="{ 'eval-case-empty': !item.question.trim() }">
                       {{ item.question.trim() || "未填写问题" }}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="标签">
                     <div class="eval-case-tags" v-if="splitList(item.tagsText).length">
                       <span v-for="tag in splitList(item.tagsText).slice(0, 3)" :key="tag" class="eval-tag">{{ tag }}</span>
                     </div>
                     <span v-else style="color: #9ca3af;">—</span>
                   </td>
-                  <td class="text-center">{{ splitList(item.expectedSourcesText).length }}</td>
-                  <td>
+                  <td data-label="来源" class="text-center">{{ splitList(item.expectedSourcesText).length }}</td>
+                  <td data-label="操作">
                     <VSpace :spacing="4">
                       <VButton size="xs" type="default" @click="openCaseEditor(pageStart + index)">编辑</VButton>
                       <VButton size="xs" type="danger" @click="removeCase(pageStart + index)">删除</VButton>
@@ -411,27 +411,27 @@
                   :key="item.runId"
                   :class="{ 'eval-row-active': report?.runId === item.runId }"
                 >
-                  <td class="text-center" @click.stop>
+                  <td data-label="选择" class="text-center eval-cell-check" @click.stop>
                     <input type="checkbox" :checked="selectedRuns.has(item.runId)" @change="toggleRunSelect(item.runId)" />
                   </td>
-                  <td style="text-align: left; font-weight: 600; cursor: pointer;" @click="selectRun(item.runId)">
+                  <td data-label="运行名称" class="eval-card-title" @click="selectRun(item.runId)">
                     {{ item.name || item.runId }}
                   </td>
-                  <td style="text-align: left; font-size: 12px; color: #6b7280;">{{ item.datasetId || "—" }}</td>
-                  <td class="text-center">
+                  <td data-label="评测集" class="eval-muted-cell">{{ item.datasetId || "—" }}</td>
+                  <td data-label="综合分" class="text-center">
                     <span :class="scoreClass(item.summary?.avgScore)">{{ (item.summary?.avgScore ?? 0).toFixed(2) }}</span>
                   </td>
-                  <td class="text-center">{{ (item.summary?.retrievalHitRate ?? 0).toFixed(0) }}%</td>
-                  <td class="text-center">{{ (item.summary?.faithfulness ?? 0).toFixed(2) }}</td>
-                  <td class="text-center">
+                  <td data-label="检索命中" class="text-center">{{ (item.summary?.retrievalHitRate ?? 0).toFixed(0) }}%</td>
+                  <td data-label="忠实度" class="text-center">{{ (item.summary?.faithfulness ?? 0).toFixed(2) }}</td>
+                  <td data-label="幻觉风险" class="text-center">
                     <span :class="(item.summary?.hallucinationHighRiskRate ?? 0) > 10 ? 'eval-risk-high' : 'eval-risk-low'">
                       {{ (item.summary?.hallucinationHighRiskRate ?? 0).toFixed(0) }}%
                     </span>
                   </td>
-                  <td class="text-center">{{ item.summary?.totalCases ?? 0 }}</td>
-                  <td class="text-center" style="font-size: 12px;">{{ formatDuration(item.durationMs) }}</td>
-                  <td class="text-center" style="font-size: 12px; color: #6b7280;">{{ formatTime(item.startedAt) }}</td>
-                  <td>
+                  <td data-label="用例" class="text-center">{{ item.summary?.totalCases ?? 0 }}</td>
+                  <td data-label="耗时" class="text-center eval-muted-cell">{{ formatDuration(item.durationMs) }}</td>
+                  <td data-label="时间" class="text-center eval-muted-cell">{{ formatTime(item.startedAt) }}</td>
+                  <td data-label="操作">
                     <VSpace :spacing="4">
                       <VButton size="xs" type="default" @click="selectRun(item.runId)">查看</VButton>
                       <VButton size="xs" type="danger" @click="askDeleteRun(item)">删除</VButton>
@@ -1293,6 +1293,8 @@ loadRuns();
   border-bottom: 1px solid #e5e7eb;
   margin-bottom: 20px;
   padding: 0 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .ai-tab-btn {
   position: relative;
@@ -1516,8 +1518,38 @@ loadRuns();
 .eval-recent-table,
 .eval-compare-table {
   width: 100%;
+  min-width: 720px;
   border-collapse: collapse;
   font-size: 13px;
+}
+.eval-experiment-table {
+  min-width: 1060px;
+}
+.eval-case-table {
+  min-width: 680px;
+}
+.eval-dataset-table,
+.eval-experiment-table,
+.eval-recent-table,
+.eval-case-table,
+.eval-compare-table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.eval-dataset-table thead,
+.eval-dataset-table tbody,
+.eval-experiment-table thead,
+.eval-experiment-table tbody,
+.eval-recent-table thead,
+.eval-recent-table tbody,
+.eval-case-table thead,
+.eval-case-table tbody,
+.eval-compare-table thead,
+.eval-compare-table tbody {
+  display: table;
+  width: 100%;
+  min-width: inherit;
 }
 .eval-dataset-table th,
 .eval-experiment-table th,
@@ -1559,6 +1591,15 @@ loadRuns();
 }
 .eval-row-active td {
   background: #eff6ff !important;
+}
+.eval-card-title {
+  text-align: left !important;
+  font-weight: 600;
+  color: #111827;
+}
+.eval-muted-cell {
+  color: #6b7280;
+  font-size: 12px;
 }
 
 .eval-badge-default {
@@ -1863,5 +1904,208 @@ loadRuns();
   .eval-edit-actions { margin-left: 0; }
   .eval-case-grid, .eval-score-grid { grid-template-columns: 1fr; }
   .eval-compare-summary { flex-direction: column; }
+}
+
+@media (max-width: 1120px) {
+  .eval-run-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .eval-toolbar,
+  .eval-case-toolbar,
+  .eval-edit-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .eval-toolbar-right,
+  .eval-edit-actions,
+  .eval-pagination-controls,
+  .eval-run-actions {
+    flex-wrap: wrap;
+  }
+
+  .eval-edit-name-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .eval-name-input {
+    max-width: none;
+    width: 100%;
+  }
+
+  .eval-result-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .eval-result-score {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
+  .eval-tabs {
+    margin-bottom: 14px;
+    padding-bottom: 1px;
+  }
+
+  .ai-tab-btn {
+    flex: 0 0 auto;
+    padding: 9px 12px;
+    white-space: nowrap;
+  }
+
+  .eval-report-summary,
+  .eval-score-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .eval-recent-table,
+  .eval-dataset-table,
+  .eval-case-table,
+  .eval-experiment-table {
+    display: block;
+    min-width: 0;
+    width: 100%;
+    overflow: visible;
+  }
+
+  .eval-recent-table thead,
+  .eval-dataset-table thead,
+  .eval-case-table thead,
+  .eval-experiment-table thead {
+    display: none;
+  }
+
+  .eval-recent-table tbody,
+  .eval-recent-table tr,
+  .eval-recent-table td,
+  .eval-dataset-table tbody,
+  .eval-dataset-table tr,
+  .eval-dataset-table td,
+  .eval-case-table tbody,
+  .eval-case-table tr,
+  .eval-case-table td,
+  .eval-experiment-table tbody,
+  .eval-experiment-table tr,
+  .eval-experiment-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .eval-recent-table tbody,
+  .eval-dataset-table tbody,
+  .eval-case-table tbody,
+  .eval-experiment-table tbody {
+    padding: 10px;
+    background: #f8fafc;
+  }
+
+  .eval-recent-table tbody tr,
+  .eval-dataset-table tbody tr,
+  .eval-case-table tbody tr,
+  .eval-experiment-table tbody tr {
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .eval-recent-table tbody tr:hover td,
+  .eval-dataset-table tbody tr:hover td,
+  .eval-case-table tbody tr:hover td,
+  .eval-experiment-table tbody tr:hover td {
+    background: #fff;
+  }
+
+  .eval-recent-table td,
+  .eval-dataset-table td,
+  .eval-case-table td,
+  .eval-experiment-table td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 38px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right !important;
+  }
+
+  .eval-recent-table td::before,
+  .eval-dataset-table td::before,
+  .eval-case-table td::before,
+  .eval-experiment-table td::before {
+    content: attr(data-label);
+    flex: 0 0 76px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 650;
+    text-align: left;
+  }
+
+  .eval-recent-table td:last-child,
+  .eval-dataset-table td:last-child,
+  .eval-case-table td:last-child,
+  .eval-experiment-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .eval-card-title,
+  .eval-case-td-question {
+    display: block !important;
+    padding: 13px 12px !important;
+    text-align: left !important;
+    white-space: normal;
+    line-height: 1.55;
+  }
+
+  .eval-card-title::before,
+  .eval-case-td-question::before {
+    display: none;
+  }
+
+  .eval-cell-check {
+    justify-content: flex-start !important;
+  }
+
+  .eval-cell-check::before {
+    flex: 0 0 auto !important;
+    margin-right: 12px;
+  }
+
+  .eval-case-tags {
+    justify-content: flex-end;
+  }
+
+  .eval-empty-cell {
+    display: block !important;
+    padding: 24px 12px !important;
+    text-align: center !important;
+  }
+
+  .eval-empty-cell::before {
+    display: none;
+  }
+
+  .eval-modal {
+    padding: 10px;
+  }
+
+  .eval-modal-dialog {
+    max-height: 94vh;
+  }
+
+  .eval-modal-header,
+  .eval-modal-body,
+  .eval-modal-footer {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
 }
 </style>

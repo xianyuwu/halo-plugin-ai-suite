@@ -33,11 +33,13 @@
               </div>
             </div>
             <div class="ai-option-grid" style="margin-top: 18px">
-              <OptionCard v-model="form.streamOutput" title="流式输出" desc="逐字返回结果，访客可以看到 AI 正在「思考」，体验更流畅" />
+              <OptionCard v-model="form.streamOutput" title="流式输出" desc="逐步返回最终回答，不展示模型的内部思考内容" />
+              <OptionCard v-model="form.allowVisitorReasoning" title="允许访客开启深度思考" desc="访客可在每次提问前自主选择，可能增加响应时间和 Token 消耗" />
+              <OptionCard v-if="form.allowVisitorReasoning" v-model="form.reasoningDefaultEnabled" title="默认开启深度思考" desc="访客首次打开问答浮窗时的默认选择" />
               <OptionCard v-model="form.showRetrievalStatus" title="回答前显示检索状态" desc="在 AI 回答前展示「正在检索文章…」提示，增强用户对 RAG 过程的感知" />
             </div>
             <div class="ai-card-actions">
-              <VButton type="default" @click="resetFields(['systemPrompt','temperature','maxTokens','historyTurns','streamOutput','showRetrievalStatus'])">恢复默认</VButton>
+              <VButton type="default" @click="resetFields(['systemPrompt','temperature','maxTokens','historyTurns','allowVisitorReasoning','reasoningDefaultEnabled','streamOutput','showRetrievalStatus'])">恢复默认</VButton>
               <VButton type="primary" :disabled="saving" @click="save">{{ saving ? '保存中...' : '保存配置' }}</VButton>
             </div>
           </div>
@@ -51,14 +53,64 @@
               <textarea class="ai-input ai-textarea" v-model="form.welcomeMessage" rows="3" placeholder="Hi! 有什么想了解的？"></textarea>
             </div>
             <div class="ai-form-field" style="margin-top: 18px">
-              <label class="ai-field-label">快捷问题</label>
-              <textarea class="ai-input ai-textarea ai-textarea-lg" v-model="form.shortcutQuestions" rows="5" placeholder="每行一个问题，最多 6 个；留空则不显示"></textarea>
-              <div class="ai-helper-text">每行一个问题，最多 6 个；超出部分不会显示。留空则不显示快捷问题</div>
+              <div class="shortcut-editor-head">
+                <div>
+                  <label class="ai-field-label">快捷问题</label>
+                  <div class="ai-helper-text">建议保留 3-4 个高价值入口；绑定意图后点击将直接执行对应 Pipeline</div>
+                </div>
+                <VButton type="default" :disabled="form.shortcutItems.length >= 6" @click="addShortcut">添加问题</VButton>
+              </div>
+              <div v-if="form.shortcutItems.length" class="shortcut-editor-list">
+                <div
+                  v-for="(item, index) in form.shortcutItems"
+                  :key="item.id"
+                  class="shortcut-editor-item"
+                  :class="{ disabled: !item.enabled, dragging: draggingShortcutIndex === index }"
+                  draggable="true"
+                  @dragstart="startShortcutDrag(index)"
+                  @dragover.prevent
+                  @drop="dropShortcut(index)"
+                  @dragend="draggingShortcutIndex = null"
+                >
+                  <div class="shortcut-editor-top">
+                    <button type="button" class="shortcut-drag" title="拖动排序">⋮⋮</button>
+                    <span class="shortcut-order">{{ index + 1 }}</span>
+                    <input class="ai-input shortcut-label-input" v-model="item.label" maxlength="20" placeholder="显示标题，如：热门文章" />
+                    <label class="shortcut-enabled"><input type="checkbox" v-model="item.enabled" /> 启用</label>
+                    <button type="button" class="shortcut-delete" title="删除" @click="removeShortcut(index)">×</button>
+                  </div>
+                  <div class="shortcut-editor-grid">
+                    <div class="ai-form-field">
+                      <label class="ai-field-label">实际问题</label>
+                      <input class="ai-input" v-model="item.query" maxlength="200" placeholder="发送给 AI 的完整问题" />
+                    </div>
+                    <div class="ai-form-field">
+                      <label class="ai-field-label">图标</label>
+                      <select class="ai-input ai-select" v-model="item.icon">
+                        <option v-for="icon in SHORTCUT_ICONS" :key="icon.value" :value="icon.value">{{ icon.emoji }} {{ icon.label }}</option>
+                      </select>
+                    </div>
+                    <div class="ai-form-field shortcut-intent-field">
+                      <label class="ai-field-label">绑定意图</label>
+                      <select class="ai-input ai-select" v-model="item.intentRouteId">
+                        <option value="">自动识别</option>
+                        <option v-for="route in enabledIntentRoutes" :key="route.id" :value="route.id">{{ route.displayName }}</option>
+                      </select>
+                      <div v-if="item.intentRouteId && !enabledIntentRoutes.some(route => route.id === item.intentRouteId)" class="ai-helper-text error">绑定意图不存在或已停用</div>
+                    </div>
+                    <div class="shortcut-test-cell">
+                      <VButton type="default" :disabled="!item.query.trim()" @click="testShortcut(item)">试运行</VButton>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="shortcut-empty">暂无快捷问题，访客端将只显示欢迎语。</div>
             </div>
             <div class="ai-card-actions">
-              <VButton type="default" @click="resetFields(['welcomeMessage','shortcutQuestions'])">恢复默认</VButton>
-              <VButton type="primary" :disabled="saving" @click="save">{{ saving ? '保存中...' : '保存配置' }}</VButton>
+              <VButton type="default" @click="resetShortcutSection">恢复默认</VButton>
+              <VButton type="primary" :disabled="saving || shortcutValidationError !== ''" @click="save">{{ saving ? '保存中...' : '保存配置' }}</VButton>
             </div>
+            <div v-if="shortcutValidationError" class="ai-helper-text error">{{ shortcutValidationError }}</div>
           </div>
         </SectionCard>
 
@@ -228,12 +280,48 @@ const currentIconLabel = computed(
   () => ICON_PRESETS.find((i) => i.value === form.widgetIcon)?.label || "星光（默认）"
 );
 
+type ShortcutItem = {
+  id: string;
+  label: string;
+  query: string;
+  icon: string;
+  intentRouteId: string;
+  enabled: boolean;
+};
+
+type IntentRouteOption = {
+  id: string;
+  displayName: string;
+  enabled: boolean;
+};
+
+const SHORTCUT_ICONS = [
+  { value: "fire", label: "热门", emoji: "🔥" },
+  { value: "clock", label: "最新", emoji: "🕒" },
+  { value: "tag", label: "标签", emoji: "🏷️" },
+  { value: "category", label: "分类", emoji: "📂" },
+  { value: "search", label: "搜索", emoji: "🔍" },
+  { value: "sparkles", label: "推荐", emoji: "✨" },
+];
+
+const DEFAULT_SHORTCUTS: ShortcutItem[] = [
+  { id: "shortcut-hot", label: "热门文章", query: "推荐当前站点的热门文章", icon: "fire", intentRouteId: "builtin-hot-articles", enabled: true },
+  { id: "shortcut-latest", label: "最新发布", query: "最近发布了哪些文章", icon: "clock", intentRouteId: "builtin-latest-posts", enabled: true },
+  { id: "shortcut-tag", label: "按标签查找", query: "按标签帮我查找文章", icon: "tag", intentRouteId: "builtin-by-tag", enabled: true },
+];
+
+function cloneDefaultShortcuts(): ShortcutItem[] {
+  return DEFAULT_SHORTCUTS.map(item => ({ ...item }));
+}
+
 
 const DEFAULTS = {
   systemPrompt: "",
   temperature: 0.7,
   maxTokens: 2048,
   historyTurns: 5,
+  allowVisitorReasoning: true,
+  reasoningDefaultEnabled: false,
   streamOutput: true,
   showRetrievalStatus: false,
   widgetPosition: "right-bottom",
@@ -244,6 +332,7 @@ const DEFAULTS = {
   widgetTheme: "auto",
   welcomeMessage: "Hi! 有什么想了解的？",
   shortcutQuestions: "推荐热门文章\n关于AI的最新文章\n旅行推荐",
+  shortcutItems: cloneDefaultShortcuts(),
   widgetWidth: 400,
   widgetHeight: 600,
   widgetTriggerAlign: "auto",
@@ -259,6 +348,20 @@ const saving = ref(false);
 const saveMsg = ref("");
 const saveOk = ref(false);
 const rightTab = ref<"preview" | "debug">("preview");
+const enabledIntentRoutes = ref<IntentRouteOption[]>([]);
+const draggingShortcutIndex = ref<number | null>(null);
+
+const shortcutValidationError = computed(() => {
+  if (form.shortcutItems.length > 6) return "快捷问题最多 6 个";
+  for (const item of form.shortcutItems) {
+    if (!item.label.trim()) return "每个快捷问题都需要显示标题";
+    if (!item.query.trim()) return `「${item.label || "未命名"}」缺少实际问题`;
+    if (item.intentRouteId && !enabledIntentRoutes.value.some(route => route.id === item.intentRouteId)) {
+      return `「${item.label}」绑定的意图不存在或已停用`;
+    }
+  }
+  return "";
+});
 
 const widgetThemeColorValid = computed(() => {
   const value = form.widgetThemeColor.trim();
@@ -275,11 +378,10 @@ const iframeRef = ref<HTMLIFrameElement | null>(null);
 
 function sendPreviewConfig() {
   if (!iframeRef.value?.contentWindow) return;
-  const shortcuts = form.shortcutQuestions
-    .split("\n")
-    .map(s => s.trim())
-    .filter(Boolean)
-    .slice(0, 6);
+  const shortcuts = form.shortcutItems
+    .filter(item => item.enabled && item.query.trim())
+    .slice(0, 6)
+    .map(item => ({ ...item }));
   iframeRef.value.contentWindow.postMessage(
     {
       type: "ai-preview-config",
@@ -296,6 +398,8 @@ function sendPreviewConfig() {
         welcome: form.welcomeMessage,
         shortcuts,
         allowGuest: form.allowGuest,
+        allowVisitorReasoning: form.allowVisitorReasoning,
+        reasoningDefaultEnabled: form.reasoningDefaultEnabled,
       },
     },
     "*"
@@ -315,14 +419,101 @@ watch(
     form.widgetTriggerShape,
     form.widgetTriggerSize,
     form.welcomeMessage,
-    form.shortcutQuestions,
+    form.shortcutItems,
     form.allowGuest,
+    form.allowVisitorReasoning,
+    form.reasoningDefaultEnabled,
   ],
-  () => { sendPreviewConfig(); }
+  () => { sendPreviewConfig(); },
+  { deep: true }
 );
+
+function addShortcut() {
+  if (form.shortcutItems.length >= 6) return;
+  form.shortcutItems.push({
+    id: `shortcut-${Date.now()}`,
+    label: "新快捷问题",
+    query: "",
+    icon: "sparkles",
+    intentRouteId: "",
+    enabled: true,
+  });
+}
+
+function removeShortcut(index: number) {
+  form.shortcutItems.splice(index, 1);
+}
+
+function startShortcutDrag(index: number) {
+  draggingShortcutIndex.value = index;
+}
+
+function dropShortcut(index: number) {
+  const from = draggingShortcutIndex.value;
+  if (from === null || from === index) return;
+  const [item] = form.shortcutItems.splice(from, 1);
+  form.shortcutItems.splice(index, 0, item);
+  draggingShortcutIndex.value = null;
+}
+
+function testShortcut(item: ShortcutItem) {
+  if (!item.query.trim()) return;
+  rightTab.value = "preview";
+  iframeRef.value?.contentWindow?.postMessage({
+    type: "ai-preview-query",
+    payload: { query: item.query.trim(), intentRouteId: item.intentRouteId || "" },
+  }, "*");
+}
+
+function resetShortcutSection() {
+  form.welcomeMessage = DEFAULTS.welcomeMessage;
+  form.shortcutItems = cloneDefaultShortcuts();
+  Toast.success("已恢复默认");
+}
+
+async function loadIntentRoutes() {
+  try {
+    const resp = await fetch("/apis/console.api.ai-suite.halo.run/v1alpha1/intent-routes");
+    if (!resp.ok) return;
+    const routes = await resp.json();
+    enabledIntentRoutes.value = Array.isArray(routes)
+      ? routes.filter((route: IntentRouteOption) => route.enabled)
+      : [];
+  } catch {}
+}
+
+function migrateLegacyShortcuts() {
+  if (Array.isArray(form.shortcutItems) && form.shortcutItems.length) return;
+  form.shortcutItems = String(form.shortcutQuestions || "")
+    .split("\n")
+    .map(value => value.trim())
+    .filter(Boolean)
+    .slice(0, 6)
+    .map((query, index) => inferLegacyShortcut(query, index));
+}
+
+function inferLegacyShortcut(query: string, index: number): ShortcutItem {
+  let icon = "sparkles";
+  let intentRouteId = "";
+  if (query.includes("热门") || query.includes("热文")) {
+    icon = "fire";
+    intentRouteId = "builtin-hot-articles";
+  } else if (query.includes("最新") || query.includes("最近")) {
+    icon = "clock";
+    intentRouteId = "builtin-latest-posts";
+  } else if (query.includes("标签")) {
+    icon = "tag";
+    intentRouteId = "builtin-by-tag";
+  } else if (query.includes("分类")) {
+    icon = "category";
+    intentRouteId = "builtin-by-category";
+  }
+  return { id: `legacy-${index + 1}`, label: query, query, icon, intentRouteId, enabled: true };
+}
 
 function resetDefaults() {
   Object.assign(form, DEFAULTS);
+  form.shortcutItems = cloneDefaultShortcuts();
   Toast.success("已恢复默认配置");
 }
 
@@ -338,6 +529,16 @@ async function save() {
     Toast.error("主题色格式不正确");
     return;
   }
+  if (shortcutValidationError.value) {
+    Toast.error(shortcutValidationError.value);
+    return;
+  }
+  // 保留旧字段，便于旧版插件回退时仍能读取基本问题。
+  form.shortcutQuestions = form.shortcutItems
+    .filter(item => item.enabled)
+    .map(item => item.query.trim())
+    .filter(Boolean)
+    .join("\n");
   await saveGroup("chat", form, saving, saveMsg, saveOk);
   if (saveOk.value) {
     Toast.success(saveMsg.value || "保存成功");
@@ -347,7 +548,17 @@ async function save() {
 }
 
 onMounted(async () => {
-  await loadGroup("chat", form);
+  const [chatGroup] = await Promise.all([loadGroup("chat", form), loadIntentRoutes()]);
+  if ((chatGroup as any)?.allowVisitorReasoning === undefined) {
+    form.allowVisitorReasoning = true;
+    form.reasoningDefaultEnabled = (chatGroup as any)?.reasoningMode === "enabled";
+  }
+  if (!Array.isArray((chatGroup as any)?.shortcutItems)
+      && typeof (chatGroup as any)?.shortcutQuestions === "string") {
+    form.shortcutItems = [];
+    migrateLegacyShortcuts();
+  }
+  sendPreviewConfig();
 });
 </script>
 
@@ -399,12 +610,14 @@ onMounted(async () => {
   margin: 0 0 16px 0;
 }
 .ai-preview-iframe {
-  width: 400px;
-  height: 600px;
+  width: min(100%, 400px);
+  height: min(600px, calc(100vh - 300px));
+  min-height: 460px;
   border: none;
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 12px rgba(0,0,0,0.04);
+  align-self: center;
 }
 
 /* Tab 切换 — 下划线指示器 */
@@ -466,6 +679,25 @@ onMounted(async () => {
 .ai-color-preview { width: 46px; height: 46px; border-radius: 10px; flex-shrink: 0; box-shadow: inset 0 0 0 4px #fff, 0 0 0 1px #e5e7eb; border: 1px solid #e5e7eb; }
 .ai-color-row .ai-input { flex: 1; }
 .ai-helper-text.error { color: #dc2626; }
+.shortcut-editor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.shortcut-editor-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.shortcut-editor-item { border: 1px solid #dbe2ea; border-radius: 12px; background: #fff; padding: 12px; transition: opacity .15s, border-color .15s, box-shadow .15s; }
+.shortcut-editor-item:hover { border-color: #b8c4d3; box-shadow: 0 4px 14px rgba(15, 23, 42, .055); }
+.shortcut-editor-item.disabled { opacity: .58; }
+.shortcut-editor-item.dragging { opacity: .42; border-style: dashed; }
+.shortcut-editor-top { display: flex; align-items: center; gap: 9px; }
+.shortcut-drag, .shortcut-delete { border: 0; background: transparent; color: #94a3b8; cursor: pointer; }
+.shortcut-drag { padding: 4px 1px; font-size: 15px; letter-spacing: -3px; cursor: grab; }
+.shortcut-delete { width: 28px; height: 28px; border-radius: 7px; font-size: 20px; line-height: 1; }
+.shortcut-delete:hover { color: #dc2626; background: #fef2f2; }
+.shortcut-order { display: inline-flex; align-items: center; justify-content: center; width: 23px; height: 23px; border-radius: 7px; background: #eef2ff; color: #4f46e5; font-size: 11px; font-weight: 700; }
+.shortcut-label-input { flex: 1; min-width: 0; height: 36px; font-weight: 650; }
+.shortcut-enabled { display: inline-flex; align-items: center; gap: 5px; color: #475569; font-size: 12px; white-space: nowrap; }
+.shortcut-editor-grid { display: grid; grid-template-columns: minmax(220px, 2fr) minmax(120px, .8fr); gap: 10px 12px; margin-top: 11px; padding-left: 42px; }
+.shortcut-editor-grid .ai-field-label { font-size: 11px; }
+.shortcut-intent-field { grid-column: 1; }
+.shortcut-test-cell { display: flex; align-items: flex-end; padding-bottom: 1px; }
+.shortcut-empty { margin-top: 12px; padding: 20px; border: 1px dashed #cbd5e1; border-radius: 11px; color: #64748b; font-size: 12px; text-align: center; }
 .ai-range { width: 100%; height: 6px; appearance: none; background: linear-gradient(to right, #111827 0%, #111827 50%, #e5e7eb 50%, #e5e7eb 100%); border-radius: 999px; outline: none; cursor: pointer; margin-top: 4px; }
 .ai-range::-webkit-slider-thumb { appearance: none; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid #111827; box-shadow: 0 2px 8px rgba(17,24,39,0.15); cursor: pointer; }
 .ai-range::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid #111827; box-shadow: 0 2px 8px rgba(17,24,39,0.15); cursor: pointer; }
@@ -538,4 +770,114 @@ onMounted(async () => {
   white-space: nowrap;
 }
 .ai-shape-item.active .ai-shape-label { color: var(--ai-chat-color, #4F46E5); font-weight: 600; }
+
+@media (max-width: 1280px) {
+  .chat-page .ai-content {
+    gap: 16px;
+    padding: 0 18px;
+  }
+
+  .chat-preview {
+    flex-basis: 360px;
+    padding: 20px 14px;
+  }
+
+  .ai-preview-iframe {
+    min-height: 420px;
+  }
+}
+
+@media (max-width: 900px) {
+  .chat-page {
+    height: auto;
+    min-height: calc(100vh - 176px);
+    overflow: visible;
+  }
+
+  .chat-page .ai-content {
+    display: block;
+    height: auto;
+    padding: 0 16px 32px;
+  }
+
+  .chat-config {
+    padding: 18px 0 0;
+  }
+
+  .chat-config-scroll {
+    overflow: visible;
+  }
+
+  .chat-preview {
+    margin-top: 22px;
+    padding: 0 0 20px;
+    overflow: visible;
+  }
+
+  .ai-preview-label {
+    margin-bottom: 12px;
+    font-size: 16px;
+  }
+
+  .ai-tab-content {
+    min-height: 0;
+  }
+
+  .ai-preview-iframe {
+    width: min(100%, 400px);
+    height: 560px;
+    min-height: 420px;
+  }
+
+  .ai-debug-tab {
+    max-height: 560px;
+    min-height: 320px;
+  }
+}
+
+@media (max-width: 640px) {
+  .chat-page .ai-content {
+    padding: 0 10px 28px;
+  }
+
+  .chat-config {
+    padding-top: 14px;
+  }
+
+  .chat-config-scroll {
+    gap: 16px;
+  }
+
+  .ai-form-grid-2 {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .shortcut-editor-grid { grid-template-columns: 1fr; padding-left: 0; }
+  .shortcut-intent-field { grid-column: auto; }
+  .shortcut-editor-top { flex-wrap: wrap; }
+
+  .ai-icon-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .ai-shape-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ai-preview-tabs {
+    gap: 18px;
+  }
+
+  .ai-preview-iframe {
+    height: 520px;
+    min-height: 380px;
+  }
+}
+
+@media (max-width: 420px) {
+  .ai-icon-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
 </style>

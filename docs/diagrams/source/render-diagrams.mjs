@@ -215,17 +215,17 @@ const diagrams = {
     ]
   },
   "request-routing": {
-    title:"访客问题的双路径编排",subtitle:"意图 Pipeline 与 RAG 共用输出协议、引用、日志和用量统计",height:650,
+    title:"访客问题的双路径编排",subtitle:"快捷问题优先绑定路由；意图路径输出可信卡片，RAG 路径通过 AI Foundation 流式生成",height:700,
     nodes:[
-      {id:"q",x:55,y:250,w:190,h:90,title:"访客问题",subtitle:"message + history",tone:"blue"},
-      {id:"endpoint",x:290,y:250,w:200,h:90,title:"公开 Endpoint",subtitle:"参数校验与限流",tone:"indigo"},
-      {id:"detect",x:535,y:250,w:210,h:90,title:"IntentDetector",subtitle:"正则优先 · LLM 兜底",tone:"purple"},
-      {id:"pipeline",x:830,y:145,w:220,h:90,title:"意图 Pipeline",subtitle:"实时 Post 过滤与排序",tone:"orange"},
-      {id:"rag",x:830,y:355,w:220,h:90,title:"RAG Pipeline",subtitle:"BM25 · HNSW · RRF",tone:"blue"},
-      {id:"intentllm",x:1090,y:145,w:210,h:90,title:"意图回答",subtitle:"候选文章 + 模板",tone:"purple"},
-      {id:"ragllm",x:1090,y:355,w:210,h:90,title:"RAG 回答",subtitle:"上下文 + 引用",tone:"purple"},
-      {id:"sse",x:1090,y:500,w:210,h:80,title:"统一输出",subtitle:"SSE · 引用 · 日志",tone:"green"},
-    ],edges:[{from:"q",to:"endpoint"},{from:"endpoint",to:"detect"},{from:"detect",to:"pipeline",label:"命中意图",tone:"orange"},{from:"detect",to:"rag",label:"未命中"},{from:"pipeline",to:"intentllm",tone:"orange"},{from:"rag",to:"ragllm"},{from:"intentllm",to:"sse",tone:"green"},{from:"ragllm",to:"sse",tone:"green"}]
+      {id:"q",x:45,y:275,w:180,h:90,title:"访客请求",subtitle:"问题 · 历史 · 可选参数",tone:"blue"},
+      {id:"endpoint",x:265,y:275,w:200,h:90,title:"公开问答接口",subtitle:"访客开关 · 参数校验 · 限流",tone:"indigo"},
+      {id:"route",x:505,y:275,w:220,h:90,title:"路由解析",subtitle:"快捷路由优先 · 否则自动识别",tone:"purple"},
+      {id:"pipeline",x:790,y:145,w:220,h:90,title:"意图处理管线",subtitle:"实时文章筛选与排序",tone:"orange"},
+      {id:"intentresp",x:1060,y:145,w:245,h:90,title:"可信结构化结果",subtitle:"确定性导语 · 文章卡片 · 引用",tone:"orange"},
+      {id:"rag",x:790,y:405,w:220,h:90,title:"RAG 检索管线",subtitle:"增强 · BM25 · HNSW · RRF",tone:"blue"},
+      {id:"foundation",x:1060,y:405,w:245,h:90,title:"AI Foundation 模型网关",subtitle:"LlmClient · 对话模型 · 流式生成",tone:"purple"},
+      {id:"sse",x:790,y:565,w:515,h:84,title:"两条路径统一 SSE 输出",subtitle:"引用 · 卡片 · 推理 · 回答片段 · 日志编号 · 异步日志",tone:"green"},
+    ],edges:[{from:"q",to:"endpoint"},{from:"endpoint",to:"route"},{from:"route",to:"pipeline",label:"指定或命中意图",tone:"orange"},{from:"route",to:"rag",label:"未命中"},{from:"pipeline",to:"intentresp",tone:"orange"},{from:"rag",to:"foundation"}]
   },
   "frontend-boundaries": {
     title:"前后端与权限边界",subtitle:"三种浏览器入口分别进入公开或管理 API，再汇入同一服务层",height:560,
@@ -341,10 +341,10 @@ const sequences = {
     ]
   },
   "sse-event-sequence": {
-    title:"访客聊天 SSE 事件顺序",subtitle:"引用和 logId 是命名事件，token 与 DONE 使用默认 data 事件",height:620,rowGap:72,
+    title:"访客聊天 SSE 事件顺序",subtitle:"引用、结构化结果和 logId 是命名事件，token 与 DONE 使用默认 data 事件",height:680,rowGap:64,
     actors:[{id:"client",title:"客户端",subtitle:"ReadableStream",tone:"blue"},{id:"api",title:"Chat Endpoint",subtitle:"text/event-stream",tone:"indigo"},{id:"service",title:"ChatService",subtitle:"Intent / RAG",tone:"purple"}],
     messages:[
-      {from:"client",to:"api",label:"POST message + history"},{from:"api",to:"service",label:"开始流式问答"},{from:"service",to:"api",label:"引用 + token stream",tone:"green",dashed:true},{from:"api",to:"client",label:"event: citations（可选）",tone:"green",dashed:true},{from:"api",to:"client",label:"data: {content: token}",tone:"green",dashed:true},{from:"api",to:"client",label:"event: logId",tone:"green",dashed:true},{from:"api",to:"client",label:"data: [DONE]",tone:"orange",dashed:true}
+      {from:"client",to:"api",label:"POST message + history"},{from:"api",to:"service",label:"开始流式问答"},{from:"service",to:"api",label:"引用 + 结构化结果 + token",tone:"green",dashed:true},{from:"api",to:"client",label:"event: citations（可选）",tone:"green",dashed:true},{from:"api",to:"client",label:"event: structured_result（可选）",tone:"green",dashed:true},{from:"api",to:"client",label:"data: {content: token}",tone:"green",dashed:true},{from:"api",to:"client",label:"event: logId",tone:"green",dashed:true},{from:"api",to:"client",label:"data: [DONE]",tone:"orange",dashed:true}
     ]
   },
   "first-rag-sequence": {

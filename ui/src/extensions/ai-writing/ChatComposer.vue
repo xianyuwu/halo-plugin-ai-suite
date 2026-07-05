@@ -215,6 +215,7 @@ const canSend = computed(
 
 .ai-chat-input {
   flex: 1;
+  min-width: 0;
   min-height: 38px;
   max-height: 120px;
   padding: 8px 10px;
@@ -281,6 +282,20 @@ const canSend = computed(
 @keyframes ai-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 520px) {
+  .ai-chat-composer {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+  }
+  .ai-chat-history {
+    max-height: 52vh;
+    padding: 12px;
+  }
+  .ai-chat-input-row {
+    padding: 10px;
   }
 }
 </style>

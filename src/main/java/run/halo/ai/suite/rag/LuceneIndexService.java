@@ -462,30 +462,19 @@ public class LuceneIndexService {
     /**
      * 获取所有已索引文章的切片计数。
      * <p>
-     * 实现说明：{@code postId} 是 StringField（精确 term，有倒排索引），所以用
-     * {@link TermsEnum#docFreq()} 直接聚合每个 postId term 的文档频次即可，
-     * 时间复杂度 O(唯一 post 数)，且无需构造 ScoreDoc 数组、无需读存储字段。
-     * <p>
-     * 历史实现用 {@code MatchAllDocsQuery + Integer.MAX_VALUE} 全表搜索，会把全部
-     * 文档的 ScoreDoc 数组常驻内存，索引上规模（数十万 chunk）时直接 OOM。
-     * 注意：{@code docFreq()} 含已删除文档（直到 segment 合并），但本场景用于
-     * 展示统计，可接受；如需精确 live 数，应走 liveDocs 遍历（见下两方法）。
+     * 实现说明：必须按 liveDocs 统计。Lucene 的 {@link TermsEnum#docFreq()}
+     * 会包含已删除但尚未段合并的文档，单篇重建后会把旧切片也算进去，导致后台
+     * 误显示“关键词覆盖不完整”。
      */
     public Map<String, Integer> getPostChunkCounts() throws IOException {
         ensureInitialized();
         IndexSearcher searcher = searcherManager.acquire();
         try {
             Map<String, Integer> counts = new HashMap<>();
-            // postId 是 StringField，每个文档只有一个 term 值；遍历倒排索引聚合。
-            for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
-                Terms terms = ctx.reader().terms(FIELD_POST_ID);
-                if (terms == null) continue;
-                TermsEnum te = terms.iterator();
-                while (te.next() != null) {
-                    String postId = te.term().utf8ToString();
-                    counts.merge(postId, te.docFreq(), Integer::sum);
-                }
-            }
+            forEachLiveDoc(searcher, doc -> {
+                String postId = doc.get(FIELD_POST_ID);
+                if (postId != null) counts.merge(postId, 1, Integer::sum);
+            });
             return counts;
         } finally {
             searcherManager.release(searcher);

@@ -16,6 +16,8 @@
           :to="{ name: item.name }"
           class="ai-nav-item"
           active-class="active"
+          :title="item.label"
+          :aria-label="item.label"
         >
           <span class="ai-nav-icon"><component :is="item.icon" /></span>
           <span class="ai-nav-label">{{ item.label }}</span>
@@ -33,6 +35,8 @@
           :to="{ name: child.name }"
           class="ai-nav-item ai-nav-item-child"
           active-class="active"
+          :title="child.label"
+          :aria-label="child.label"
         >
           <span class="ai-nav-icon"><component :is="child.icon" /></span>
           <span class="ai-nav-label">{{ child.label }}</span>
@@ -47,6 +51,8 @@
           :to="{ name: item.name }"
           class="ai-nav-item"
           active-class="active"
+          :title="item.label"
+          :aria-label="item.label"
         >
           <span class="ai-nav-icon"><component :is="item.icon" /></span>
           <span class="ai-nav-label">{{ item.label }}</span>

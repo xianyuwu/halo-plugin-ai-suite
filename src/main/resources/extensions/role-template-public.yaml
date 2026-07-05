@@ -23,5 +23,7 @@ rules:
   # 精确授权流式聊天和 AI 搜索回答，不扩大其他公开端点权限。
   - nonResourceURLs:
       - /apis/api.ai-suite.halo.run/v1alpha1/chat/stream
+      - /apis/api.ai-suite.halo.run/v1alpha2/chat/stream
+      - /apis/api.ai-suite.halo.run/v1alpha1/chat/feedback
       - /apis/api.ai-suite.halo.run/v1alpha1/search/answer
     verbs: ["create"]

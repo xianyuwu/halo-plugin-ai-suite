@@ -11,9 +11,11 @@
 ### 检查插件状态
 
 ```bash
-curl -u USER:PASSWORD \
+curl -u YOUR_ADMIN_USERNAME \
   http://127.0.0.1:8090/apis/plugin.halo.run/v1alpha1/plugins/ai-suite
 ```
+
+请将用户名和地址替换为实际环境值。curl 会交互式提示输入密码，避免把明文密码保存在命令历史中。
 
 ### 查看日志
 

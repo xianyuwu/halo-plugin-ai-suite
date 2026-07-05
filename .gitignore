@@ -50,5 +50,6 @@ tmp/
 .harness/
 .mavis/
 .opencode/
+.playwright-cli/
 .pnpm-store/
 .work/

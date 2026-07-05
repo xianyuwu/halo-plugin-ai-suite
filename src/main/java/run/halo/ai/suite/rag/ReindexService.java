@@ -2,7 +2,11 @@ package run.halo.ai.suite.rag;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.cn.smart.SmartChineseAnalyzer;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -16,6 +20,7 @@ import run.halo.app.extension.ReactiveExtensionClient;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +62,12 @@ public class ReindexService {
     // Spring WebFlux 默认 buffer 上限 262144 字节，向量响应容易超限
     // 5 个 chunk × ~8KB/向量 ≈ 40KB，远低于上限，留足余量
     private static final int EMBED_BATCH_SIZE = 5;
+    private static final int KEYWORD_OUTPUT_TOKENS = 256;
+    private static final List<String> KEYWORD_STOP_WORDS = List.of(
+        "一个", "一些", "这个", "这些", "我们", "你们", "他们", "进行", "通过", "使用", "可以",
+        "需要", "如果", "因为", "所以", "时候", "里面", "然后", "没有", "不是", "以及",
+        "the", "and", "for", "with", "from", "this", "that", "http", "https"
+    );
 
     // 跨文章并发上限 — 同时最多 4 篇文章在调 embedding。
     // Reactor flatMap 默认并发是 256，容易触发 AI Foundation 背后的模型服务限流。
@@ -558,12 +569,12 @@ public class ReindexService {
                 Mono<List<TextChunk>> chunksMono;
                 if (chunkConfig.isAutoKeywords() && chunkConfig.getAutoKeywordsCount() > 0) {
                     emitSingle(sink, "keywords", "", 0, 20);
-                    int maxTokens = Math.max(256, chunkConfig.getKeywordsMaxTokens());
-                    int batchSize = Math.max(5, chunkConfig.getKeywordsBatchSize());
+                    int inputTokenLimit = Math.max(512, chunkConfig.getKeywordsMaxTokens());
+                    int batchSize = Math.max(1, chunkConfig.getKeywordsBatchSize());
                     AtomicInteger truncated = new AtomicInteger(0);
                     AtomicInteger kwFailed = new AtomicInteger(0);
                     chunksMono = extractKeywords(chunks, chunkConfig.getAutoKeywordsCount(),
-                        maxTokens, batchSize)
+                        inputTokenLimit, batchSize)
                         .map(result -> {
                             truncated.addAndGet(result.truncatedCount());
                             if (result.failed()) {
@@ -671,10 +682,10 @@ public class ReindexService {
                 // 自动提取关键词（如果开启）
                 Mono<List<TextChunk>> chunksMono;
                 if (chunkConfig.isAutoKeywords() && chunkConfig.getAutoKeywordsCount() > 0) {
-                    int maxTokens = Math.max(256, chunkConfig.getKeywordsMaxTokens());
-                    int batchSize = Math.max(5, chunkConfig.getKeywordsBatchSize());
+                    int inputTokenLimit = Math.max(512, chunkConfig.getKeywordsMaxTokens());
+                    int batchSize = Math.max(1, chunkConfig.getKeywordsBatchSize());
                     chunksMono = extractKeywords(chunks, chunkConfig.getAutoKeywordsCount(),
-                        maxTokens, batchSize)
+                        inputTokenLimit, batchSize)
                         .map(result -> {
                             truncatedKeywords.addAndGet(result.truncatedCount());
                             if (result.failed()) {
@@ -770,78 +781,25 @@ public class ReindexService {
     }
 
     /**
-     * 调用 LLM 为切片提取关键词，按每批 20 个切片分批以避免 token 溢出。
-     * 返回 KeywordExtractResult 包含富关键词的切片列表和被截断的切片数。
+     * 调用 LLM 为切片提取关键词。
+     * <p>关键词提取必须保持切片与响应一一对应。批量提示词容易被模型合并成一行输出，
+     * 导致后续切片全部拿不到关键词，所以这里按单切片请求，仅用 keywordsBatchSize 控制并发。
      */
     private Mono<KeywordExtractResult> extractKeywords(List<TextChunk> chunks, int count,
-                                                        int maxTokens, int batchSize) {
-        int safeBatchSize = Math.max(1, Math.min(batchSize, 50)); // 钳制 1~50
-        List<List<TextChunk>> batches = splitIntoBatches(chunks, safeBatchSize);
+                                                        int inputTokenLimit, int batchSize) {
+        int keywordCount = Math.max(1, Math.min(count, 10));
+        int concurrency = Math.max(1, Math.min(batchSize, 4));
         AtomicInteger truncatedTotal = new AtomicInteger(0);
 
         return aiProperties.getModelConfig()
             .flatMapMany(modelConfig ->
-                Flux.fromIterable(batches)
-                    .index()
-                    .concatMap(indexed -> {
-                        long batchIdx = indexed.getT1();
-                        List<TextChunk> batch = indexed.getT2();
-
-                        StringBuilder sb = new StringBuilder();
-                        sb.append("为以下文本分别提取").append(count)
-                            .append("个最相关的关键词，用逗号分隔。只输出关键词，每行一个文本，不要加序号或任何解释。\n\n");
-                        for (int i = 0; i < batch.size(); i++) {
-                            sb.append("文本").append(i + 1).append(": ")
-                                .append(batch.get(i).content()).append("\n\n");
-                        }
-
-                        return llmClient.chatStreamInternal(
-                            modelConfig.getEffectiveChatModel(),
-                            List.of(Map.of("role", "user", "content", sb.toString())),
-                            0.1f,
-                            maxTokens,
-                            null,
-                            UsageScenario.KEYWORD_EXTRACT
-                        )
-                        .collectList()
-                        .map(tokens -> String.join("", tokens))
-                        .map(response -> {
-                            List<String> lines = parseKeywordLines(response);
-                            int truncated = Math.max(0, batch.size() - lines.size());
-                            truncatedTotal.addAndGet(truncated);
-                            if (truncated > 0) {
-                                log.warn("[ReindexService] 关键词响应截断: {}/{} 个切片获取到关键词",
-                                    lines.size(), batch.size());
-                            }
-                            List<TextChunk> result = new ArrayList<>();
-                            for (int i = 0; i < batch.size(); i++) {
-                                TextChunk original = batch.get(i);
-                                List<String> keywords;
-                                if (i < lines.size()) {
-                                    String line = lines.get(i).replaceAll("[,，、；;]", ",").trim();
-                                    keywords = java.util.Arrays.stream(line.split(","))
-                                        .map(String::trim)
-                                        .filter(k -> !k.isEmpty())
-                                        .limit(count)
-                                        .toList();
-                                } else {
-                                    keywords = List.of();
-                                }
-                                result.add(new TextChunk(
-                                    original.id(), original.postId(), original.postTitle(),
-                                    original.content(), original.chunkIndex(), keywords
-                                ));
-                            }
-                            return result;
-                        });
-                    })
+                Flux.fromIterable(chunks)
+                    .flatMapSequential(chunk -> extractKeywordChunk(chunk, keywordCount, inputTokenLimit,
+                        modelConfig, truncatedTotal), concurrency)
             )
             .collectList()
-            .map(batchResults -> {
-                List<TextChunk> all = new ArrayList<>();
-                for (List<TextChunk> batch : batchResults) {
-                    all.addAll(batch);
-                }
+            .map(results -> {
+                List<TextChunk> all = new ArrayList<>(results);
                 all.sort(java.util.Comparator.comparingInt(TextChunk::chunkIndex));
                 return new KeywordExtractResult(all, truncatedTotal.get(), false);
             })
@@ -851,20 +809,212 @@ public class ReindexService {
             });
     }
 
-    private List<String> parseKeywordLines(String response) {
+    private Mono<TextChunk> extractKeywordChunk(TextChunk chunk,
+                                                int count,
+                                                int inputTokenLimit,
+                                                AIProperties.ModelConfig modelConfig,
+                                                AtomicInteger truncatedTotal) {
+        String prompt = buildSingleKeywordPrompt(chunk, count, inputTokenLimit);
+        int outputTokens = keywordOutputTokens(count);
+        return llmClient.chatInternal(
+                modelConfig.getEffectiveChatModel(),
+                List.of(Map.of("role", "user", "content", prompt)),
+                0.1f,
+                outputTokens,
+                null,
+                UsageScenario.KEYWORD_EXTRACT
+            )
+            .map(response -> {
+                List<String> keywords = parseKeywordList(response, count);
+                if (keywords.isEmpty()) {
+                    keywords = fallbackKeywords(chunk, count);
+                    if (keywords.isEmpty()) {
+                        truncatedTotal.incrementAndGet();
+                    }
+                    log.warn("[ReindexService] 单个切片关键词响应为空，使用本地兜底: postId={}, title={}, chunkIndex={}, chars={}, fallback={}, response={}",
+                        chunk.postId(), chunk.postTitle(), chunk.chunkIndex(),
+                        chunk.content() == null ? 0 : chunk.content().length(), keywords,
+                        abbreviate(response, 200));
+                }
+                return withKeywords(chunk, keywords);
+            })
+            .onErrorResume(e -> {
+                String error = keywordError(e);
+                List<String> fallback = fallbackKeywords(chunk, count);
+                if (fallback.isEmpty()) {
+                    truncatedTotal.incrementAndGet();
+                }
+                log.warn("[ReindexService] 单个切片关键词提取失败，使用本地兜底: postId={}, title={}, chunkIndex={}, chars={}, fallback={}, error={}",
+                    chunk.postId(), chunk.postTitle(), chunk.chunkIndex(),
+                    chunk.content() == null ? 0 : chunk.content().length(), fallback, error);
+                return Mono.just(withKeywords(chunk, fallback));
+            });
+    }
+
+    private String buildSingleKeywordPrompt(TextChunk chunk, int count, int inputTokenLimit) {
+        String title = sanitizeKeywordContent(chunk.postTitle());
+        String prefix = "为下面这一段博客内容提取" + count
+            + "个最相关的中文关键词。只输出关键词，用中文逗号分隔；不要输出序号、标题、解释或 Markdown。\n\n"
+            + "文章标题: " + title + "\n"
+            + "内容: ";
+        int contentBudget = Math.max(64, inputTokenLimit - estimateTokens(prefix));
+        String content = truncateByEstimatedTokens(sanitizeKeywordContent(chunk.content()), contentBudget);
+        return prefix + content;
+    }
+
+    private String sanitizeKeywordContent(String content) {
+        if (content == null || content.isBlank()) return "";
+        return content.replaceAll("[\\p{Cntrl}&&[^\\r\\n\\t]]", " ");
+    }
+
+    private TextChunk withKeywords(TextChunk original, List<String> keywords) {
+        return new TextChunk(
+            original.id(), original.postId(), original.postTitle(),
+            original.content(), original.chunkIndex(), keywords
+        );
+    }
+
+    private String keywordError(Throwable e) {
+        Throwable cur = e;
+        while (cur instanceof RuntimeException && cur.getCause() != null) {
+            cur = cur.getCause();
+        }
+        if (cur instanceof WebClientResponseException responseException) {
+            String body = responseException.getResponseBodyAsString();
+            String msg = responseException.getStatusCode() + " " + responseException.getStatusText();
+            if (body != null && !body.isBlank()) {
+                msg += " body=" + body;
+            }
+            return msg.length() > 500 ? msg.substring(0, 500) + "..." : msg;
+        }
+        String msg = cur.getMessage();
+        if (msg == null || msg.isBlank()) {
+            msg = cur.getClass().getSimpleName();
+        }
+        return msg.length() > 500 ? msg.substring(0, 500) + "..." : msg;
+    }
+
+    private int keywordOutputTokens(int keywordCount) {
+        return Math.min(KEYWORD_OUTPUT_TOKENS, Math.max(128, Math.max(1, keywordCount) * 32 + 64));
+    }
+
+    private String truncateByEstimatedTokens(String text, int maxTokens) {
+        if (text == null || text.isBlank() || maxTokens <= 0) {
+            return "";
+        }
+        StringBuilder result = new StringBuilder();
+        int used = 0;
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            int cost = estimateTokenCost(ch);
+            if (used + cost > maxTokens) {
+                break;
+            }
+            result.append(ch);
+            used += cost;
+        }
+        return result.toString();
+    }
+
+    private int estimateTokens(String text) {
+        if (text == null || text.isBlank()) {
+            return 0;
+        }
+        int tokens = 0;
+        for (int i = 0; i < text.length(); i++) {
+            tokens += estimateTokenCost(text.charAt(i));
+        }
+        return tokens;
+    }
+
+    private int estimateTokenCost(char ch) {
+        if (Character.UnicodeScript.of(ch) == Character.UnicodeScript.HAN) {
+            return 1;
+        }
+        if (Character.isWhitespace(ch)) {
+            return 0;
+        }
+        return 1;
+    }
+
+    private List<String> parseKeywordList(String response, int count) {
         if (response == null || response.isBlank()) {
             return List.of();
         }
-        return response.lines()
+        String normalized = response
+            .replace("```json", "")
+            .replace("```", "")
+            .replaceAll("(?i)keywords?\\s*[:：]", "")
+            .replaceAll("关键词\\s*[:：]", "")
+            .replaceAll("[\\[\\]\"'`]", "")
+            .replaceAll("[，、；;\\n\\r]+", ",");
+        return java.util.Arrays.stream(normalized.split(","))
             .map(String::trim)
-            .filter(line -> !line.isBlank())
-            .filter(line -> !line.startsWith("```"))
-            .map(line -> line.replaceFirst("^[-*•]\\s*", ""))
-            .map(line -> line.replaceFirst("^(文本\\s*)?\\d+\\s*[.、:：)）-]?\\s*", ""))
-            .map(line -> line.replaceFirst("^关键词\\s*[:：]\\s*", ""))
-            .map(String::trim)
-            .filter(line -> !line.isBlank())
+            .map(item -> item.replaceFirst("^[-*•\\d.、:：)）\\s]+", "").trim())
+            .filter(keyword -> !keyword.isBlank())
+            .distinct()
+            .limit(Math.max(1, count))
             .toList();
+    }
+
+    private List<String> fallbackKeywords(TextChunk chunk, int count) {
+        Map<String, Integer> scores = new HashMap<>();
+        addKeywordTerms(scores, chunk.postTitle(), 3);
+        addKeywordTerms(scores, chunk.content(), 1);
+        return scores.entrySet().stream()
+            .sorted((left, right) -> {
+                int score = Integer.compare(right.getValue(), left.getValue());
+                if (score != 0) {
+                    return score;
+                }
+                return Integer.compare(right.getKey().length(), left.getKey().length());
+            })
+            .map(Map.Entry::getKey)
+            .limit(Math.max(1, count))
+            .toList();
+    }
+
+    private void addKeywordTerms(Map<String, Integer> scores, String text, int weight) {
+        if (text == null || text.isBlank()) {
+            return;
+        }
+        try (SmartChineseAnalyzer analyzer = new SmartChineseAnalyzer();
+             TokenStream stream = analyzer.tokenStream("content", text)) {
+            CharTermAttribute termAttr = stream.addAttribute(CharTermAttribute.class);
+            stream.reset();
+            while (stream.incrementToken()) {
+                String term = termAttr.toString().trim().toLowerCase(java.util.Locale.ROOT);
+                if (isUsefulKeywordTerm(term)) {
+                    scores.merge(term, weight, Integer::sum);
+                }
+            }
+            stream.end();
+        } catch (Exception e) {
+            log.debug("[ReindexService] 本地关键词兜底分词失败: {}", e.getMessage());
+        }
+    }
+
+    private boolean isUsefulKeywordTerm(String term) {
+        if (term == null || term.length() < 2 || term.length() > 32) {
+            return false;
+        }
+        if (KEYWORD_STOP_WORDS.contains(term)) {
+            return false;
+        }
+        if (term.matches("\\d+")) {
+            return false;
+        }
+        return term.matches(".*[\\p{IsHan}A-Za-z].*");
+    }
+
+    private String abbreviate(String text, int maxLength) {
+        if (text == null) {
+            return "";
+        }
+        String normalized = text.replaceAll("\\s+", " ").trim();
+        return normalized.length() <= maxLength
+            ? normalized
+            : normalized.substring(0, maxLength) + "...";
     }
 
     private record KeywordExtractResult(List<TextChunk> chunks, int truncatedCount,

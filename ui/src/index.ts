@@ -20,6 +20,7 @@ import EvaluationView from "./views/EvaluationView.vue";
 import AgentView from "./views/AgentView.vue";
 import ChatLogsView from "./views/ChatLogsView.vue";
 import IntentRoutesView from "./views/IntentRoutesView.vue";
+import IntentRouteAiCreateView from "./views/IntentRouteAiCreateView.vue";
 import { AiWritingExtension } from "./extensions/ai-writing";
 import { disposeOutline } from "./extensions/ai-writing/outline-state";
 import { getWritingEnabled } from "./extensions/ai-writing/writing-enabled";
@@ -148,6 +149,12 @@ export default definePlugin({
             name: "AISuiteIntentRoutes",
             component: IntentRoutesView,
             meta: { title: "意图路由", desc: "配置自定义问答意图，命中后跳过 RAG 走可编排的处理器 pipeline" },
+          },
+          {
+            path: "intent-routes/ai-create",
+            name: "AISuiteIntentRouteAiCreate",
+            component: IntentRouteAiCreateView,
+            meta: { title: "AI 创建意图路由", desc: "用自然语言生成、检查并测试意图路由草稿" },
           },
         ],
       },

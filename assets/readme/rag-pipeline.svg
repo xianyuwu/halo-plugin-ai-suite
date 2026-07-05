@@ -1,52 +1,84 @@
-<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="1600" height="1000" viewBox="0 0 1600 1000" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>RAG 检索管线</title>
+  <desc>展示查询准备、关键词向量混合三种检索模式、并行补充召回、合并去重、可选重排序和 RAG 上下文构建。RAG 管线止于上下文与引用，最终回答由 ChatService 通过 Halo AI Foundation 生成。</desc>
   <defs>
-    <linearGradient id="bg" x1="70" y1="20" x2="1530" y2="880" gradientUnits="userSpaceOnUse"><stop stop-color="#0B1220"/><stop offset=".55" stop-color="#111C35"/><stop offset="1" stop-color="#17143A"/></linearGradient>
-    <linearGradient id="core" x1="560" y1="370" x2="1010" y2="540" gradientUnits="userSpaceOnUse"><stop stop-color="#2563EB"/><stop offset=".55" stop-color="#4F46E5"/><stop offset="1" stop-color="#7C3AED"/></linearGradient>
+    <linearGradient id="bg" x1="70" y1="20" x2="1530" y2="980" gradientUnits="userSpaceOnUse"><stop stop-color="#0B1220"/><stop offset=".55" stop-color="#111C35"/><stop offset="1" stop-color="#17143A"/></linearGradient>
+    <linearGradient id="blueCard" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0C4A6E"/><stop offset="1" stop-color="#1E3A8A"/></linearGradient>
+    <linearGradient id="purpleCard" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#312E81"/><stop offset="1" stop-color="#6D28D9"/></linearGradient>
     <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" stroke="#C7D2FE" stroke-opacity=".04"/></pattern>
-    <filter id="shadow" x="-25%" y="-35%" width="150%" height="180%"><feDropShadow dx="0" dy="12" stdDeviation="15" flood-color="#020617" flood-opacity=".35"/></filter>
-    <marker id="blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#60A5FA"/></marker>
-    <marker id="purple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#A78BFA"/></marker>
-    <marker id="green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#34D399"/></marker>
-    <marker id="orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#FB923C"/></marker>
+    <filter id="shadow" x="-20%" y="-30%" width="140%" height="170%"><feDropShadow dx="0" dy="10" stdDeviation="13" flood-color="#020617" flood-opacity=".34"/></filter>
+    <marker id="blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#60A5FA"/></marker>
+    <marker id="purple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#A78BFA"/></marker>
+    <marker id="green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#34D399"/></marker>
+    <marker id="orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#FB923C"/></marker>
   </defs>
-  <rect width="1600" height="900" rx="32" fill="url(#bg)"/><rect width="1600" height="900" rx="32" fill="url(#grid)"/>
 
+  <rect width="1600" height="1000" rx="32" fill="url(#bg)"/><rect width="1600" height="1000" rx="32" fill="url(#grid)"/>
   <text x="64" y="66" fill="#F8FAFC" font-family="Inter, PingFang SC, sans-serif" font-size="30" font-weight="760">RAG 检索管线</text>
-  <text x="64" y="94" fill="#94A3B8" font-family="Inter, PingFang SC, sans-serif" font-size="15">增强步骤可独立关闭 · 单步失败自动降级 · ChatService 整体兜底 15s</text>
-  <g transform="translate(1160 55)" font-family="Inter, PingFang SC, sans-serif"><circle cx="5" cy="5" r="5" fill="#60A5FA"/><text x="18" y="10" fill="#CBD5E1" font-size="13">主检索流</text><circle cx="105" cy="5" r="5" fill="#A78BFA"/><text x="118" y="10" fill="#CBD5E1" font-size="13">LLM / 向量</text><circle cx="226" cy="5" r="5" fill="#FB923C"/><text x="239" y="10" fill="#CBD5E1" font-size="13">降级路径</text></g>
+  <text x="64" y="94" fill="#94A3B8" font-family="Inter, PingFang SC, sans-serif" font-size="15">先选择检索模式，再并行补充召回，最后统一排序与构建上下文；模型能力由 Halo AI Foundation 提供</text>
+  <g transform="translate(1165 55)" font-family="Inter, PingFang SC, sans-serif"><circle cx="5" cy="5" r="5" fill="#60A5FA"/><text x="18" y="10" fill="#CBD5E1" font-size="13">主流程</text><circle cx="90" cy="5" r="5" fill="#A78BFA"/><text x="103" y="10" fill="#CBD5E1" font-size="13">模型能力</text><circle cx="190" cy="5" r="5" fill="#FB923C"/><text x="203" y="10" fill="#CBD5E1" font-size="13">可选 / 降级</text></g>
 
-  <!-- Input and enhancement -->
+  <!-- 1 查询准备 -->
+  <text x="64" y="142" fill="#A5B4FC" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="750" letter-spacing="2">1 · 查询准备</text>
   <g font-family="Inter, PingFang SC, sans-serif" filter="url(#shadow)">
-    <rect x="64" y="142" width="235" height="92" rx="19" fill="#102A43" stroke="#38BDF8" stroke-opacity=".62"/><circle cx="94" cy="172" r="15" fill="#38BDF8" fill-opacity=".18"/><path d="M87 172h14M94 165v14" stroke="#7DD3FC" stroke-width="2"/><text x="119" y="177" fill="#E0F2FE" font-size="18" font-weight="700">原始问题</text><text x="86" y="207" fill="#7DD3FC" font-size="14">Query + 对话历史</text>
-    <rect x="355" y="142" width="250" height="92" rx="19" fill="#332044" stroke="#C084FC" stroke-opacity=".6"/><rect x="377" y="158" width="74" height="24" rx="12" fill="#FB923C" fill-opacity=".18"/><text x="390" y="175" fill="#FDBA74" font-size="12" font-weight="700">OPTIONAL</text><text x="377" y="207" fill="#FAF5FF" font-size="18" font-weight="700">Query Rewrite</text><text x="544" y="207" fill="#FDBA74" font-size="13" font-weight="650">2s</text>
-    <rect x="661" y="142" width="250" height="92" rx="19" fill="#1E1B4B" stroke="#818CF8" stroke-opacity=".62"/><rect x="683" y="158" width="74" height="24" rx="12" fill="#FB923C" fill-opacity=".18"/><text x="696" y="175" fill="#FDBA74" font-size="12" font-weight="700">OPTIONAL</text><text x="683" y="207" fill="#EEF2FF" font-size="18" font-weight="700">HyDE</text><text x="850" y="207" fill="#FDBA74" font-size="13" font-weight="650">3s</text>
-    <rect x="967" y="142" width="250" height="92" rx="19" fill="#15274A" stroke="#6366F1" stroke-opacity=".62"/><text x="989" y="174" fill="#A5B4FC" font-size="12" font-weight="700" letter-spacing="1">VECTORIZE</text><text x="989" y="205" fill="#EEF2FF" font-size="18" font-weight="700">Embedding</text><text x="989" y="225" fill="#A5B4FC" font-size="12">Query 或假设性回答</text>
-    <rect x="1273" y="142" width="263" height="92" rx="19" fill="#082F49" stroke="#0EA5E9" stroke-opacity=".62"/><text x="1295" y="174" fill="#7DD3FC" font-size="12" font-weight="700" letter-spacing="1">SEARCH MODE</text><text x="1295" y="205" fill="#F0F9FF" font-size="18" font-weight="700">keyword / vector / hybrid</text>
+    <rect x="64" y="158" width="220" height="84" rx="18" fill="#0D2A47" stroke="#38BDF8" stroke-opacity=".65"/><text x="88" y="192" fill="#E0F2FE" font-size="18" font-weight="700">原始问题</text><text x="88" y="219" fill="#7DD3FC" font-size="13">问题 + 对话历史</text>
+    <rect x="334" y="158" width="250" height="84" rx="18" fill="#332044" stroke="#C084FC" stroke-opacity=".6"/><rect x="356" y="173" width="54" height="22" rx="11" fill="#FB923C" fill-opacity=".18"/><text x="369" y="189" fill="#FDBA74" font-size="11" font-weight="700">可选</text><text x="356" y="218" fill="#FAF5FF" font-size="18" font-weight="700">查询改写</text><text x="444" y="218" fill="#C4B5FD" font-size="12">Query Rewrite · 2 秒</text>
+    <rect x="634" y="146" width="270" height="108" rx="20" fill="#251B4B" stroke="#A78BFA" stroke-opacity=".65"/><text x="658" y="178" fill="#F5F3FF" font-size="17" font-weight="700">判断检索模式</text><text x="658" y="203" fill="#C4B5FD" font-size="12">选择下方一条同名主路径</text><rect x="658" y="216" width="66" height="23" rx="11" fill="#0EA5E9" fill-opacity=".18"/><text x="691" y="232" text-anchor="middle" fill="#7DD3FC" font-size="11">关键词</text><rect x="735" y="216" width="66" height="23" rx="11" fill="#6366F1" fill-opacity=".2"/><text x="768" y="232" text-anchor="middle" fill="#C7D2FE" font-size="11">向量</text><rect x="812" y="216" width="66" height="23" rx="11" fill="#8B5CF6" fill-opacity=".2"/><text x="845" y="232" text-anchor="middle" fill="#DDD6FE" font-size="11">混合</text>
+    <rect x="974" y="146" width="562" height="108" rx="20" fill="#171A35" stroke="#818CF8" stroke-opacity=".48"/><text x="998" y="178" fill="#EEF2FF" font-size="17" font-weight="700">Halo AI Foundation · 模型能力支撑</text><text x="998" y="205" fill="#A5B4FC" font-size="13">查询改写 · HyDE · Embedding · Rerank</text><text x="998" y="230" fill="#64748B" font-size="12">关键词模式跳过 HyDE 与 Embedding；可选模型步骤失败时回退</text>
   </g>
-  <path d="M299 188H353M605 188H659M911 188H965M1217 188H1271" stroke="#A78BFA" stroke-width="2.3" marker-end="url(#purple)"/>
-  <path d="M480 235V265H110V238" stroke="#FB923C" stroke-width="1.8" stroke-dasharray="6 6" marker-end="url(#orange)"/><text x="247" y="282" fill="#FDBA74" font-family="Inter, PingFang SC, sans-serif" font-size="12">关闭 / 超时：保留原 Query</text>
-  <path d="M786 235V272H700V238" stroke="#FB923C" stroke-width="1.8" stroke-dasharray="6 6" marker-end="url(#orange)"/><text x="745" y="289" fill="#FDBA74" font-family="Inter, PingFang SC, sans-serif" font-size="12">失败：直接编码 Query</text>
+  <path d="M284 200H332M584 200H632" stroke="#60A5FA" stroke-width="2.2" marker-end="url(#blue)"/>
+  <path d="M459 243V270H174V244" stroke="#FB923C" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#orange)"/><text x="248" y="286" fill="#FDBA74" font-family="Inter, PingFang SC, sans-serif" font-size="11">关闭或超时：继续使用原始问题</text>
 
-  <!-- Parallel retrieval -->
-  <text x="64" y="337" fill="#A5B4FC" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700" letter-spacing="2">PARALLEL RETRIEVAL &amp; FUSION</text>
-  <rect x="64" y="354" width="1472" height="250" rx="26" fill="#0F172A" fill-opacity=".55" stroke="#475569"/>
+  <!-- 2 模式分支 -->
+  <text x="64" y="326" fill="#A5B4FC" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="750" letter-spacing="2">2 · 检索模式分支（每次只选择一条主路径）</text>
+  <rect x="64" y="342" width="1472" height="288" rx="25" fill="#0F172A" fill-opacity=".58" stroke="#475569"/>
   <g font-family="Inter, PingFang SC, sans-serif" filter="url(#shadow)">
-    <rect x="94" y="388" width="250" height="82" rx="17" fill="#0C3046" stroke="#38BDF8" stroke-opacity=".55"/><text x="118" y="420" fill="#E0F2FE" font-size="17" font-weight="700">BM25 关键词召回</text><text x="118" y="445" fill="#7DD3FC" font-size="13">SmartChineseAnalyzer</text>
-    <rect x="94" y="492" width="250" height="82" rx="17" fill="#17234D" stroke="#818CF8" stroke-opacity=".55"/><text x="118" y="524" fill="#EEF2FF" font-size="17" font-weight="700">HNSW 向量召回</text><text x="118" y="549" fill="#A5B4FC" font-size="13">语义相似度候选</text>
-    <rect x="405" y="422" width="248" height="116" rx="20" fill="url(#core)"/><text x="429" y="456" fill="#C7D2FE" font-size="12" font-weight="700" letter-spacing="1">HYBRID RETRIEVER</text><text x="429" y="488" fill="white" font-size="20" font-weight="750">RRF 融合排序</text><text x="429" y="514" fill="#E0E7FF" font-size="13">统一关键词与向量排名</text>
-    <rect x="714" y="388" width="250" height="82" rx="17" fill="#15274A" stroke="#60A5FA" stroke-opacity=".5"/><text x="738" y="420" fill="#EFF6FF" font-size="17" font-weight="700">原 Query 补充召回</text><text x="738" y="445" fill="#93C5FD" font-size="13">避免查询改写偏差</text>
-    <rect x="714" y="492" width="250" height="82" rx="17" fill="#332044" stroke="#C084FC" stroke-opacity=".5"/><text x="738" y="524" fill="#FAF5FF" font-size="17" font-weight="700">跨语言二次检索</text><text x="738" y="549" fill="#D8B4FE" font-size="13">翻译 + BM25 · 3s</text>
-    <rect x="1025" y="422" width="230" height="116" rx="20" fill="#102A43" stroke="#38BDF8" stroke-opacity=".58"/><text x="1049" y="456" fill="#BAE6FD" font-size="12" font-weight="700" letter-spacing="1">RESULT MERGE</text><text x="1049" y="488" fill="#F0F9FF" font-size="19" font-weight="750">归一化 · 去重</text><text x="1049" y="514" fill="#7DD3FC" font-size="13">按分数截取候选集</text>
-    <rect x="1316" y="422" width="190" height="116" rx="20" fill="#3B2518" stroke="#FB923C" stroke-opacity=".58"/><text x="1338" y="456" fill="#FDBA74" font-size="12" font-weight="700">OPTIONAL · 2s</text><text x="1338" y="488" fill="#FFF7ED" font-size="19" font-weight="750">Rerank</text><text x="1338" y="514" fill="#FDBA74" font-size="13">失败保留原排序</text>
-  </g>
-  <path d="M344 429H403M344 533H403M653 480H712M964 429H1023M964 533H1023M1255 480H1314" stroke="#60A5FA" stroke-width="2.2" marker-end="url(#blue)"/>
+    <rect x="92" y="372" width="140" height="62" rx="16" fill="#0C3046" stroke="#38BDF8" stroke-opacity=".55"/><text x="162" y="398" text-anchor="middle" fill="#E0F2FE" font-size="16" font-weight="700">关键词模式</text><text x="162" y="420" text-anchor="middle" fill="#7DD3FC" font-size="11">keyword</text>
+    <rect x="282" y="372" width="260" height="62" rx="16" fill="#0C3046" stroke="#38BDF8" stroke-opacity=".55"/><text x="306" y="399" fill="#E0F2FE" font-size="16" font-weight="700">BM25 关键词检索</text><text x="306" y="421" fill="#7DD3FC" font-size="11">跳过 HyDE 与向量化</text>
+    <rect x="1264" y="372" width="240" height="62" rx="16" fill="#0B3B36" stroke="#34D399" stroke-opacity=".55"/><text x="1384" y="399" text-anchor="middle" fill="#ECFDF5" font-size="16" font-weight="700">关键词候选</text><text x="1384" y="421" text-anchor="middle" fill="#6EE7B7" font-size="11">BM25 检索结果</text>
 
-  <!-- Output -->
-  <path d="M1411 538V650" stroke="#34D399" stroke-width="2.4" marker-end="url(#green)"/>
-  <g font-family="Inter, PingFang SC, sans-serif" filter="url(#shadow)">
-    <rect x="900" y="664" width="280" height="104" rx="20" fill="#0B3B36" stroke="#34D399" stroke-opacity=".6"/><text x="926" y="699" fill="#6EE7B7" font-size="12" font-weight="700" letter-spacing="1">RETRIEVAL RESULT</text><text x="926" y="732" fill="#ECFDF5" font-size="19" font-weight="750">阈值过滤 + Top-N</text><text x="926" y="755" fill="#6EE7B7" font-size="13">文档、分数、来源元数据</text>
-    <rect x="1230" y="664" width="306" height="104" rx="20" fill="#12372E" stroke="#10B981" stroke-opacity=".65"/><text x="1256" y="699" fill="#6EE7B7" font-size="12" font-weight="700" letter-spacing="1">RAG CONTEXT</text><text x="1256" y="732" fill="#ECFDF5" font-size="19" font-weight="750">上下文 + 文章引用</text><text x="1256" y="755" fill="#6EE7B7" font-size="13">交给 LLM 生成最终回答</text>
+    <rect x="92" y="456" width="140" height="62" rx="16" fill="#17234D" stroke="#818CF8" stroke-opacity=".55"/><text x="162" y="482" text-anchor="middle" fill="#EEF2FF" font-size="16" font-weight="700">向量模式</text><text x="162" y="504" text-anchor="middle" fill="#A5B4FC" font-size="11">vector</text>
+    <rect x="282" y="456" width="235" height="62" rx="16" fill="#251B4B" stroke="#A78BFA" stroke-opacity=".55"/><text x="306" y="482" fill="#F5F3FF" font-size="15" font-weight="700">HyDE 或直接向量化</text><text x="306" y="504" fill="#C4B5FD" font-size="11">Embedding · AI Foundation</text>
+    <rect x="567" y="456" width="240" height="62" rx="16" fill="#17234D" stroke="#818CF8" stroke-opacity=".55"/><text x="591" y="482" fill="#EEF2FF" font-size="15" font-weight="700">HNSW 向量检索</text><text x="591" y="504" fill="#A5B4FC" font-size="11">语义相似度候选</text>
+    <rect x="1264" y="456" width="240" height="62" rx="16" fill="#0B3B36" stroke="#34D399" stroke-opacity=".55"/><text x="1384" y="483" text-anchor="middle" fill="#ECFDF5" font-size="16" font-weight="700">向量候选</text><text x="1384" y="505" text-anchor="middle" fill="#6EE7B7" font-size="11">HNSW 检索结果</text>
+
+    <rect x="92" y="540" width="140" height="62" rx="16" fill="#2D1D46" stroke="#C084FC" stroke-opacity=".55"/><text x="162" y="566" text-anchor="middle" fill="#FAF5FF" font-size="16" font-weight="700">混合模式</text><text x="162" y="588" text-anchor="middle" fill="#D8B4FE" font-size="11">hybrid</text>
+    <rect x="282" y="540" width="235" height="62" rx="16" fill="#251B4B" stroke="#A78BFA" stroke-opacity=".55"/><text x="306" y="566" fill="#F5F3FF" font-size="15" font-weight="700">HyDE 或直接向量化</text><text x="306" y="588" fill="#C4B5FD" font-size="11">Embedding · AI Foundation</text>
+    <rect x="567" y="540" width="300" height="62" rx="16" fill="#15274A" stroke="#60A5FA" stroke-opacity=".55"/><text x="591" y="566" fill="#EFF6FF" font-size="15" font-weight="700">BM25 + HNSW 并行召回</text><text x="591" y="588" fill="#93C5FD" font-size="11">关键词与语义候选</text>
+    <rect x="917" y="540" width="230" height="62" rx="16" fill="url(#purpleCard)"/><text x="941" y="566" fill="white" font-size="16" font-weight="700">RRF 融合排序</text><text x="941" y="588" fill="#E0E7FF" font-size="11">统一两类排名分数</text>
+    <rect x="1264" y="540" width="240" height="62" rx="16" fill="#0B3B36" stroke="#34D399" stroke-opacity=".55"/><text x="1384" y="567" text-anchor="middle" fill="#ECFDF5" font-size="16" font-weight="700">混合候选</text><text x="1384" y="589" text-anchor="middle" fill="#6EE7B7" font-size="11">RRF 融合结果</text>
   </g>
-  <path d="M1180 716H1228" stroke="#34D399" stroke-width="2.3" marker-end="url(#green)"/>
-  <g transform="translate(64 674)" font-family="Inter, PingFang SC, sans-serif"><rect width="760" height="128" rx="20" fill="#1C1A26" stroke="#FB923C" stroke-opacity=".45"/><text x="24" y="34" fill="#FDBA74" font-size="13" font-weight="750" letter-spacing="1">DEGRADATION CONTRACT</text><text x="24" y="65" fill="#FED7AA" font-size="15">Query Rewrite / HyDE / 跨语言 / Rerank 均设置独立超时</text><text x="24" y="92" fill="#CBD5E1" font-size="14">可选步骤失败时回退至上一份有效结果，不阻断整次回答</text><text x="24" y="115" fill="#94A3B8" font-size="13">Embedding 未配置时：hybrid 自动降级 keyword；vector 模式返回空检索上下文</text></g>
+  <path d="M232 403H280" stroke="#60A5FA" stroke-width="2.1" marker-end="url(#blue)"/>
+  <path d="M542 403H1262" stroke="#60A5FA" stroke-width="2.1" marker-end="url(#blue)"/>
+  <path d="M232 487H280" stroke="#60A5FA" stroke-width="2.1" marker-end="url(#blue)"/>
+  <path d="M517 487H565" stroke="#60A5FA" stroke-width="2.1" marker-end="url(#blue)"/>
+  <path d="M807 487H1262" stroke="#60A5FA" stroke-width="2.1" marker-end="url(#blue)"/>
+  <path d="M232 571H280" stroke="#60A5FA" stroke-width="2.1" marker-end="url(#blue)"/>
+  <path d="M517 571H565" stroke="#60A5FA" stroke-width="2.1" marker-end="url(#blue)"/>
+  <path d="M867 571H915" stroke="#60A5FA" stroke-width="2.1" marker-end="url(#blue)"/>
+  <path d="M1147 571H1262" stroke="#60A5FA" stroke-width="2.1" marker-end="url(#blue)"/>
+
+  <!-- 3 并行补充召回 -->
+  <text x="64" y="676" fill="#A5B4FC" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="750" letter-spacing="2">3 · 并行补充召回与合并</text>
+  <g font-family="Inter, PingFang SC, sans-serif" filter="url(#shadow)">
+    <rect x="64" y="694" width="250" height="78" rx="17" fill="#0B3B36" stroke="#34D399" stroke-opacity=".55"/><text x="88" y="724" fill="#ECFDF5" font-size="16" font-weight="700">主查询结果</text><text x="88" y="749" fill="#6EE7B7" font-size="12">来自选中的检索模式</text>
+    <rect x="354" y="694" width="250" height="78" rx="17" fill="#15274A" stroke="#60A5FA" stroke-opacity=".5"/><rect x="376" y="706" width="54" height="20" rx="10" fill="#FB923C" fill-opacity=".17"/><text x="389" y="721" fill="#FDBA74" font-size="10" font-weight="700">可选</text><text x="376" y="748" fill="#EFF6FF" font-size="15" font-weight="700">原始问题补充检索</text>
+    <rect x="644" y="694" width="250" height="78" rx="17" fill="#332044" stroke="#C084FC" stroke-opacity=".5"/><rect x="666" y="706" width="54" height="20" rx="10" fill="#FB923C" fill-opacity=".17"/><text x="679" y="721" fill="#FDBA74" font-size="10" font-weight="700">可选</text><text x="666" y="748" fill="#FAF5FF" font-size="15" font-weight="700">跨语言检索 · 3 秒</text>
+    <rect x="954" y="684" width="270" height="98" rx="19" fill="#102A43" stroke="#38BDF8" stroke-opacity=".58"/><text x="978" y="718" fill="#F0F9FF" font-size="17" font-weight="700">合并 · 归一化 · 去重</text><text x="978" y="744" fill="#7DD3FC" font-size="12">跨语言结果转换为 RRF 排名分</text><text x="978" y="765" fill="#7DD3FC" font-size="12">按检索 Top-N 截取候选</text>
+    <rect x="1264" y="684" width="272" height="98" rx="19" fill="#3B2518" stroke="#FB923C" stroke-opacity=".58"/><rect x="1286" y="698" width="72" height="21" rx="10" fill="#FB923C" fill-opacity=".18"/><text x="1299" y="713" fill="#FDBA74" font-size="10" font-weight="700">可选 · 2 秒</text><text x="1286" y="743" fill="#FFF7ED" font-size="17" font-weight="700">重排序（Rerank）</text><text x="1286" y="766" fill="#FDBA74" font-size="12">阈值过滤 · Rerank Top-N</text>
+  </g>
+  <path d="M314 733V786H920V713H952" stroke="#60A5FA" stroke-width="2.1" marker-end="url(#blue)"/>
+  <path d="M604 733V800H936V733H952" stroke="#60A5FA" stroke-width="2.1" marker-end="url(#blue)"/>
+  <path d="M894 733H952M1224 733H1262" stroke="#60A5FA" stroke-width="2.1" marker-end="url(#blue)"/>
+  <path d="M1504 403H1518M1504 487H1518M1504 571H1518M1518 403V650" stroke="#34D399" stroke-width="1.8"/>
+  <path d="M1518 650H189V692" stroke="#34D399" stroke-width="2" marker-end="url(#green)"/>
+  <text x="1240" y="644" fill="#6EE7B7" font-family="Inter, PingFang SC, sans-serif" font-size="11">选择当前检索模式的一组候选</text>
+
+  <!-- 4 输出与降级 -->
+  <text x="64" y="828" fill="#A5B4FC" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="750" letter-spacing="2">4 · 构建 RAG 输出</text>
+  <g font-family="Inter, PingFang SC, sans-serif" filter="url(#shadow)">
+    <rect x="64" y="846" width="840" height="104" rx="20" fill="#1C1A26" stroke="#FB923C" stroke-opacity=".45"/><text x="88" y="878" fill="#FDBA74" font-size="14" font-weight="700">失败降级约定</text><text x="88" y="905" fill="#FED7AA" font-size="13">查询改写、HyDE、原问题补充、跨语言和 Rerank 失败时，回退至上一份有效结果</text><text x="88" y="930" fill="#94A3B8" font-size="12">未配置向量模型：混合模式降级关键词；纯向量模式返回空上下文；整体异常返回空 RAG 结果</text>
+    <rect x="964" y="836" width="572" height="124" rx="22" fill="#0B3B36" stroke="#34D399" stroke-opacity=".65"/><text x="990" y="870" fill="#6EE7B7" font-size="12" font-weight="700" letter-spacing="1">RAG 管线输出边界</text><text x="990" y="902" fill="#ECFDF5" font-size="20" font-weight="750">上下文 + 文章引用</text><text x="990" y="928" fill="#6EE7B7" font-size="13">返回 ChatService；随后才通过 AI Foundation 生成最终回答</text><text x="990" y="949" fill="#64748B" font-size="11">RAGPipeline 本身不负责回答生成</text>
+  </g>
+  <path d="M1400 782V818H1250V834" stroke="#34D399" stroke-width="2.4" marker-end="url(#green)"/>
 </svg>

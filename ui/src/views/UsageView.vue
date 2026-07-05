@@ -258,7 +258,7 @@
                     :class="{ 'is-hovered': m.model === tooltipData.hoveredModel }"
                   >
                     <span class="usage-chart-tooltip-dot" :style="{ background: m.color }"></span>
-                    <span class="usage-chart-tooltip-model">{{ m.model }}</span>
+                    <span class="usage-chart-tooltip-model">{{ displayModelName(m.model) }}</span>
                     <span class="usage-chart-tooltip-total">{{ m.total.toLocaleString() }}</span>
                   </div>
                 </div>
@@ -281,7 +281,7 @@
                   ></span>
                   <span class="usage-chart-legend-label">
                     <strong>{{ line.featureLabel }}</strong>
-                    <code class="usage-chart-legend-model">{{ line.model }}</code>
+                    <code class="usage-chart-legend-model">{{ displayModelName(line.model) }}</code>
                     <span v-if="line.isDisabled" class="usage-chart-legend-badge">未启用</span>
                   </span>
                 </div>
@@ -302,7 +302,7 @@
         </div>
         <article class="ai-section-card">
           <div class="ai-card-body" style="padding: 0;">
-            <table class="ai-table">
+            <table class="ai-table usage-summary-table">
               <thead>
                 <tr>
                   <th>模型</th>
@@ -315,15 +315,20 @@
               </thead>
               <tbody>
                 <tr v-for="row in rows" :key="row.model">
-                  <td><code>{{ row.model }}</code></td>
-                  <td>{{ row.tokens.toLocaleString() }}</td>
-                  <td>{{ row.calls.toLocaleString() }}</td>
-                  <td>{{ row.failures.toLocaleString() }}</td>
-                  <td :class="{ 'usage-fail': row.failureRate > 5 }">
+                  <td data-label="模型" class="usage-summary-model"><code :title="row.model">{{ displayModelName(row.model) }}</code></td>
+                  <td data-label="Token">{{ row.tokens.toLocaleString() }}</td>
+                  <td data-label="调用次数">{{ row.calls.toLocaleString() }}</td>
+                  <td data-label="失败数">{{ row.failures.toLocaleString() }}</td>
+                  <td data-label="失败率" :class="{ 'usage-fail': row.failureRate > 5 }">
                     {{ row.failureRate.toFixed(2) }}%
                   </td>
-                  <td>
-                    <VButton size="xs" type="default" @click="openCallDrawer(row.model)">详情</VButton>
+                  <td data-label="操作" class="usage-summary-actions">
+                    <VSpace>
+                      <VButton size="xs" type="default" @click="openCallDrawer(row.rawModels[0] || row.model)">详情</VButton>
+                      <VButton size="xs" type="default" @click="openMergeDialog(row)">合并</VButton>
+                      <VButton size="xs" type="default" @click="hideUsageRow(row)">隐藏</VButton>
+                      <VButton size="xs" type="danger" @click="openDeleteDialog(row)">删除</VButton>
+                    </VSpace>
                   </td>
                 </tr>
                 <tr v-if="rows.length === 0">
@@ -331,8 +336,156 @@
                 </tr>
               </tbody>
             </table>
+            <div v-if="hiddenModels.length > 0" class="usage-hidden-models">
+              <span class="usage-hidden-title">已隐藏</span>
+              <button
+                v-for="model in hiddenModels"
+                :key="model"
+                type="button"
+                class="usage-hidden-chip"
+                :title="model"
+                @click="restoreHiddenModel(model)"
+              >
+                {{ displayModelName(model) }} <span>恢复</span>
+              </button>
+              <VButton size="xs" type="default" @click="clearHiddenModels">全部恢复</VButton>
+            </div>
           </div>
         </article>
+      </div>
+
+      <!-- 失败诊断 -->
+      <div class="ai-subsection usage-diagnostics-section">
+        <article class="ai-section-card usage-diagnostics-card">
+          <button
+            type="button"
+            class="usage-diagnostics-toggle"
+            @click="failureDiagnosticsExpanded = !failureDiagnosticsExpanded"
+          >
+            <span class="usage-diagnostics-toggle-main">
+              <span class="usage-diagnostics-caret" :class="{ open: failureDiagnosticsExpanded }">▾</span>
+              <span>
+                <strong>失败诊断</strong>
+                <em>{{ failureDiagnosticsSummary }}</em>
+              </span>
+            </span>
+            <span class="usage-diagnostics-toggle-meta">范围: {{ rangeLabelText }}</span>
+          </button>
+
+          <div v-if="failureDiagnosticsExpanded" class="ai-card-body">
+            <div v-if="failureDiagnosticsLoading" class="ai-empty">正在分析失败原因...</div>
+            <div v-else-if="!failureDiagnostics || failureDiagnostics.total === 0" class="usage-diagnostics-ok">
+              当前范围内没有失败调用。
+            </div>
+            <div v-else class="usage-diagnostics">
+              <div class="usage-diagnostics-main">
+                <div>
+                  <div class="usage-diagnostics-label">失败调用</div>
+                  <div class="usage-diagnostics-total">{{ failureDiagnostics.total.toLocaleString() }}</div>
+                </div>
+                <div v-if="primaryDiagnosis" class="usage-diagnostics-primary">
+                  <div class="usage-diagnostics-label">主要原因</div>
+                  <strong>{{ primaryDiagnosis.label }}</strong>
+                  <p>{{ primaryDiagnosis.suggestion }}</p>
+                  <code v-if="primaryDiagnosis.example">{{ primaryDiagnosis.example }}</code>
+                </div>
+              </div>
+
+              <div class="usage-diagnostics-grid">
+                <div class="usage-diagnostics-panel">
+                  <h3>按接口类型</h3>
+                  <div v-for="item in failureDiagnostics.byType" :key="item.key" class="usage-diagnostics-row">
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.count.toLocaleString() }}</strong>
+                  </div>
+                </div>
+                <div class="usage-diagnostics-panel">
+                  <h3>按调用场景</h3>
+                  <div v-for="item in failureDiagnostics.byScenario.slice(0, 6)" :key="item.key" class="usage-diagnostics-row">
+                    <span>{{ item.label }}</span>
+                    <strong>{{ item.count.toLocaleString() }}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="usage-diagnostics-panel">
+                <h3>最近失败</h3>
+                <div v-for="item in failureDiagnostics.recent" :key="item.time + item.type + item.error" class="usage-diagnostics-recent">
+                  <div class="usage-diagnostics-recent-head">
+                    <span>{{ formatCallTime(item.time) }}</span>
+                    <strong>{{ item.diagnosisLabel }}</strong>
+                    <em>{{ item.typeLabel }} / {{ item.scenarioLabel }}</em>
+                  </div>
+                  <code :title="item.error">{{ item.error || "无错误摘要" }}</code>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <div class="usage-drawer-mask" v-if="mergeDialogOpen" @click="closeMergeDialog"></div>
+    <div v-if="mergeDialogOpen" class="usage-cleanup-modal">
+      <div class="usage-cleanup-modal-header">
+        <h3>合并模型用量</h3>
+        <button class="usage-drawer-close" @click="closeMergeDialog">×</button>
+      </div>
+      <div class="usage-cleanup-modal-body">
+        <div class="ai-form-field">
+          <label class="ai-field-label">来源模型</label>
+          <input
+            class="ai-input"
+            :value="cleanupRow ? displayModelName(cleanupRow.model) : ''"
+            disabled
+            :title="cleanupRow?.rawModels.join('\n')"
+          />
+          <div class="ai-field-hint">
+            会把当前范围内该模型的汇总与调用明细一起改到目标模型，适合清理切换 AI Foundation 后留下的旧模型名。
+          </div>
+        </div>
+        <div class="ai-form-field">
+          <label class="ai-field-label">目标模型</label>
+          <select class="ai-input" v-model="mergeTargetModel">
+            <option value="" disabled>选择目标模型</option>
+            <option
+              v-for="item in mergeTargetOptions"
+              :key="item.model"
+              :value="item.model"
+            >
+              {{ item.label }}
+            </option>
+          </select>
+        </div>
+        <div class="usage-cleanup-summary">
+          范围: {{ rangeLabelText }}；预计处理来源原始记录:
+          {{ cleanupRow?.rawModels.map(displayModelName).join("、") || "-" }}
+        </div>
+      </div>
+      <div class="usage-cleanup-modal-footer">
+        <VButton type="default" :disabled="cleanupBusy" @click="closeMergeDialog">取消</VButton>
+        <VButton type="primary" :disabled="cleanupBusy || !mergeTargetModel" @click="confirmMergeUsage">
+          {{ cleanupBusy ? "处理中..." : "确认合并" }}
+        </VButton>
+      </div>
+    </div>
+
+    <div class="usage-drawer-mask" v-if="deleteDialogOpen" @click="closeDeleteDialog"></div>
+    <div v-if="deleteDialogOpen" class="usage-cleanup-modal usage-cleanup-modal-danger">
+      <div class="usage-cleanup-modal-header">
+        <h3>删除模型用量</h3>
+        <button class="usage-drawer-close" @click="closeDeleteDialog">×</button>
+      </div>
+      <div class="usage-cleanup-modal-body">
+        <p class="usage-cleanup-warning">
+          将删除「{{ cleanupRow ? displayModelName(cleanupRow.model) : "" }}」在 {{ rangeLabelText }} 内的汇总和调用明细。这个操作不会影响模型配置，但历史统计数据会被移除。
+        </p>
+      </div>
+      <div class="usage-cleanup-modal-footer">
+        <VButton type="default" :disabled="cleanupBusy" @click="closeDeleteDialog">取消</VButton>
+        <VButton type="danger" :disabled="cleanupBusy" @click="confirmDeleteUsage">
+          {{ cleanupBusy ? "处理中..." : "确认删除" }}
+        </VButton>
       </div>
     </div>
 
@@ -347,9 +500,9 @@
         <div class="ai-form-field">
           <label class="ai-field-label">
             <input type="checkbox" v-model="limitsForm.enabled" />
-            启用对话限流（关闭后所有对话放行）
+            启用模型 Token 限流
           </label>
-          <div class="ai-field-hint">超出每日 token 上限自动拒绝对话。嵌入/重排序不参与限流（成本可忽略）。</div>
+          <div class="ai-field-hint">超出每日 token 上限后拒绝受限的对话类调用。访客次数限流是独立开关。</div>
         </div>
         <div class="ai-form-field">
           <label class="ai-field-label">对话模型每日 Token 上限</label>
@@ -357,25 +510,34 @@
             请先到 <strong>模型配置 → 对话</strong> 页面设置对话模型。
           </div>
           <div v-for="(item, i) in chatModelsForLimits" :key="i" class="usage-permodel-row">
-            <input class="ai-input" :value="item.model" disabled title="模型名由「模型配置」统一管理" />
-            <input
-              class="ai-input"
-              type="number"
-              min="0"
-              placeholder="上限 (0=不限)"
-              v-model.number="item.limit"
-            />
-            <span class="ai-form-progress" :class="progressClass(item)">
-              {{ formatTodayTokens(item.todayTokens) }} / {{ formatTodayTokens(item.limit || 0) }}
-            </span>
+            <div class="usage-limit-field usage-limit-model">
+              <span class="usage-limit-label">当前模型</span>
+              <input class="ai-input" :value="displayModelName(item.model)" disabled :title="item.model" />
+            </div>
+            <div class="usage-limit-field usage-limit-number">
+              <span class="usage-limit-label">每日上限</span>
+              <input
+                class="ai-input"
+                type="number"
+                min="0"
+                placeholder="0 = 不限"
+                v-model.number="item.limit"
+              />
+            </div>
+            <div class="usage-limit-field usage-limit-progress">
+              <span class="usage-limit-label">今日用量</span>
+              <span class="ai-form-progress" :class="progressClass(item)">
+                {{ formatTodayTokens(item.todayTokens) }} / {{ formatTodayTokens(item.limit || 0) }}
+              </span>
+            </div>
           </div>
           <div class="ai-field-hint">
-            模型名由「模型配置 → 对话」统一管理；此处仅设置每日 token 上限（0 = 不限）。
+            这里只限制当前 AI Foundation 对话模型；历史模型用量请在模型用量汇总里清理（0 = 不限）。
           </div>
           <div v-if="limitsForm.enabled" class="ai-field-warning">
             <span class="ai-field-warning-icon"><RiAlertLine /></span>
             <span>
-              <strong>提示：</strong>限流仅对访客对话生效。写作辅助、文章摘要、索引重建等后台功能不受此限制，可正常运行。
+              <strong>提示：</strong>Token 限流会作用于访客问答以及部分搜索增强、意图识别、测试连接等对话类调用。写作辅助、文章摘要、索引重建等内部任务不走此限流。
             </span>
           </div>
         </div>
@@ -387,7 +549,7 @@
             <input type="checkbox" v-model="limitsForm.visitorEnabled" />
             启用访客限流（按客户端 IP 限流对话次数）
           </label>
-          <div class="ai-field-hint">防单用户刷量。嵌入/重排序不受访客限流影响（仍按模型 token 限流）。</div>
+          <div class="ai-field-hint">防单用户刷量，仅在能识别客户端 IP 的访客对话中生效；与模型 Token 限流相互独立。</div>
         </div>
         <div class="ai-form-field" v-if="limitsForm.visitorEnabled">
           <label class="ai-field-label">每 IP 每日对话次数上限（0=不限）</label>
@@ -431,7 +593,7 @@
     <div class="usage-drawer usage-call-drawer" :class="{ open: callDrawerOpen }">
       <div class="usage-drawer-header">
         <div>
-          <h3>{{ callDrawerModel || '模型' }} 调用明细</h3>
+          <h3>{{ callDrawerModel ? displayModelName(callDrawerModel) : '模型' }} 调用明细</h3>
           <p>保留最近 {{ callRetentionDays }} 天，从本版本开始记录，当前范围：{{ rangeLabelText }}</p>
         </div>
         <button class="usage-drawer-close" @click="callDrawerOpen = false">×</button>
@@ -479,13 +641,13 @@
             <tbody>
               <template v-for="item in callItems" :key="item.id">
                 <tr>
-                  <td class="usage-call-time">{{ formatCallTime(item.time) }}</td>
-                  <td>{{ scenarioLabel(item.scenario) }}</td>
-                  <td>{{ typeLabel(item.type) }}</td>
-                  <td class="usage-num">{{ item.totalTokens.toLocaleString() }}</td>
-                  <td class="usage-num">{{ item.promptTokens.toLocaleString() }}</td>
-                  <td class="usage-num">{{ item.completionTokens.toLocaleString() }}</td>
-                  <td>
+                  <td data-label="时间" class="usage-call-time">{{ formatCallTime(item.time) }}</td>
+                  <td data-label="调用场景">{{ scenarioLabel(item.scenario) }}</td>
+                  <td data-label="接口类型">{{ typeLabel(item.type) }}</td>
+                  <td data-label="总 Token" class="usage-num">{{ item.totalTokens.toLocaleString() }}</td>
+                  <td data-label="输入" class="usage-num">{{ item.promptTokens.toLocaleString() }}</td>
+                  <td data-label="输出" class="usage-num">{{ item.completionTokens.toLocaleString() }}</td>
+                  <td data-label="状态">
                     <span class="usage-call-status" :class="{ failed: item.failure }">
                       {{ item.failure ? '失败' : '成功' }}
                     </span>
@@ -528,13 +690,19 @@ import {
   loadUsageToday,
   loadUsageStats,
   loadUsageCalls,
+  loadUsageCleanup,
+  saveHiddenUsageModels,
+  mergeUsageModel,
+  deleteUsageModel,
+  loadUsageFailureDiagnostics,
   type DailyStatsEntry,
   type UsageCallLog,
+  type UsageFailureDiagnostics,
 } from "../utils/config";
 import MetricCard from "../components/MetricCard.vue";
 import UsageCalendar from "../components/UsageCalendar.vue";
 import { formatNum, formatPct, computeDelta } from "../utils/format";
-import { Toast , VButton, VSpace} from "@halo-dev/components";
+import { Toast, VButton, VSpace } from "@halo-dev/components";
 import RiCalendarLine from "~icons/ri/calendar-line";
 import RiSettings3Line from "~icons/ri/settings-3-line";
 import RiLightbulbLine from "~icons/ri/lightbulb-line";
@@ -548,6 +716,26 @@ interface ModelUsage {
   failures: number;
   embeddingTokens: number;
 }
+
+type AiFoundationModelType = "language" | "embedding" | "rerank";
+
+interface AiFoundationModelOption {
+  name: string;
+  modelId?: string;
+  displayName?: string;
+  provider?: {
+    displayName?: string;
+    providerTypeDisplayName?: string;
+  };
+}
+
+interface AiFoundationDefaultSlots {
+  languageModelName?: string;
+  embeddingModelName?: string;
+  rerankModelName?: string;
+}
+
+const AI_FOUNDATION_API = "/apis/console.api.aifoundation.halo.run/v1alpha1";
 
 // 日期范围 (YYYY-MM-DD, 替代原来的 today/7d/30d 字符串)
 function toDateStr(d: Date): string {
@@ -576,6 +764,17 @@ const callPage = ref(1);
 const callPageSize = ref(10);
 const callRetentionDays = ref(30);
 const callAvailableScenarios = ref<string[]>([]);
+const failureDiagnostics = ref<UsageFailureDiagnostics | null>(null);
+const failureDiagnosticsLoading = ref(false);
+const failureDiagnosticsExpanded = ref(false);
+const aiFoundationDefaultSlots = ref<AiFoundationDefaultSlots>({});
+const aiFoundationModelLabels = ref<Record<string, string>>({});
+const hiddenModels = ref<string[]>([]);
+const cleanupRow = ref<Row | null>(null);
+const mergeDialogOpen = ref(false);
+const deleteDialogOpen = ref(false);
+const mergeTargetModel = ref("");
+const cleanupBusy = ref(false);
 
 // ===== 日期范围 popover 状态 =====
 const pickerOpen = ref(false);
@@ -614,6 +813,72 @@ const triggerText = computed(() => {
   if (startDate.value === endDate.value) return startDate.value;
   return `${startDate.value} ~ ${endDate.value}`;
 });
+
+function aiFoundationOptionLabel(option: AiFoundationModelOption) {
+  const modelName = option.displayName || option.modelId || option.name;
+  const provider = option.provider?.displayName || option.provider?.providerTypeDisplayName;
+  return provider ? `${modelName} · ${provider}` : modelName;
+}
+
+function normalizeUsageModelName(model: string) {
+  if (model === "ai-foundation-language") {
+    return aiFoundationDefaultSlots.value.languageModelName || model;
+  }
+  if (model === "ai-foundation-embedding") {
+    return aiFoundationDefaultSlots.value.embeddingModelName || model;
+  }
+  if (model === "ai-foundation-rerank") {
+    return aiFoundationDefaultSlots.value.rerankModelName || model;
+  }
+  return model;
+}
+
+function displayModelName(model: string) {
+  const normalized = normalizeUsageModelName(model);
+  return aiFoundationModelLabels.value[normalized] || normalized || model;
+}
+
+const hiddenModelSet = computed(() => {
+  return new Set(hiddenModels.value.flatMap((model) => {
+    const normalized = normalizeUsageModelName(model);
+    return normalized === model ? [model] : [model, normalized];
+  }));
+});
+
+function isModelHidden(model: string) {
+  if (!model) return false;
+  return hiddenModelSet.value.has(model) || hiddenModelSet.value.has(normalizeUsageModelName(model));
+}
+
+async function loadAiFoundationModelLabels() {
+  try {
+    const [defaults, language, embedding, rerank] = await Promise.all([
+      fetch(`${AI_FOUNDATION_API}/default-model-slots`).then((resp) => resp.ok ? resp.json() : {}),
+      fetchAiFoundationModelOptions("language"),
+      fetchAiFoundationModelOptions("embedding"),
+      fetchAiFoundationModelOptions("rerank"),
+    ]);
+    aiFoundationDefaultSlots.value = defaults || {};
+    const labels: Record<string, string> = {};
+    for (const option of [...language, ...embedding, ...rerank]) {
+      if (option.name) labels[option.name] = aiFoundationOptionLabel(option);
+    }
+    aiFoundationModelLabels.value = labels;
+  } catch {
+    // AI Foundation 只影响展示名，失败时继续显示原始模型名。
+  }
+}
+
+async function fetchAiFoundationModelOptions(type: AiFoundationModelType) {
+  const params = new URLSearchParams({
+    modelType: type,
+    available: "true",
+    enabled: "true",
+  });
+  const resp = await fetch(`${AI_FOUNDATION_API}/model-options?${params.toString()}`);
+  if (!resp.ok) return [];
+  return (await resp.json()) as AiFoundationModelOption[];
+}
 
 function togglePicker() {
   if (pickerOpen.value) {
@@ -782,7 +1047,7 @@ function onPointLeave() {
 }
 
 // 限流配置 — 对话模型 + 访客双重维度
-// chatModelLimits: [{ model: string, limit: number }] — 模型名只读(从主配置 ModelConfig 拉), 数字可编辑
+// chatModelLimits: [{ model: string, limit: number }] — 仅当前对话模型，数字可编辑
 // currentChatModel: 主配置里当前启用的对话模型 (string, 用于空状态提示)
 // visitorEnabled/visitorDailyLimit/visitorHourlyLimit/visitorWhitelist: 访客 IP 限流
 const limitsForm = reactive({
@@ -795,8 +1060,12 @@ const limitsForm = reactive({
   visitorWhitelist: [] as string[],
 });
 
+const visibleTodayModels = computed(() => {
+  return todayData.value.models.filter((model) => !isModelHidden(model.model));
+});
+
 const stats = computed(() => {
-  const models = todayData.value.models;
+  const models = visibleTodayModels.value;
   const calls = models.reduce((s, m) => s + m.calls, 0);
   const failures = models.reduce((s, m) => s + m.failures, 0);
   const tokens = models.reduce(
@@ -811,10 +1080,10 @@ const stats = computed(() => {
   };
 });
 
-const modelCount = computed(() => todayData.value.models.length);
+const modelCount = computed(() => visibleTodayModels.value.length);
 
 const topModelLabel = computed(() => {
-  const list = todayData.value.models;
+  const list = visibleTodayModels.value;
   if (list.length === 0) return "暂无模型";
   // 按 token 用量降序取第 1
   const sorted = [...list].sort(
@@ -824,7 +1093,7 @@ const topModelLabel = computed(() => {
   );
   const top = sorted[0];
   const tokens = top.promptTokens + top.completionTokens + top.embeddingTokens;
-  return `${top.model} (${formatNum(tokens)})`;
+  return `${displayModelName(top.model)} (${formatNum(tokens)})`;
 });
 
 // 今日 vs 昨日 — 后端 statsData.yesterday 提供基线
@@ -842,6 +1111,7 @@ const deltaTokens = computed(() => {
 
 interface Row {
   model: string;
+  rawModels: string[];
   tokens: number;
   calls: number;
   failures: number;
@@ -863,21 +1133,25 @@ const rangeLabelText = computed(() => {
 const rows = computed<Row[]>(() => {
   if (!statsData.value?.daily?.length) return [];
   // 累加每个模型跨 range 的 p/c/e/calls/failures
-  const agg = new Map<string, { p: number; c: number; e: number; calls: number; failures: number }>();
+  const agg = new Map<string, { p: number; c: number; e: number; calls: number; failures: number; rawModels: Set<string> }>();
   for (const d of statsData.value.daily) {
     for (const [model, bm] of Object.entries(d.byModel || {})) {
-      const cur = agg.get(model) || { p: 0, c: 0, e: 0, calls: 0, failures: 0 };
+      const normalizedModel = normalizeUsageModelName(model);
+      if (isModelHidden(model) || isModelHidden(normalizedModel)) continue;
+      const cur = agg.get(normalizedModel) || { p: 0, c: 0, e: 0, calls: 0, failures: 0, rawModels: new Set<string>() };
       cur.p += bm.p;
       cur.c += bm.c;
       cur.e += bm.e;
       cur.calls += bm.calls;
       cur.failures += bm.failures ?? 0;
-      agg.set(model, cur);
+      cur.rawModels.add(model);
+      agg.set(normalizedModel, cur);
     }
   }
   return Array.from(agg.entries())
     .map(([model, a]) => ({
       model,
+      rawModels: Array.from(a.rawModels),
       tokens: a.p + a.c + a.e,
       calls: a.calls,
       failures: a.failures,
@@ -887,6 +1161,40 @@ const rows = computed<Row[]>(() => {
 });
 const callTotalPages = computed(() => Math.max(1, Math.ceil(callTotal.value / callPageSize.value)));
 const showCallScenarioFilter = computed(() => callAvailableScenarios.value.length > 1);
+const primaryDiagnosis = computed(() => failureDiagnostics.value?.byDiagnosis?.[0] || null);
+const failureDiagnosticsSummary = computed(() => {
+  if (failureDiagnosticsLoading.value) return "正在分析失败原因";
+  if (!failureDiagnostics.value || failureDiagnostics.value.total === 0) {
+    return "当前范围内没有失败调用";
+  }
+  const primary = primaryDiagnosis.value;
+  return primary
+    ? `${failureDiagnostics.value.total.toLocaleString()} 次失败，主要原因：${primary.label}`
+    : `${failureDiagnostics.value.total.toLocaleString()} 次失败`;
+});
+const mergeTargetOptions = computed(() => {
+  const selected = cleanupRow.value;
+  const options = new Map<string, string>();
+  for (const row of rows.value) {
+    if (selected && row.model === selected.model) continue;
+    options.set(row.model, displayModelName(row.model));
+  }
+  for (const model of statsData.value?.modelsInRange || []) {
+    const normalized = normalizeUsageModelName(model);
+    if (selected && (normalized === selected.model || selected.rawModels.includes(model))) continue;
+    if (isModelHidden(model) || isModelHidden(normalized)) continue;
+    options.set(normalized, displayModelName(normalized));
+  }
+  const cfg = chartModelConfig.value;
+  [cfg.chatModel, cfg.embeddingModel, cfg.rerankModel, cfg.queryRewriteModel, cfg.writingModel]
+    .filter(Boolean)
+    .forEach((model) => {
+      if (!selected || model !== selected.model) {
+        options.set(model, displayModelName(model));
+      }
+    });
+  return Array.from(options.entries()).map(([model, label]) => ({ model, label }));
+});
 
 // ===== 多折线图 =====
 
@@ -1007,7 +1315,8 @@ const chartNiceMax = computed(() => {
   if (!statsData.value?.daily?.length) return 1;
   let m = 0;
   statsData.value.daily.forEach((d) => {
-    Object.values(d.byModel || {}).forEach((bm) => {
+    Object.entries(d.byModel || {}).forEach(([model, bm]) => {
+      if (isModelHidden(model) || isModelHidden(normalizeUsageModelName(model))) return;
       const t = bm.p + bm.c + bm.e;
       if (t > m) m = t;
     });
@@ -1046,14 +1355,17 @@ const chartLines = computed<ChartLine[]>(() => {
   }
 
   const primarySet = new Set(primaryList.map((p) => p.model).filter(Boolean));
-  const historyExtras = (statsData.value.modelsInRange || []).filter(
-    (m) => m && !primarySet.has(m)
-  );
+  const historyExtras = (statsData.value.modelsInRange || []).filter((m) => {
+    const normalized = normalizeUsageModelName(m);
+    return m && !primarySet.has(m) && !primarySet.has(normalized) && !isModelHidden(m) && !isModelHidden(normalized);
+  });
 
   // 给定 model 名 → 折线 + 面积 d 字符串 (用 Catmull-Rom 平滑曲线)
   const buildLineFor = (model: string): { points: ChartPoint[]; pathD: string; areaD: string } => {
     const points: ChartPoint[] = daily.map((d, i) => {
-      const m = d.byModel?.[model];
+      const m = d.byModel?.[model] || Object.entries(d.byModel || {}).find(
+        ([raw]) => normalizeUsageModelName(raw) === model
+      )?.[1];
       const total = m ? m.p + m.c + m.e : 0;
       const x = days > 1
         ? CHART_PAD.left + i * xStep
@@ -1074,6 +1386,7 @@ const chartLines = computed<ChartLine[]>(() => {
   const grouped = new Map<string, typeof primaryList>();
   for (const p of primaryList) {
     if (!p.model) continue;
+    if (isModelHidden(p.model)) continue;
     if (!grouped.has(p.model)) grouped.set(p.model, []);
     grouped.get(p.model)!.push(p);
   }
@@ -1108,7 +1421,7 @@ const chartLines = computed<ChartLine[]>(() => {
     lines.push({
       model,
       feature: "history",
-      featureLabel: model,
+      featureLabel: displayModelName(model),
       isPrimary: false,
       isDashed: false,
       isArea: false,
@@ -1127,9 +1440,9 @@ const chartLines = computed<ChartLine[]>(() => {
 /** 写作辅助图例提示文案（抽常量集中管理，避免散落） */
 const WRITING_FOLDS_NOTE = {
   noModel: (chatModel: string) =>
-    `写作辅助未配置独立模型，自动复用「${chatModel}」`,
+    `写作辅助未配置独立模型，自动复用「${displayModelName(chatModel)}」`,
   sameAsChat: (writingModel: string) =>
-    `写作辅助「${writingModel}」与对话模型相同，未单独画线`,
+    `写作辅助「${displayModelName(writingModel)}」与对话模型相同，未单独画线`,
 };
 
 /** 写作是否折叠到对话 (供模板展示提示用) */
@@ -1164,15 +1477,15 @@ const tooltipData = computed(() => {
   if (!pt) return null;
   const daily = statsData.value?.daily;
   if (!daily) return null;
-  const originalIdx = daily.length - 1 - pointIdx;
-  const dayData = daily[originalIdx];
+  const dayData = daily[pointIdx];
   if (!dayData) return null;
   // 所有有数据的模型, 按总 Token 降序
   const allModels = Object.entries(dayData.byModel || {})
+    .filter(([m]) => !isModelHidden(m) && !isModelHidden(normalizeUsageModelName(m)))
     .map(([m, bm]) => ({
-      model: m,
+      model: normalizeUsageModelName(m),
       total: bm.p + bm.c + bm.e,
-      color: modelColorMap.value.get(m) || "#9ca3af",
+      color: modelColorMap.value.get(normalizeUsageModelName(m)) || modelColorMap.value.get(m) || "#9ca3af",
     }))
     .filter((m) => m.total > 0)
     .sort((a, b) => b.total - a.total);
@@ -1231,22 +1544,40 @@ function formatTokens(n: number): string {
 
 async function loadAll() {
   // 日期校验在 confirmPicker / applyPresetInPopover 已做, 这里不再重复
+  await loadAiFoundationModelLabels();
+  const cleanup = await loadUsageCleanup();
+  hiddenModels.value = cleanup.hiddenModels || [];
   todayData.value = await loadUsageToday();
   statsData.value = await loadUsageStats(startDate.value, endDate.value);
+  loadFailureDiagnostics();
 
   // 拉后端 limits + 当前 chatModel (主配置)
   const temp = {
     enabled: false,
     chatModelLimits: {} as Record<string, number>,
     chatModel: "",
+    embeddingModel: "",
+    rerankEnabled: false,
+    rerankModel: "",
+    queryRewriteEnabled: false,
+    queryRewriteModel: "",
+    writingModel: "",
     visitorEnabled: false,
     visitorDailyLimit: 0,
     visitorHourlyLimit: 0,
     visitorWhitelist: [] as string[],
   };
   await loadUsageLimits(temp);
+  const defaultChatModel = aiFoundationDefaultSlots.value.languageModelName || "";
+  const defaultEmbeddingModel = aiFoundationDefaultSlots.value.embeddingModelName || "";
+  const defaultRerankModel = aiFoundationDefaultSlots.value.rerankModelName || "";
+  const effectiveChatModel = temp.chatModel || defaultChatModel;
+  const effectiveEmbeddingModel = temp.embeddingModel || defaultEmbeddingModel;
+  const effectiveRerankModel = temp.rerankModel || defaultRerankModel;
+  const effectiveQueryRewriteModel = temp.queryRewriteModel || effectiveChatModel;
+  const effectiveWritingModel = temp.writingModel || effectiveChatModel;
   limitsForm.enabled = temp.enabled;
-  limitsForm.currentChatModel = temp.chatModel;
+  limitsForm.currentChatModel = effectiveChatModel;
   limitsForm.visitorEnabled = temp.visitorEnabled;
   limitsForm.visitorDailyLimit = temp.visitorDailyLimit;
   limitsForm.visitorHourlyLimit = temp.visitorHourlyLimit;
@@ -1254,27 +1585,178 @@ async function loadAll() {
 
   // 5 个主模型配置 — 供多折线图用
   chartModelConfig.value = {
-    chatModel: temp.chatModel,
-    embeddingModel: temp.embeddingModel,
+    chatModel: effectiveChatModel,
+    embeddingModel: effectiveEmbeddingModel,
     rerankEnabled: temp.rerankEnabled,
-    rerankModel: temp.rerankModel,
+    rerankModel: effectiveRerankModel,
     queryRewriteEnabled: temp.queryRewriteEnabled,
-    queryRewriteModel: temp.queryRewriteModel,
-    writingModel: temp.writingModel,
+    queryRewriteModel: effectiveQueryRewriteModel,
+    writingModel: effectiveWritingModel,
   };
 
-  // 模型列表 = 来自主配置 + 已配置限流的并集 (去重)
-  // 主配置是单一数据源 — drawer 不再加/删模型
-  const allModels = new Set<string>();
-  if (temp.chatModel) allModels.add(temp.chatModel);
-  for (const m of Object.keys(temp.chatModelLimits)) allModels.add(m);
-  limitsForm.chatModelLimits = Array.from(allModels).map((model) => ({
-    model,
-    limit: temp.chatModelLimits[model] ?? 0,
-  }));
+  const normalizedChatModel = normalizeUsageModelName(effectiveChatModel);
+  const currentLimit = normalizedChatModel
+    ? resolveCurrentChatLimit(temp.chatModelLimits, normalizedChatModel)
+    : 0;
+  limitsForm.chatModelLimits = normalizedChatModel
+    ? [{ model: normalizedChatModel, limit: currentLimit }]
+    : [];
 
   saveMsg.value = "";
   saveOk.value = false;
+}
+
+function resolveCurrentChatLimit(limits: Record<string, number>, currentModel: string) {
+  const exact = limits[currentModel];
+  if (exact !== undefined) return exact;
+  const currentLabel = displayModelName(currentModel);
+  for (const [model, limit] of Object.entries(limits)) {
+    const normalizedModel = normalizeUsageModelName(model);
+    if (normalizedModel === currentModel) return limit;
+    if (model && currentLabel && (currentLabel === model || currentLabel.startsWith(`${model} ·`))) {
+      return limit;
+    }
+  }
+  return 0;
+}
+
+async function loadFailureDiagnostics() {
+  failureDiagnosticsLoading.value = true;
+  try {
+    failureDiagnostics.value = await loadUsageFailureDiagnostics({
+      start: startDate.value,
+      end: endDate.value,
+    });
+  } catch (e: any) {
+    failureDiagnostics.value = null;
+    Toast.error(e?.message || "失败诊断加载失败");
+  } finally {
+    failureDiagnosticsLoading.value = false;
+  }
+}
+
+async function persistHiddenModels(models: string[]) {
+  const unique = Array.from(new Set(models.map((model) => model.trim()).filter(Boolean)));
+  await saveHiddenUsageModels(unique);
+  hiddenModels.value = unique;
+}
+
+async function hideUsageRow(row: Row) {
+  try {
+    await persistHiddenModels([...hiddenModels.value, row.model, ...row.rawModels]);
+    Toast.success("已隐藏该模型用量，可在表格下方恢复");
+  } catch (e: any) {
+    Toast.error(e?.message || "隐藏失败");
+  }
+}
+
+async function restoreHiddenModel(model: string) {
+  try {
+    const normalized = normalizeUsageModelName(model);
+    await persistHiddenModels(hiddenModels.value.filter((item) => {
+      return item !== model && normalizeUsageModelName(item) !== normalized;
+    }));
+    Toast.success("已恢复显示");
+  } catch (e: any) {
+    Toast.error(e?.message || "恢复失败");
+  }
+}
+
+async function clearHiddenModels() {
+  try {
+    await persistHiddenModels([]);
+    Toast.success("已恢复全部隐藏模型");
+  } catch (e: any) {
+    Toast.error(e?.message || "恢复失败");
+  }
+}
+
+function openMergeDialog(row: Row) {
+  cleanupRow.value = row;
+  mergeTargetModel.value = mergeTargetOptions.value[0]?.model || "";
+  mergeDialogOpen.value = true;
+}
+
+function closeMergeDialog() {
+  if (cleanupBusy.value) return;
+  mergeDialogOpen.value = false;
+  mergeTargetModel.value = "";
+  cleanupRow.value = null;
+}
+
+function openDeleteDialog(row: Row) {
+  cleanupRow.value = row;
+  deleteDialogOpen.value = true;
+}
+
+function closeDeleteDialog() {
+  if (cleanupBusy.value) return;
+  deleteDialogOpen.value = false;
+  cleanupRow.value = null;
+}
+
+async function confirmMergeUsage() {
+  const row = cleanupRow.value;
+  const targetModel = mergeTargetModel.value;
+  if (!row || !targetModel) return;
+  cleanupBusy.value = true;
+  try {
+    let affectedCalls = 0;
+    let affectedLogs = 0;
+    const sources = row.rawModels.filter((model) => model !== targetModel);
+    for (const sourceModel of sources) {
+      const result = await mergeUsageModel({
+        sourceModel,
+        targetModel,
+        start: startDate.value,
+        end: endDate.value,
+      });
+      affectedCalls += result.affectedCalls || 0;
+      affectedLogs += result.affectedLogs || 0;
+    }
+    await persistHiddenModels(hiddenModels.value.filter((model) => {
+      return !sources.includes(model) && normalizeUsageModelName(model) !== row.model;
+    }));
+    mergeDialogOpen.value = false;
+    mergeTargetModel.value = "";
+    cleanupRow.value = null;
+    await loadAll();
+    Toast.success(`合并完成，影响 ${affectedCalls} 次调用、${affectedLogs} 条明细`);
+  } catch (e: any) {
+    Toast.error(e?.message || "合并失败");
+  } finally {
+    cleanupBusy.value = false;
+  }
+}
+
+async function confirmDeleteUsage() {
+  const row = cleanupRow.value;
+  if (!row) return;
+  cleanupBusy.value = true;
+  try {
+    let affectedCalls = 0;
+    let affectedLogs = 0;
+    for (const model of row.rawModels) {
+      const result = await deleteUsageModel({
+        model,
+        start: startDate.value,
+        end: endDate.value,
+      });
+      affectedCalls += result.affectedCalls || 0;
+      affectedLogs += result.affectedLogs || 0;
+    }
+    await persistHiddenModels(hiddenModels.value.filter((model) => {
+      return !row.rawModels.includes(model) && normalizeUsageModelName(model) !== row.model;
+    }));
+    deleteDialogOpen.value = false;
+    cleanupRow.value = null;
+    await loadAll();
+    Toast.success(`删除完成，移除 ${affectedCalls} 次调用、${affectedLogs} 条明细`);
+  } catch (e: any) {
+    Toast.error(e?.message || "删除失败");
+  } finally {
+    cleanupBusy.value = false;
+  }
 }
 
 async function openCallDrawer(model: string) {
@@ -1372,10 +1854,10 @@ function scenarioLabel(scenario: string) {
 /** 抽屉里展示的限流模型行: 模型名 + 上限 + 今日已用 (供进度条用) */
 const chatModelsForLimits = computed(() => {
   return limitsForm.chatModelLimits.map((item) => {
-    const today = todayData.value.models.find((m) => m.model === item.model);
-    const todayTokens = today
-      ? today.promptTokens + today.completionTokens + today.embeddingTokens
-      : 0;
+    const normalizedModel = normalizeUsageModelName(item.model);
+    const todayTokens = todayData.value.models
+      .filter((m) => normalizeUsageModelName(m.model) === normalizedModel)
+      .reduce((sum, m) => sum + m.promptTokens + m.completionTokens + m.embeddingTokens, 0);
     return { ...item, todayTokens };
   });
 });
@@ -1639,6 +2121,7 @@ onUnmounted(() => {
 .usage-chart-wrap {
   width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .usage-chart {
   width: 100%;
@@ -1791,6 +2274,247 @@ onUnmounted(() => {
   color: #ef4444;
   font-weight: 600;
 }
+.usage-summary-table {
+  min-width: 720px;
+}
+.usage-summary-model code {
+  display: inline-block;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.usage-summary-actions {
+  white-space: nowrap;
+}
+.usage-diagnostics-ok {
+  padding: 18px;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: #047857;
+  font-size: 13px;
+  font-weight: 600;
+}
+.usage-diagnostics-section {
+  margin-top: 34px;
+}
+.usage-diagnostics-card {
+  overflow: hidden;
+}
+.usage-diagnostics-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  text-align: left;
+}
+.usage-diagnostics-card .ai-card-body {
+  border-top: 1px solid #e5e7eb;
+}
+.usage-diagnostics-toggle:hover {
+  background: #f1f5f9;
+}
+.usage-diagnostics-toggle-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.usage-diagnostics-toggle-main strong {
+  display: block;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 650;
+}
+.usage-diagnostics-toggle-main em {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.usage-diagnostics-toggle-meta {
+  color: #94a3b8;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.usage-diagnostics-caret {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #fff;
+  color: #64748b;
+  font-size: 12px;
+  transform: rotate(-90deg);
+  transition: transform 0.15s ease;
+}
+.usage-diagnostics-caret.open {
+  transform: rotate(0deg);
+}
+.usage-diagnostics {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.usage-diagnostics-main {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+.usage-diagnostics-main > div {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px 14px;
+}
+.usage-diagnostics-label {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+.usage-diagnostics-total {
+  margin-top: 6px;
+  color: #dc2626;
+  font-size: 30px;
+  font-weight: 750;
+  line-height: 1;
+}
+.usage-diagnostics-primary strong {
+  display: block;
+  margin-top: 4px;
+  color: #111827;
+  font-size: 15px;
+}
+.usage-diagnostics-primary p {
+  margin: 6px 0 0;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.usage-diagnostics-primary code,
+.usage-diagnostics-recent code {
+  display: block;
+  margin-top: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  padding: 6px 8px;
+}
+.usage-diagnostics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.usage-diagnostics-panel {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px 14px;
+}
+.usage-diagnostics-panel h3 {
+  margin: 0 0 10px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 650;
+}
+.usage-diagnostics-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-top: 1px solid #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+}
+.usage-diagnostics-row:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+.usage-diagnostics-row strong {
+  color: #111827;
+  font-variant-numeric: tabular-nums;
+}
+.usage-diagnostics-recent {
+  padding: 10px 0;
+  border-top: 1px solid #f1f5f9;
+}
+.usage-diagnostics-recent:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+.usage-diagnostics-recent-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: #64748b;
+  font-size: 12px;
+}
+.usage-diagnostics-recent-head strong {
+  color: #b91c1c;
+}
+.usage-diagnostics-recent-head em {
+  color: #94a3b8;
+  font-style: normal;
+}
+.usage-hidden-models {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid #eef2f7;
+  background: #f8fafc;
+}
+.usage-hidden-title {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+.usage-hidden-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 260px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+  cursor: pointer;
+}
+.usage-hidden-chip:hover {
+  border-color: #4f46e5;
+  color: #3730a3;
+}
+.usage-hidden-chip span {
+  color: #94a3b8;
+  font-size: 11px;
+}
 .usage-progress {
   width: 140px;
   height: 8px;
@@ -1812,21 +2536,43 @@ onUnmounted(() => {
   color: #6b7280;
 }
 .usage-permodel-row {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  margin-bottom: 6px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 124px 104px;
+  gap: 8px;
+  align-items: end;
+  margin-bottom: 8px;
 }
-.usage-permodel-row .ai-input { flex: 1; }
+.usage-limit-field {
+  min-width: 0;
+}
+.usage-limit-label {
+  display: block;
+  margin-bottom: 4px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+}
+.usage-limit-model .ai-input {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #475569;
+}
+.usage-limit-progress {
+  min-height: 42px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
 
 /* 进度文本: 显示 "已用 / 上限" + 阈值颜色 */
 .ai-form-progress {
   font-size: 11px;
   color: #9ca3af;
   font-variant-numeric: tabular-nums;
-  min-width: 80px;
-  text-align: right;
+  min-width: 0;
+  text-align: left;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 .ai-form-progress-ok   { color: #6b7280; }
 .ai-form-progress-warn { color: #f59e0b; font-weight: 600; }
@@ -1920,11 +2666,66 @@ onUnmounted(() => {
 .usage-drawer-body {
   padding: 16px 20px;
 }
+.usage-cleanup-modal {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 1002;
+  width: min(520px, calc(100vw - 32px));
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.18);
+}
+.usage-cleanup-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.usage-cleanup-modal-header h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 600;
+}
+.usage-cleanup-modal-body {
+  padding: 16px 18px;
+}
+.usage-cleanup-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px 16px;
+  border-top: 1px solid #f1f5f9;
+}
+.usage-cleanup-summary {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.usage-cleanup-warning {
+  margin: 0;
+  color: #7f1d1d;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.usage-cleanup-modal-danger .usage-cleanup-modal-header {
+  background: #fef2f2;
+}
 .usage-call-drawer {
   width: min(860px, 94vw);
 }
 .usage-call-table-wrap {
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #fff;
@@ -2039,4 +2840,196 @@ onUnmounted(() => {
 }
 .ai-save-ok { color: #10b981; }
 .ai-save-fail { color: #ef4444; }
+
+@media (max-width: 720px) {
+  .ai-page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .usage-range-popover {
+    width: min(280px, calc(100vw - 24px));
+  }
+
+  .usage-chart {
+    min-width: 620px;
+  }
+
+  .usage-chart-legend {
+    gap: 8px;
+  }
+
+  .usage-chart-legend-label {
+    min-width: 0;
+    white-space: normal;
+  }
+
+  .usage-chart-legend-model {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .usage-diagnostics-main,
+  .usage-diagnostics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .usage-diagnostics-toggle {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .usage-diagnostics-toggle-meta {
+    margin-left: 32px;
+  }
+
+  .usage-summary-table,
+  .usage-call-table {
+    display: block;
+    min-width: 0;
+    width: 100%;
+    overflow: visible;
+  }
+
+  .usage-summary-table thead,
+  .usage-call-table thead {
+    display: none;
+  }
+
+  .usage-summary-table tbody,
+  .usage-summary-table tr,
+  .usage-summary-table td,
+  .usage-call-table tbody,
+  .usage-call-table tr,
+  .usage-call-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .usage-summary-table tbody,
+  .usage-call-table tbody {
+    padding: 10px;
+    background: #f8fafc;
+  }
+
+  .usage-summary-table tbody tr,
+  .usage-call-table tbody tr {
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .usage-summary-table tbody tr:hover td,
+  .usage-call-table tbody tr:hover td {
+    background: #fff;
+  }
+
+  .usage-summary-table td,
+  .usage-call-table td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 38px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right !important;
+    white-space: normal;
+  }
+
+  .usage-summary-table td::before,
+  .usage-call-table td::before {
+    content: attr(data-label);
+    flex: 0 0 78px;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 650;
+    text-align: left;
+  }
+
+  .usage-summary-table td:last-child,
+  .usage-call-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .usage-summary-model {
+    display: block !important;
+    padding: 13px 12px !important;
+    text-align: left !important;
+  }
+
+  .usage-summary-model::before {
+    display: none;
+  }
+
+  .usage-summary-model code {
+    max-width: 100%;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .usage-summary-actions {
+    align-items: flex-start !important;
+  }
+
+  .usage-call-table-wrap {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .usage-call-error-row {
+    margin-top: -10px;
+  }
+
+  .usage-call-error-row td {
+    display: block !important;
+    text-align: left !important;
+  }
+
+  .usage-call-error-row td::before {
+    display: none;
+  }
+
+  .usage-call-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .usage-call-pages {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .usage-drawer,
+  .usage-call-drawer {
+    width: min(100vw, 520px);
+  }
+
+  .usage-drawer-body {
+    padding: 14px 12px;
+  }
+
+  .usage-permodel-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-form-progress {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .usage-cleanup-modal {
+    width: calc(100vw - 20px);
+  }
+
+  .usage-cleanup-modal-footer {
+    flex-wrap: wrap;
+  }
+}
 </style>

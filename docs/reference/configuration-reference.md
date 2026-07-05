@@ -1,7 +1,7 @@
 # 配置参考
 
 > 事实来源：`AIProperties.java` 当前默认值  
-> 适用版本：AI 智能套件 0.3.0
+> 适用版本：AI 智能套件 0.3.2
 
 ## 配置存储
 
@@ -37,8 +37,8 @@ ConfigMap 的每个 `data.<group>` 是一段 JSON 字符串。AI 智能套件不
 | `minChunkSize` | `50` | 过短切片的下限 |
 | `autoKeywords` | `false` | 是否自动提取关键词 |
 | `autoKeywordsCount` | `3` | 每篇/切片关键词数量 |
-| `keywordsMaxTokens` | `1024` | 关键词生成输出上限 |
-| `keywordsBatchSize` | `20` | 关键词处理批量大小 |
+| `keywordsMaxTokens` | `2048` | 关键词生成输出上限 |
+| `keywordsBatchSize` | `1` | 关键词处理批量大小 |
 
 修改切片策略不会自动改写已有切片。需要对受影响文章执行单篇重建或全量重建。
 
@@ -81,9 +81,12 @@ ConfigMap 的每个 `data.<group>` 是一段 JSON 字符串。AI 智能套件不
 | `maxTokens` | `2048` | 最大输出 token |
 | `historyTurns` | `5` | 携带历史轮数 |
 | `streamOutput` | `true` | 流式输出开关 |
+| `allowVisitorReasoning` | `true` | 是否允许访客为单次请求开启深度思考 |
+| `reasoningDefaultEnabled` | `false` | 访客首次打开浮窗时是否默认开启深度思考 |
 | `allowGuest` | `true` | 是否允许访客调用聊天 |
 | `welcomeMessage` | `Hi! 有什么想了解的？` | 欢迎语 |
-| `shortcutQuestions` | 空 | 快捷问题，每行一个 |
+| `shortcutItems` | `[]` | 结构化快捷问题：显示标题、实际问题、图标、绑定意图和启用状态 |
+| `shortcutQuestions` | 空 | 旧版多行配置兼容字段，读取时会自动迁移为 `shortcutItems` |
 | `widgetPosition` | `right-bottom` | Widget 位置 |
 | `widgetThemeColor` | `#5387C4` | 主题色 |
 | `widgetIcon` | `ri-chat-3-line` | 图标 |
@@ -98,6 +101,8 @@ ConfigMap 的每个 `data.<group>` 是一段 JSON 字符串。AI 智能套件不
 | `widgetTriggerShape` | `square` | `square`、`rounded`、`circle` |
 | `showPrivacyTip` | `false` | 显示隐私提示 |
 | `showRetrievalStatus` | `false` | 显示检索状态 |
+
+旧字段 `reasoningMode=enabled` 会迁移为 `reasoningDefaultEnabled=true`。深度思考是否实际可用取决于所选 AI Foundation 模型；详细行为见 [深度思考与推理过程](../user-guide/reasoning-mode.md)。
 
 ## AI 摘要 `excerpt`
 

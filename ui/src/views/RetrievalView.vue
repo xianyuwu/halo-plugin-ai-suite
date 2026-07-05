@@ -255,6 +255,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .ai-range-label {
@@ -397,5 +398,28 @@ onMounted(async () => {
   .ai-excerpt-cols { flex-direction: column; }
   .ai-form-grid-2col { grid-template-columns: 1fr; }
   .ai-field-full { grid-column: auto; }
+}
+
+@media (max-width: 560px) {
+  .ai-excerpt-cols {
+    gap: 16px;
+  }
+  .ai-range-wrap {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ai-range-label {
+    min-width: 0;
+  }
+  .ai-flow-steps {
+    padding: 8px 0;
+  }
+  .ai-flow-step {
+    gap: 12px;
+  }
+  .ai-flow-connector {
+    margin-left: 14px;
+  }
 }
 </style>
