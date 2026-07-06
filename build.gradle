@@ -4,7 +4,7 @@ plugins {
     id "run.halo.plugin.devtools" version "0.6.3"
 }
 
-group 'run.halo.ai.suite'
+group 'cn.rainwu.halo.ai.suite'
 
 repositories {
     // 腾讯云 Maven 镜像（国内加速）
@@ -22,8 +22,9 @@ repositories {
 }
 
 dependencies {
-    implementation platform('run.halo.tools.platform:plugin:2.24.0')
+    implementation platform('run.halo.tools.platform:plugin:2.25.0')
     compileOnly 'run.halo.app:api'
+    compileOnly 'run.halo.aifoundation:api:1.0.0-beta.4'
 
     // Lucene 10.3.2 — 跟 Halo 自带版本严格对齐（Halo 主 jar 里就是 10.3.2 + backward-codecs）
     // 关键：core / analysis-common / queryparser 用 compileOnly，
@@ -40,6 +41,7 @@ dependencies {
     }
 
     testImplementation 'run.halo.app:api'
+    testImplementation 'run.halo.aifoundation:api:1.0.0-beta.4'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
@@ -69,5 +71,5 @@ tasks.named('generatePluginComponentsIdx') {
 }
 
 halo {
-    version = '2.24.0'
+    version = '2.25.4'
 }

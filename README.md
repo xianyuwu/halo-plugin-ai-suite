@@ -10,7 +10,7 @@
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Lucene](https://img.shields.io/badge/Lucene-10.3.2-0a6f3a)](https://lucene.apache.org/)
-[![Version](https://img.shields.io/badge/version-0.3.3-blue)](src/main/resources/plugin.yaml)
+[![Version](https://img.shields.io/badge/version-0.3.4-blue)](src/main/resources/plugin.yaml)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
 [快速开始](#快速开始) · [功能全景](#功能全景) · [完整文档](https://ai-suite-docs.rainwu.cn) · [工作原理](#工作原理) · [开发指南](#开发指南)
@@ -161,6 +161,14 @@ JAVA_HOME=/path/to/jdk21 ./gradlew build
 
 模型供应商、Base URL、API Key 和默认模型均由 Halo AI Foundation 统一维护。AI 智能套件只保存各业务使用的模型资源名与生成参数。
 
+### 外部服务、费用与数据流向
+
+- 插件本身不内置模型服务商。管理员在 Halo AI Foundation 中配置的服务商负责处理模型请求，并可能按其规则收取 API 费用，费用由站点管理员承担。
+- 根据启用功能，访客问题、文章正文或摘要、编辑器选区、检索片段、评测问题以及运营分析提示词可能被发送给管理员选择的模型服务商，用于生成文本、Embedding 或 Rerank。
+- 停止外部模型调用的方式：关闭对应访客/内容功能，或禁用 AI 智能套件；移除模型供应商和密钥应在 Halo AI Foundation 中完成。
+- 问答记录、反馈、用量、评测和任务记录保存在 Halo 本地。保存期限和清理方式由站点管理员按照后台配置及站点隐私政策管理。
+- 文章脑图渲染所需的 Markmap、Markdown 解析和样式资源均随插件本地打包，不从 jsDelivr、unpkg 等第三方 CDN 加载。
+
 ### 3. 建立文章索引
 
 进入「索引中心」，点击「全量重建」。插件会读取已发布的公开文章，完成清洗、切片、关键词提取与向量化。
@@ -257,7 +265,7 @@ location / {
 
 “对话与外观”还负责深度思考策略和结构化快捷问题。快捷问题可以直接绑定已启用的意图路由，避免依赖文案模糊匹配。
 
-## 0.3.2 文档重点
+## 0.3.4 文档重点
 
 - [当前版本能力清单](docs/reference/current-version.md)
 - [深度思考与推理过程](docs/user-guide/reasoning-mode.md)
@@ -273,12 +281,13 @@ location / {
 - **访客限流**：支持按 IP 的每小时、每日限制和白名单。
 - **访问控制**：公开 API 使用独立匿名 RoleTemplate；Console API 需要管理员权限。
 - **可观测性**：记录检索阶段、耗时、引用、命中意图、模型用量和访客反馈。
+- **本地前端依赖**：访客端脑图不动态加载第三方 CDN 脚本或样式；外部模型请求仅经 Halo AI Foundation 发起。
 
 ## 技术栈
 
 | 层 | 技术 |
 | --- | --- |
-| 插件后端 | Java 21、Spring WebFlux、Halo Plugin API 2.24.0 编译基线（运行要求 Halo 2.25+） |
+| 插件后端 | Java 21、Spring WebFlux、Halo Plugin API 2.25.0 编译基线（运行要求 Halo 2.25+） |
 | Console | Vue 3、TypeScript、Vite、Tiptap |
 | 主题侧 | 原生 JavaScript / CSS，通过 AdditionalWebFilter 注入 |
 | 检索 | Apache Lucene 10.3.2、BM25、HNSW、RRF、SmartChineseAnalyzer |
@@ -287,7 +296,7 @@ location / {
 ## 项目结构
 
 ```text
-src/main/java/run/halo/ai/suite/
+src/main/java/cn/rainwu/halo/ai/suite/
 ├── agent/          # 运营智能体任务
 ├── config/         # 配置读取
 ├── endpoint/       # 公开 API 与 Console API

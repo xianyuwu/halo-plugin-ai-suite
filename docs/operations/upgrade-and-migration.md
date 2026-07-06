@@ -38,6 +38,14 @@ AI 智能套件当前只保存业务配置：
 - 插件热更新后若旧聊天路由仍被 Halo 缓存，可临时使用 `v1alpha2`；生产升级建议完整重启 Halo。
 - Embedding 模型或维度发生变化时必须全量重建索引。
 
+## 升级到 0.3.4
+
+- 最低运行版本仍为 Halo 2.25.0；当前按 AI Foundation `1.0.0-beta.4` 的公开 API 编译并完成验证。Halo 2.25 暂不支持在插件依赖表达式中锁定预发布版本，因此升级 AI Foundation 后需重新执行兼容验证。
+- 模型接入已改为 AI Foundation 公开类型化 SDK，不再反射调用 API，也不再读取 AI Foundation 内部 ConfigMap。
+- Java 实现包名迁移到 `cn.rainwu.halo.ai.suite`；插件 ID、API Group、ConfigMap 和业务 Extension GVK 保持不变，不需要迁移现有业务数据。
+- 脑图渲染依赖改为插件内本地构建，不再从 jsDelivr 或 unpkg 加载脚本、样式。
+- 若同时更换 Embedding 模型或向量维度，升级后必须执行全量索引重建；仅从 0.3.3 升级且模型与维度未变化时无需重建。
+
 ## 何时重建索引
 
 必须重建：Embedding 模型、向量维度或索引结构变化。建议重建：切片规则大幅调整、Lucene 版本变化或统计不一致。仅 Chat 模型、Prompt、UI 主题变化不需要重建。

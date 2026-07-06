@@ -70,7 +70,7 @@ check_java() {
 check_halo_jar() {
     if [ ! -f "$HALO_JAR" ]; then
         error "Halo JAR 不存在: $HALO_JAR"
-        echo "请先下载 Halo 2.24.0: https://github.com/halo-dev/halo/releases/tag/v2.24.0"
+        echo "请先下载 Halo 2.25.4: https://github.com/halo-dev/halo/releases/tag/v2.25.4"
         exit 1
     fi
 }

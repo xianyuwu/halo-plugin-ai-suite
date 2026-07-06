@@ -40,7 +40,7 @@ JAVA_HOME=~/jdk21/contents/Contents/Home ./gradlew build
 构建产物位于：
 
 ```text
-build/libs/plugin-ai-suite-0.3.3.jar
+build/libs/plugin-ai-suite-0.3.4.jar
 ```
 
 本项目开发环境不使用 Docker，也不要运行 `./gradlew haloServer`。

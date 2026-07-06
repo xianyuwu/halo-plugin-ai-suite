@@ -4,7 +4,7 @@
 | --- | --- | --- |
 | AI 智能套件 | 0.3.x | 文档当前适用版本系列 |
 | Halo | 2.25.0+ | `plugin.yaml` 声明 `>=2.25.0` |
-| Halo AI Foundation | 必需 | `plugin.yaml` 声明 `pluginDependencies.ai-foundation` |
+| Halo AI Foundation | `1.0.0-beta.4`（已验证） | 必需，公开 API 以 `compileOnly` 接入；因 Halo 2.25 暂不解析预发布版本依赖表达式，manifest 按官方指南声明 `"*"` |
 | Java | 21 | 构建与本地运行要求 |
 | Lucene | 10.3.2 | 必须与 Halo 2.25 内置版本对齐 |
 | Node.js | 20+ | Console 构建 |
@@ -17,7 +17,7 @@
 - AI 智能套件只保存业务使用的 AI Foundation 模型资源名和生成参数。
 - 字段为空时使用 AI Foundation 的默认模型；查询改写和写作模型为空时复用语言模型。
 - 不同厂商对 usage、SSE、JSON 输出和 Rerank 支持可能不同，必须先在 AI Foundation 和 AI 智能套件后台连接测试中验证。
-- 推理模型可能返回结构化 reasoning 字段，也可能在文本中输出 `<think>` / `<reasoning>`；0.3.2 会统一解析，并在关闭深度思考时过滤意外透传内容。
+- 推理模型可能返回结构化 reasoning 字段，也可能在文本中输出 `<think>` / `<reasoning>`；0.3.4 会统一解析，并在关闭深度思考时过滤意外透传内容。
 - 显式推理参数被供应商拒绝时会自动降级重试，因此“请求成功”不等于模型一定提供了可展示的推理过程。
 
 ## 功能依赖矩阵

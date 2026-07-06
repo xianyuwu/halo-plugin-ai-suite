@@ -91,7 +91,7 @@ try {
 }
 
 const apiDocs = walk(join(root, "docs/api"), ".md").map(read).join("\n");
-for (const file of walk(join(root, "src/main/java/run/halo/ai/suite/endpoint"), "Endpoint.java")) {
+for (const file of walk(join(root, "src/main/java/cn/rainwu/halo/ai/suite/endpoint"), "Endpoint.java")) {
   for (const match of read(file).matchAll(/\.(?:GET|POST|PUT|DELETE)\("([^"]+)"/g)) {
     if (!apiDocs.includes(match[1])) failures.push(`${basename(file)}: undocumented route ${match[1]}`);
   }

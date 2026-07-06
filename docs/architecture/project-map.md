@@ -9,7 +9,7 @@
 
 | 路径 | 职责 |
 | --- | --- |
-| `src/main/java/run/halo/ai/suite` | 插件生命周期、API、业务服务、RAG、意图、运行状态 |
+| `src/main/java/cn/rainwu/halo/ai/suite` | 插件生命周期、API、业务服务、RAG、意图、运行状态 |
 | `src/main/resources/console` | Vue Console 构建产物 |
 | `src/main/resources/static` | 访客聊天、搜索、脑图原生 JS/CSS |
 | `src/main/resources/extensions` | RoleTemplate、WebFilter、摘要扩展和静态资源代理声明 |

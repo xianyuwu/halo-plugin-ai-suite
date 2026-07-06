@@ -3,7 +3,7 @@ plugins {
     id "com.github.node-gradle.node" version "7.1.0"
 }
 
-group 'run.halo.ai.suite.ui'
+group 'cn.rainwu.halo.ai.suite.ui'
 
 tasks.register('buildFrontend', PnpmTask) {
     group = 'build'
