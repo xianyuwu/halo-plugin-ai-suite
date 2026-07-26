@@ -386,6 +386,28 @@
     triggerPlacementSettleTimer = setTimeout(updateResponsiveTriggerPlacement, 350);
   }
 
+  /**
+   * 聊天 UI 与共享脚本解耦：chat-widget.js 同时提供 AI 搜索能力，
+   * 因此 allowGuest=false 时只隐藏聊天入口和窗口，不能停止脚本初始化。
+   * Console/iframe 预览仍保留窗口，以便站长查看禁用状态下的外观。
+   */
+  function syncChatAvailability() {
+    var isPreviewMode = isContainerMode ||
+      window.location.search.indexOf("ai-embed=1") >= 0 ||
+      window.location.search.indexOf("ai-preview=1") >= 0;
+    var chatVisible = config.allowGuest || isPreviewMode;
+    var inputArea = chatWindow.querySelector(".ai-chat-input-area");
+
+    trigger.style.display = chatVisible ? "" : "none";
+    chatWindow.style.display = chatVisible ? "" : "none";
+    if (inputArea) inputArea.style.display = config.allowGuest ? "" : "none";
+
+    if (!chatVisible) {
+      chatWindow.classList.remove("open");
+      isOpen = false;
+    }
+  }
+
   /** 根据配置更新外观 */
   function applyConfig() {
     // 主题色注入 CSS 变量，整个 widget 内的紫色调（trigger/header/user 气泡/发送按钮/链接等）自动跟随
@@ -427,9 +449,7 @@
     chatWindow.style.width = config.width + "px";
     chatWindow.style.height = config.height + "px";
 
-    if (!config.allowGuest) {
-      chatWindow.querySelector(".ai-chat-input-area").style.display = "none";
-    }
+    syncChatAvailability();
   }
 
   /**
@@ -1845,11 +1865,10 @@
       if (data.shortcuts.length) renderShortcuts(data.shortcuts);
     }
 
-    // 游客访问：切换输入区显隐
+    // 游客访问：只切换聊天 UI；搜索能力继续由共享脚本提供
     if (data.allowGuest !== undefined) {
       config.allowGuest = data.allowGuest;
-      var inputArea = chatWindow.querySelector(".ai-chat-input-area");
-      if (inputArea) inputArea.style.display = data.allowGuest ? "" : "none";
+      syncChatAvailability();
     }
     if (data.allowVisitorReasoning !== undefined) {
       config.allowVisitorReasoning = data.allowVisitorReasoning === true;
