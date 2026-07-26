@@ -71,17 +71,10 @@ public class ChatWidgetFilter implements AdditionalWebFilter {
             return chain.filter(exchange);
         }
 
-        // 读取配置，若不允许游客则鉴权；配置读取失败时默认注入（allowGuest 默认 true）
-        return aiProperties.getChatConfig()
-            .flatMap(chatConfig -> {
-                if (!chatConfig.isAllowGuest()) {
-                    return exchange.getPrincipal()
-                        .flatMap(principal -> injectWidget(exchange, chain, path))
-                        .switchIfEmpty(chain.filter(exchange)); // 未登录，不注入
-                }
-                return injectWidget(exchange, chain, path);
-            })
-            .onErrorResume(e -> injectWidget(exchange, chain, path));
+        // 搜索和脑图都有独立开关，不能被聊天的 allowGuest 提前截断。
+        // 始终注入共享前台资源；chat-widget.js 会根据 allowGuest 隐藏聊天 UI，
+        // 同时保留 AI 搜索入口，脑图仍由 mindmap.enabled 独立控制。
+        return injectWidget(exchange, chain, path);
     }
 
     private Mono<Void> injectWidget(ServerWebExchange exchange, WebFilterChain chain, String path) {
@@ -114,9 +107,9 @@ public class ChatWidgetFilter implements AdditionalWebFilter {
                             return Mono.just(originalResponse.bufferFactory().wrap(bytes));
                         }
 
-                        // buildWidgetHtml 读配置可能失败 → 兜底只注入聊天浮窗基础资源
+                        // buildWidgetHtml 读配置可能失败 → 兜底注入聊天/搜索共享资源
                         return buildWidgetHtml(html, path)
-                            .onErrorReturn(buildChatWidgetHtml())
+                            .onErrorReturn(buildSharedWidgetHtml())
                             .map(widgetHtml -> {
                                 // replaceFirst: 只替换第一个 </body>（真正的页面闭合标签）。
                                 // 全局 replace 会在 HTML 含多个 </body>（如被转义的示例代码）时注入多次。
@@ -152,7 +145,7 @@ public class ChatWidgetFilter implements AdditionalWebFilter {
      * 思维导图资源受 mindmapConfig.enabled 开关控制。
      */
     private Mono<String> buildWidgetHtml(String html, String path) {
-        String chatHtml = buildChatWidgetHtml();
+        String sharedWidgetHtml = buildSharedWidgetHtml();
         Optional<PostPageContext> postPageContext = detectPostPageContext(html, path);
 
         return aiProperties.getMindMapConfig()
@@ -161,7 +154,7 @@ public class ChatWidgetFilter implements AdditionalWebFilter {
             .map(mindmapEnabled -> {
                 String base = "/plugins/ai-suite/assets/res";
                 String v = "?v=" + assetVersion;
-                StringBuilder sb = new StringBuilder(chatHtml);
+                StringBuilder sb = new StringBuilder(sharedWidgetHtml);
                 // mindmap 脚本必须全局注入：pjax 导航只替换 .column-main，不会加载文章页 head 的脚本，
                 // 若只在文章页注入，从首页 pjax 进文章页时脚本从未执行，脑图永远不显示。
                 // 非文章页由脚本内 isArticlePage() 自动跳过渲染，全局注入安全。
@@ -182,8 +175,11 @@ public class ChatWidgetFilter implements AdditionalWebFilter {
             });
     }
 
-    /** 聊天浮窗基础资源 — 纯字符串，不读配置，永远不报错 */
-    private String buildChatWidgetHtml() {
+    /**
+     * 聊天/搜索共享资源 — chat-widget.js 同时承载 AI 搜索入口与弹框。
+     * 资源必须独立于 allowGuest 注入，脚本内部再按配置隐藏聊天 UI。
+     */
+    private String buildSharedWidgetHtml() {
         String base = "/plugins/ai-suite/assets/res";
         String v = "?v=" + assetVersion;
         return "<link rel=\"stylesheet\" href=\"" + base + "/css/chat-widget.css" + v + "\">\n"
