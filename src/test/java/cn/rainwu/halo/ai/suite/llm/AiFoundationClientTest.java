@@ -1,8 +1,10 @@
 package cn.rainwu.halo.ai.suite.llm;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -55,7 +57,7 @@ class AiFoundationClientTest {
     }
 
     @Test
-    void usesTypedEmbeddingApiWithRequestedDimensions() {
+    void omitsDimensionsWhenNativeVectorAlreadyMatches() {
         EmbeddingModel model = mock(EmbeddingModel.class);
         when(extensionGetter.getEnabledExtension(AiModelService.class))
             .thenReturn(Mono.just(modelService));
@@ -68,7 +70,45 @@ class AiFoundationClientTest {
         assertThat(result).containsExactly(1f, 2f);
         ArgumentCaptor<EmbeddingRequest> request = ArgumentCaptor.forClass(EmbeddingRequest.class);
         verify(model).embed(request.capture());
-        assertThat(request.getValue().getDimensions()).isEqualTo(2);
+        assertThat(request.getValue().getDimensions()).isNull();
+    }
+
+    @Test
+    void requestsDimensionsForVariableDimensionModelAndCachesMode() {
+        EmbeddingModel model = mock(EmbeddingModel.class);
+        when(extensionGetter.getEnabledExtension(AiModelService.class))
+            .thenReturn(Mono.just(modelService));
+        when(modelService.embeddingModel("embedding-model")).thenReturn(Mono.just(model));
+        when(model.embed(any(EmbeddingRequest.class))).thenAnswer(invocation -> {
+            EmbeddingRequest request = invocation.getArgument(0);
+            int size = request.getDimensions() == null ? 3 : request.getDimensions();
+            return Mono.just(EmbeddingResponse.builder()
+                .embeddings(List.of(new float[size]))
+                .build());
+        });
+
+        assertThat(client.embed("embedding-model", "first", 2, "test").block()).hasSize(2);
+        assertThat(client.embed("embedding-model", "second", 2, "test").block()).hasSize(2);
+
+        ArgumentCaptor<EmbeddingRequest> requests = ArgumentCaptor.forClass(EmbeddingRequest.class);
+        verify(model, times(3)).embed(requests.capture());
+        assertThat(requests.getAllValues())
+            .extracting(EmbeddingRequest::getDimensions)
+            .containsExactly(null, 2, 2);
+    }
+
+    @Test
+    void reportsClearErrorWhenConfiguredDimensionCannotBeProduced() {
+        EmbeddingModel model = mock(EmbeddingModel.class);
+        when(extensionGetter.getEnabledExtension(AiModelService.class))
+            .thenReturn(Mono.just(modelService));
+        when(modelService.embeddingModel("fixed-model")).thenReturn(Mono.just(model));
+        when(model.embed(any(EmbeddingRequest.class))).thenReturn(Mono.just(
+            EmbeddingResponse.builder().embeddings(List.of(new float[3])).build()));
+
+        assertThatThrownBy(() -> client.embed("fixed-model", "hello", 2, "test").block())
+            .hasMessageContaining("原生维度为 3")
+            .hasMessageContaining("显式请求 2 维");
     }
 
     @Test
