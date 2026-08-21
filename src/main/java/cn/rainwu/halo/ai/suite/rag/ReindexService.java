@@ -75,6 +75,7 @@ public class ReindexService {
 
     // 失败重试延迟 — 主轮完成后等 2 秒再重试，给 LLM 限流恢复的时间
     private static final Duration RETRY_DELAY = Duration.ofSeconds(2);
+    private static final int MAX_KEYWORD_CACHE_ENTRIES = 32;
 
     // 失败追踪：postName → title
     private final Map<String, String> failedPosts = new ConcurrentHashMap<>();
@@ -82,6 +83,8 @@ public class ReindexService {
     private final Map<String, String> keywordStatus = new ConcurrentHashMap<>();
     // 每篇文章被截断的关键词数：postName → count
     private final Map<String, Integer> keywordTruncated = new ConcurrentHashMap<>();
+    // 自动重试复用已完成的关键词结果，避免 embedding/写入失败后再次调用聊天模型。
+    private final Map<String, CachedKeywordChunks> keywordResultCache = new ConcurrentHashMap<>();
     private final AtomicBoolean indexing = new AtomicBoolean(false);
 
     /**
@@ -124,13 +127,16 @@ public class ReindexService {
                         List<LuceneIndexService.IndexedChunk> indexedChunks = results.stream()
                             .flatMap(data -> data.chunks().stream())
                             .toList();
+                        Map<String, String> postFingerprints = fingerprintsOf(results);
                         if (!failedTitles.isEmpty()) {
                             return Mono.error(new IllegalStateException(
                                 "部分文章重建失败，已保留旧索引。失败文章：" + String.join("、", failedTitles)));
                         }
                         return Mono.fromCallable(() -> {
                                 luceneIndexService.replaceAll(indexedChunks,
-                                    modelConfig.getEffectiveEmbeddingModel(), modelConfig.getEmbeddingDimensions());
+                                    modelConfig.getEffectiveEmbeddingModel(), modelConfig.getEmbeddingDimensions(),
+                                    postFingerprints);
+                                keywordResultCache.clear();
                                 return totalChunks;
                             })
                             .subscribeOn(Schedulers.boundedElastic());
@@ -159,6 +165,9 @@ public class ReindexService {
         int failedPosts,
         List<String> failedTitles
     ) {}
+
+    /** 自动增量索引结果；skipped=true 表示指纹未变，没有调用模型。 */
+    public record PostReindexResult(int chunkCount, boolean skipped) {}
 
     // ===== 异步重建进度 =====
 
@@ -363,11 +372,13 @@ public class ReindexService {
                                 List<LuceneIndexService.IndexedChunk> allChunks = preparedPosts.stream()
                                     .flatMap(data -> data.chunks().stream())
                                     .toList();
+                                Map<String, String> postFingerprints = fingerprintsOf(preparedPosts);
                                 return Mono.fromRunnable(() -> {
                                     try {
                                         luceneIndexService.replaceAll(allChunks,
                                             modelConfig.getEffectiveEmbeddingModel(),
-                                            modelConfig.getEmbeddingDimensions());
+                                            modelConfig.getEmbeddingDimensions(), postFingerprints);
+                                        keywordResultCache.clear();
                                     } catch (Exception e) {
                                         throw new IllegalStateException(e.getMessage(), e);
                                     }
@@ -448,16 +459,54 @@ public class ReindexService {
                 return extensionClient.fetch(Post.class, postName)
                     .flatMap(post -> {
                         // 未发布、已删除、私有 → 清除索引，不重新索引
-                        if (!post.isPublished() || post.isDeleted()
-                            || post.getSpec() == null
-                            || !Boolean.TRUE.equals(post.getSpec().getPublish())
-                            || !Post.isPublic(post.getSpec())) {
+                        if (!isIndexable(post)) {
                             log.debug("[ReindexService] 文章 {} 未发布、已删除或私有，清除索引", postName);
                             return deletePostIndex(postName).thenReturn(0);
                         }
                         return processPost(post, modelConfig, chunkConfig,
                             new AtomicInteger(0), new AtomicInteger(0));
                     });
+            });
+    }
+
+    /**
+     * 自动增量索引入口。只有正文或会影响索引结果的配置变化时才调用模型。
+     * 手动单篇重建仍使用 {@link #reindexPost(String)} 强制执行。
+     */
+    public Mono<PostReindexResult> reindexPostIfChanged(String postName) {
+        if (indexing.get()) {
+            return Mono.error(new IllegalStateException("全量索引正在重建中，请稍后重试"));
+        }
+        return Mono.zip(aiProperties.getModelConfig(), aiProperties.getChunkConfig())
+            .flatMap(tuple -> {
+                AIProperties.ModelConfig modelConfig = tuple.getT1();
+                AIProperties.ChunkConfig chunkConfig = tuple.getT2();
+                return extensionClient.fetch(Post.class, postName)
+                    .flatMap(post -> {
+                        if (!isIndexable(post)) {
+                            return deletePostIndex(postName)
+                                .thenReturn(new PostReindexResult(0, false));
+                        }
+                        return loadPostSource(post, modelConfig, chunkConfig)
+                            .flatMap(source -> Mono.fromCallable(() ->
+                                    java.util.Optional.ofNullable(
+                                        luceneIndexService.getPostFingerprint(postName)))
+                                .subscribeOn(Schedulers.boundedElastic())
+                                .flatMap(stored -> {
+                                    if (stored.filter(source.fingerprint()::equals).isPresent()) {
+                                        log.debug("[ReindexService] 文章 {} 索引指纹未变，跳过自动重建",
+                                            postName);
+                                        return Mono.just(new PostReindexResult(0, true));
+                                    }
+                                    return preparePostIndex(source, modelConfig, chunkConfig,
+                                            new AtomicInteger(0), new AtomicInteger(0))
+                                        .flatMap(data -> writePostIndex(data, modelConfig))
+                                        .map(count -> new PostReindexResult(count, false));
+                                }));
+                    })
+                    // 硬删除后 fetch 为空，仍需清理残留索引和指纹。
+                    .switchIfEmpty(deletePostIndex(postName)
+                        .thenReturn(new PostReindexResult(0, false)));
             });
     }
 
@@ -559,6 +608,8 @@ public class ReindexService {
                 if (content.isBlank()) {
                     return Mono.just(0);
                 }
+                String fingerprint = PostIndexFingerprint.compute(title, content,
+                    modelConfig, chunkConfig);
 
                 emitSingle(sink, "chunking", "", 0, 10);
                 List<TextChunk> chunks = documentChunker.chunk(postName, title, content, chunkConfig);
@@ -598,7 +649,7 @@ public class ReindexService {
                         .flatMap(indexedChunks -> Mono.fromCallable(() -> {
                                 luceneIndexService.replacePost(indexedChunks,
                                     modelConfig.getEffectiveEmbeddingModel(),
-                                    modelConfig.getEmbeddingDimensions());
+                                    modelConfig.getEmbeddingDimensions(), fingerprint);
                                 return indexedChunks.size();
                             })
                             .subscribeOn(Schedulers.boundedElastic()));
@@ -641,12 +692,7 @@ public class ReindexService {
                                        AtomicInteger truncatedKeywords,
                                        AtomicInteger keywordsFailed) {
         return preparePostIndex(post, modelConfig, chunkConfig, truncatedKeywords, keywordsFailed)
-            .flatMap(data -> Mono.fromCallable(() -> {
-                    luceneIndexService.replacePost(data.chunks(),
-                        modelConfig.getEffectiveEmbeddingModel(), modelConfig.getEmbeddingDimensions());
-                    return data.totalChunks();
-                })
-                .subscribeOn(Schedulers.boundedElastic()));
+            .flatMap(data -> writePostIndex(data, modelConfig));
     }
 
     private Mono<PostIndexData> preparePostIndex(Post post,
@@ -654,9 +700,16 @@ public class ReindexService {
                                        AIProperties.ChunkConfig chunkConfig,
                                        AtomicInteger truncatedKeywords,
                                        AtomicInteger keywordsFailed) {
+        return loadPostSource(post, modelConfig, chunkConfig)
+            .flatMap(source -> preparePostIndex(source, modelConfig, chunkConfig,
+                truncatedKeywords, keywordsFailed));
+    }
+
+    private Mono<PostSource> loadPostSource(Post post,
+                                             AIProperties.ModelConfig modelConfig,
+                                             AIProperties.ChunkConfig chunkConfig) {
         String postName = post.getMetadata().getName();
         String title = post.getSpec().getTitle();
-
         return postContentService.getReleaseContent(postName)
             .map(contentWrapper -> {
                 // 拿到 Markdown 原文
@@ -667,47 +720,84 @@ public class ReindexService {
                 return content != null ? content : "";
             })
             .defaultIfEmpty("")
-            .flatMap(content -> {
+            .map(content -> new PostSource(postName, title, content,
+                PostIndexFingerprint.compute(title, content, modelConfig, chunkConfig)));
+    }
+
+    private Mono<PostIndexData> preparePostIndex(PostSource source,
+                                       AIProperties.ModelConfig modelConfig,
+                                       AIProperties.ChunkConfig chunkConfig,
+                                       AtomicInteger truncatedKeywords,
+                                       AtomicInteger keywordsFailed) {
+        String postName = source.postName();
+        String title = source.title();
+        String content = source.content();
+        return Mono.defer(() -> {
                 if (content.isBlank()) {
                     log.debug("[ReindexService] 文章 '{}' 内容为空，跳过", title);
                     return Mono.just(PostIndexData.empty(postName));
                 }
 
-                // 切片
-                List<TextChunk> chunks = documentChunker.chunk(postName, title, content, chunkConfig);
-                if (chunks.isEmpty()) {
-                    return Mono.just(PostIndexData.empty(postName));
-                }
-
-                // 自动提取关键词（如果开启）
                 Mono<List<TextChunk>> chunksMono;
-                if (chunkConfig.isAutoKeywords() && chunkConfig.getAutoKeywordsCount() > 0) {
-                    int inputTokenLimit = Math.max(512, chunkConfig.getKeywordsMaxTokens());
-                    int batchSize = Math.max(1, chunkConfig.getKeywordsBatchSize());
-                    chunksMono = extractKeywords(chunks, chunkConfig.getAutoKeywordsCount(),
-                        inputTokenLimit, batchSize)
-                        .map(result -> {
-                            truncatedKeywords.addAndGet(result.truncatedCount());
-                            if (result.failed()) {
-                                keywordsFailed.incrementAndGet();
-                                keywordStatus.put(postName, "failed");
-                            } else if (result.truncatedCount() > 0) {
-                                keywordStatus.put(postName, "truncated");
-                                keywordTruncated.put(postName, result.truncatedCount());
-                            } else {
-                                keywordStatus.put(postName, "ok");
-                            }
-                            return result.chunks();
-                        });
+                CachedKeywordChunks cached = keywordResultCache.get(postName);
+                if (cached != null && cached.fingerprint().equals(source.fingerprint())) {
+                    log.debug("[ReindexService] 文章 {} 复用上次失败任务的关键词结果",
+                        postName);
+                    chunksMono = Mono.just(cached.chunks());
                 } else {
-                    chunksMono = Mono.just(chunks);
+                    // 切片
+                    List<TextChunk> chunks = documentChunker.chunk(postName, title, content, chunkConfig);
+                    if (chunks.isEmpty()) {
+                        return Mono.just(PostIndexData.empty(postName));
+                    }
+
+                    // 自动提取关键词（如果开启）
+                    if (chunkConfig.isAutoKeywords() && chunkConfig.getAutoKeywordsCount() > 0) {
+                        int inputTokenLimit = Math.max(512, chunkConfig.getKeywordsMaxTokens());
+                        int batchSize = Math.max(1, chunkConfig.getKeywordsBatchSize());
+                        chunksMono = extractKeywords(chunks, chunkConfig.getAutoKeywordsCount(),
+                            inputTokenLimit, batchSize)
+                            .map(result -> {
+                                truncatedKeywords.addAndGet(result.truncatedCount());
+                                if (result.failed()) {
+                                    keywordsFailed.incrementAndGet();
+                                    keywordStatus.put(postName, "failed");
+                                } else if (result.truncatedCount() > 0) {
+                                    keywordStatus.put(postName, "truncated");
+                                    keywordTruncated.put(postName, result.truncatedCount());
+                                } else {
+                                    keywordStatus.put(postName, "ok");
+                                }
+                                return result.chunks();
+                            })
+                            .doOnNext(enriched -> cacheKeywordResult(postName,
+                                source.fingerprint(), enriched));
+                    } else {
+                        chunksMono = Mono.just(chunks);
+                    }
                 }
 
                 return chunksMono.flatMap(enrichedChunks ->
                     embedChunks(enrichedChunks, modelConfig)
-                        .map(indexedChunks -> new PostIndexData(postName, indexedChunks))
+                        .map(indexedChunks -> new PostIndexData(postName, indexedChunks,
+                            source.fingerprint()))
                 );
             });
+    }
+
+    private Mono<Integer> writePostIndex(PostIndexData data,
+                                          AIProperties.ModelConfig modelConfig) {
+        if (data.totalChunks() == 0) {
+            return Mono.just(0);
+        }
+        return Mono.fromCallable(() -> {
+                luceneIndexService.replacePost(data.chunks(),
+                    modelConfig.getEffectiveEmbeddingModel(), modelConfig.getEmbeddingDimensions(),
+                    data.fingerprint());
+                keywordResultCache.remove(data.postName());
+                return data.totalChunks();
+            })
+            .subscribeOn(Schedulers.boundedElastic());
     }
 
     /**
@@ -1017,16 +1107,50 @@ public class ReindexService {
             : normalized.substring(0, maxLength) + "...";
     }
 
+    private static boolean isIndexable(Post post) {
+        return post != null
+            && post.isPublished()
+            && !post.isDeleted()
+            && post.getSpec() != null
+            && Boolean.TRUE.equals(post.getSpec().getPublish())
+            && Post.isPublic(post.getSpec());
+    }
+
+    private static Map<String, String> fingerprintsOf(List<PostIndexData> posts) {
+        Map<String, String> fingerprints = new HashMap<>();
+        posts.forEach(data -> {
+            if (data.totalChunks() > 0 && data.fingerprint() != null
+                && !data.fingerprint().isBlank()) {
+                fingerprints.put(data.postName(), data.fingerprint());
+            }
+        });
+        return Map.copyOf(fingerprints);
+    }
+
+    private void cacheKeywordResult(String postName, String fingerprint, List<TextChunk> chunks) {
+        if (!keywordResultCache.containsKey(postName)
+            && keywordResultCache.size() >= MAX_KEYWORD_CACHE_ENTRIES) {
+            keywordResultCache.keySet().stream().findFirst().ifPresent(keywordResultCache::remove);
+        }
+        keywordResultCache.put(postName,
+            new CachedKeywordChunks(fingerprint, List.copyOf(chunks)));
+    }
+
     private record KeywordExtractResult(List<TextChunk> chunks, int truncatedCount,
                                          boolean failed) {}
 
-    private record PostIndexData(String postName, List<LuceneIndexService.IndexedChunk> chunks) {
+    private record PostSource(String postName, String title, String content, String fingerprint) {}
+
+    private record CachedKeywordChunks(String fingerprint, List<TextChunk> chunks) {}
+
+    private record PostIndexData(String postName, List<LuceneIndexService.IndexedChunk> chunks,
+                                 String fingerprint) {
         int totalChunks() {
             return chunks.size();
         }
 
         static PostIndexData empty(String postName) {
-            return new PostIndexData(postName, List.of());
+            return new PostIndexData(postName, List.of(), null);
         }
     }
 }

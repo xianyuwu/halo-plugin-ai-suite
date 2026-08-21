@@ -55,6 +55,7 @@ public class LuceneIndexService {
     private static final String FIELD_VECTOR = "vector";
     private static final String FIELD_CHUNK_INDEX = "chunkIndex";
     private static final String FIELD_KEYWORDS = "keywords";
+    private static final String FIELD_INDEX_FINGERPRINT = "indexFingerprint";
     private static final String METADATA_FILE = "ai-suite-index.properties";
     private static final String META_EMBEDDING_MODEL = "embeddingModel";
     private static final String META_EMBEDDING_DIMENSIONS = "embeddingDimensions";
@@ -147,7 +148,7 @@ public class LuceneIndexService {
     public void indexChunk(TextChunk chunk, float[] embedding) throws IOException {
         ensureInitialized();
 
-        Document doc = toDocument(chunk, embedding, true);
+        Document doc = toDocument(chunk, embedding, true, null);
         // 用 upsert 语义：先删旧的，再插入
         indexWriter.updateDocument(new Term(FIELD_ID, chunk.id()), doc);
         totalChunks++;
@@ -160,6 +161,15 @@ public class LuceneIndexService {
      */
     public synchronized void replacePost(List<IndexedChunk> chunks, String model, int dimensions)
         throws IOException {
+        replacePost(chunks, model, dimensions, null);
+    }
+
+    /**
+     * 原子替换单篇文章索引，并在成功提交后记录索引输入指纹。
+     * 旧索引不含指纹也可正常打开；指纹只用于跳过后续无实质变化的自动重建。
+     */
+    public synchronized void replacePost(List<IndexedChunk> chunks, String model, int dimensions,
+                                           String fingerprint) throws IOException {
         ensureInitialized();
         recordVectorConfig(model, dimensions);
         String postId = chunks.isEmpty() ? null : chunks.get(0).chunk().postId();
@@ -167,7 +177,7 @@ public class LuceneIndexService {
 
         indexWriter.deleteDocuments(new Term(FIELD_POST_ID, postId));
         for (IndexedChunk item : chunks) {
-            indexWriter.addDocument(toDocument(item.chunk(), item.embedding(), true));
+            indexWriter.addDocument(toDocument(item.chunk(), item.embedding(), true, fingerprint));
         }
         indexWriter.commit();
         searcherManager.maybeRefresh();
@@ -181,6 +191,11 @@ public class LuceneIndexService {
      */
     public synchronized void replaceAll(List<IndexedChunk> chunks, String model, int dimensions)
         throws IOException {
+        replaceAll(chunks, model, dimensions, Map.of());
+    }
+
+    public synchronized void replaceAll(List<IndexedChunk> chunks, String model, int dimensions,
+                                         Map<String, String> postFingerprints) throws IOException {
         ensureInitialized();
         if (indexPath == null) {
             throw new IOException("Lucene 索引目录未初始化");
@@ -190,7 +205,7 @@ public class LuceneIndexService {
         Files.createDirectories(parent);
         Path tempPath = parent.resolve("lucene-rebuild-" + System.nanoTime());
         Path backupPath = parent.resolve("lucene-backup-" + System.nanoTime());
-        buildStandaloneIndex(tempPath, chunks, model, dimensions);
+        buildStandaloneIndex(tempPath, chunks, model, dimensions, postFingerprints);
 
         boolean movedCurrent = false;
         close();
@@ -231,6 +246,24 @@ public class LuceneIndexService {
         searcherManager.maybeRefresh();
         totalChunks = countDocuments();
         log.debug("[LuceneIndexService] 删除文章 {} 的所有 chunk", postId);
+    }
+
+    /**
+     * 返回上次成功索引时的输入指纹。旧索引返回 {@code null}，不触发迁移或重建。
+     */
+    public synchronized String getPostFingerprint(String postId) throws IOException {
+        ensureInitialized();
+        IndexSearcher searcher = searcherManager.acquire();
+        try {
+            TopDocs hits = searcher.search(new TermQuery(new Term(FIELD_POST_ID, postId)), 1);
+            if (hits.scoreDocs.length == 0) {
+                return null;
+            }
+            Document doc = searcher.storedFields().document(hits.scoreDocs[0].doc);
+            return doc.get(FIELD_INDEX_FINGERPRINT);
+        } finally {
+            searcherManager.release(searcher);
+        }
     }
 
     /**
@@ -318,8 +351,8 @@ public class LuceneIndexService {
         }
     }
 
-    private Document toDocument(TextChunk chunk, float[] embedding, boolean checkVectorCompatibility)
-        throws IOException {
+    private Document toDocument(TextChunk chunk, float[] embedding, boolean checkVectorCompatibility,
+                                String fingerprint) throws IOException {
         Document doc = new Document();
         doc.add(new StringField(FIELD_ID, chunk.id(), Field.Store.YES));
         doc.add(new StringField(FIELD_POST_ID, chunk.postId(), Field.Store.YES));
@@ -327,6 +360,9 @@ public class LuceneIndexService {
         doc.add(new TextField(FIELD_CONTENT, chunk.content(), Field.Store.YES));
         doc.add(new IntPoint(FIELD_CHUNK_INDEX, chunk.chunkIndex()));
         doc.add(new StoredField(FIELD_CHUNK_INDEX, chunk.chunkIndex()));
+        if (fingerprint != null && !fingerprint.isBlank()) {
+            doc.add(new StoredField(FIELD_INDEX_FINGERPRINT, fingerprint));
+        }
 
         // 关键词：用 TextField 分词后可被检索命中
         if (chunk.keywords() != null && !chunk.keywords().isEmpty()) {
@@ -345,8 +381,8 @@ public class LuceneIndexService {
         return doc;
     }
 
-    private void buildStandaloneIndex(Path path, List<IndexedChunk> chunks, String model, int dimensions)
-        throws IOException {
+    private void buildStandaloneIndex(Path path, List<IndexedChunk> chunks, String model, int dimensions,
+                                      Map<String, String> postFingerprints) throws IOException {
         deleteRecursively(path);
         Files.createDirectories(path);
         try (MMapDirectory dir = new MMapDirectory(path);
@@ -354,7 +390,9 @@ public class LuceneIndexService {
              IndexWriter writer = new IndexWriter(dir,
                  new IndexWriterConfig(az).setOpenMode(IndexWriterConfig.OpenMode.CREATE))) {
             for (IndexedChunk item : chunks) {
-                writer.addDocument(toDocument(item.chunk(), item.embedding(), false));
+                String fingerprint = postFingerprints != null
+                    ? postFingerprints.get(item.chunk().postId()) : null;
+                writer.addDocument(toDocument(item.chunk(), item.embedding(), false, fingerprint));
             }
             writer.commit();
         }

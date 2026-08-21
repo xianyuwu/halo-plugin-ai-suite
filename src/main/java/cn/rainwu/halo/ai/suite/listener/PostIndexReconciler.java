@@ -1,13 +1,11 @@
 package cn.rainwu.halo.ai.suite.listener;
 
-import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import cn.rainwu.halo.ai.suite.rag.ReindexService;
 import run.halo.app.core.extension.content.Post;
-import run.halo.app.extension.ReactiveExtensionClient;
 import run.halo.app.extension.controller.Controller;
 import run.halo.app.extension.controller.ControllerBuilder;
 import run.halo.app.extension.controller.Reconciler;
@@ -23,8 +21,8 @@ import run.halo.app.extension.controller.Reconciler.Request;
  * <ul>
      *   <li>Post 变更触发 reconcile；未发布/已删除/私有文章会清理索引（不重建）</li>
      *   <li>插件启动 / reload 时不主动 syncAll，避免每次 reload 都重建所有文章索引</li>
- *   <li>同一篇文章 60s 内不重复触发，防抖期间会延迟 requeue，不丢更新</li>
- *   <li>临时异常返回 requeue，让 controller 后续重试</li>
+ *   <li>相同正文与索引配置的重复事件通过持久化指纹幂等跳过</li>
+ *   <li>临时异常最多自动重试 3 次，避免无限模型调用</li>
  * </ul>
  */
 @Slf4j
@@ -32,66 +30,49 @@ import run.halo.app.extension.controller.Reconciler.Request;
 @RequiredArgsConstructor
 public class PostIndexReconciler implements Reconciler<Request> {
 
-    private static final long DEBOUNCE_MILLIS = 60_000L;
+    private static final int MAX_AUTO_RETRIES = 3;
 
-    private final ReactiveExtensionClient extensionClient;
     private final ReindexService reindexService;
 
-    /** postName -> 上次成功 reindex 的 epoch millis */
-    private final ConcurrentHashMap<String, Long> lastIndexedAt = new ConcurrentHashMap<>();
+    /** postName -> 当前连续失败次数（进程内有界重试） */
+    private final ConcurrentHashMap<String, Integer> retryAttempts = new ConcurrentHashMap<>();
 
     @Override
     public Result reconcile(Request request) {
         String name = request.name();
         try {
-            var postOpt = extensionClient.fetch(Post.class, name).block();
-            if (postOpt == null) {
-                // Post 已被删除 —— 不需要重试，Halo 不会再 enqueue
-                return Result.doNotRetry();
+            ReindexService.PostReindexResult result =
+                reindexService.reindexPostIfChanged(name).block();
+            retryAttempts.remove(name);
+            if (result != null && result.skipped()) {
+                log.debug("[PostIndexReconciler] 文章 {} 无索引相关变化，已跳过", name);
+            } else {
+                int count = result != null ? result.chunkCount() : 0;
+                log.info("[PostIndexReconciler] 文章 {} 索引完成：{} 个 chunk", name, count);
             }
-            Post post = postOpt;
-            if (isNotIndexable(post)) {
-                // 未发布/已删除/私有 → 清理索引（reindexPost 内部已处理）
-                reindexService.reindexPost(name).block();
-                lastIndexedAt.remove(name);
-                return Result.doNotRetry();
-            }
-            long now = System.currentTimeMillis();
-            Long last = lastIndexedAt.get(name);
-            if (last != null && now - last < DEBOUNCE_MILLIS) {
-                long delay = DEBOUNCE_MILLIS - (now - last);
-                log.debug("[PostIndexReconciler] 文章 {} 防抖中（{}ms 前已处理）",
-                    name, now - last);
-                return Result.requeue(Duration.ofMillis(delay));
-            }
-            Integer count = reindexService.reindexPost(name).block();
-            lastIndexedAt.put(name, System.currentTimeMillis());
-            log.info("[PostIndexReconciler] 文章 {} 索引完成：{} 个 chunk", name, count);
             return Result.doNotRetry();
         } catch (Exception e) {
-            // 不让 controller 死掉；记日志，下次 reconcile 再尝试
-            log.warn("[PostIndexReconciler] 文章 {} 索引失败: {}",
-                name, e.getMessage());
-            return Result.requeue(Duration.ofSeconds(30));
+            int attempt = retryAttempts.merge(name, 1, Integer::sum);
+            if (attempt >= MAX_AUTO_RETRIES) {
+                retryAttempts.remove(name);
+                log.error("[PostIndexReconciler] 文章 {} 自动索引连续失败 {} 次，"
+                    + "已停止自动重试，请在索引中心手动重试: {}",
+                    name, attempt, e.getMessage());
+                return Result.doNotRetry();
+            }
+            log.warn("[PostIndexReconciler] 文章 {} 索引失败（{}/{}），30 秒后重试: {}",
+                name, attempt, MAX_AUTO_RETRIES, e.getMessage());
+            return Result.requeue(java.time.Duration.ofSeconds(30));
         }
     }
 
     @Override
     public Controller setupWith(ControllerBuilder builder) {
-        // 不使用 syncAllListOptions：插件 reload 时无需重建已有索引。
+        // Halo 默认 syncAllOnStart=true；必须显式关闭，否则插件 reload
+        // 会把所有旧 Post 作为 onAdd 事件入队，导致全站重建和模型费用。
         // 文章新增/更新/删除仍会由 controller watch 事件触发 reconcile。
         return builder.extension(new Post())
+            .syncAllOnStart(false)
             .build();
-    }
-
-    private static boolean isNotIndexable(Post post) {
-        if (post.isDeleted() || post.getSpec() == null) {
-            return true;
-        }
-        if (!Boolean.TRUE.equals(post.getSpec().getPublish())) {
-            return true;
-        }
-        // Post.isPublic() 检查可见性，私有文章不索引
-        return !Post.isPublic(post.getSpec());
     }
 }
