@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -49,6 +50,8 @@ public class AiFoundationClient {
 
     private final ExtensionGetter extensionGetter;
     private final UsageTracker usageTracker;
+    private final Map<EmbeddingDimensionKey, EmbeddingDimensionMode> embeddingDimensionModes =
+        new ConcurrentHashMap<>();
 
     public static boolean isAiFoundationBaseUrl(String baseUrl) {
         return baseUrl != null && baseUrl.startsWith(BASE_URL);
@@ -135,8 +138,7 @@ public class AiFoundationClient {
     public Mono<float[]> embed(String modelName, String text, int dimensions, String scenario) {
         String usageModel = usageModel(modelName, "ai-foundation-default-embedding");
         List<String> texts = List.of(text);
-        return embeddingModel(modelName)
-            .flatMap(model -> model.embed(embeddingRequest(texts, dimensions)))
+        return embedResponse(modelName, texts, dimensions, usageModel, scenario)
             .timeout(EMBEDDING_TIMEOUT)
             .doOnNext(response -> recordEmbeddingUsage(usageModel, scenario, response, texts))
             .map(response -> response.getEmbeddings().isEmpty()
@@ -147,12 +149,101 @@ public class AiFoundationClient {
     public Mono<List<float[]>> embedBatch(String modelName, List<String> texts, int dimensions,
                                            String scenario) {
         String usageModel = usageModel(modelName, "ai-foundation-default-embedding");
-        return embeddingModel(modelName)
-            .flatMap(model -> model.embed(embeddingRequest(texts, dimensions)))
+        return embedResponse(modelName, texts, dimensions, usageModel, scenario)
             .timeout(EMBEDDING_TIMEOUT)
             .doOnNext(response -> recordEmbeddingUsage(usageModel, scenario, response, texts))
             .map(EmbeddingResponse::getEmbeddings)
             .doOnError(error -> recordFailure(usageModel, "embed", scenario, error));
+    }
+
+    /**
+     * Resolves whether the selected model needs an explicit dimensions parameter.
+     *
+     * <p>Most fixed-dimension models reject the OpenAI-compatible {@code dimensions} field even
+     * when it equals their native output size. Variable-dimension models need that field when the
+     * configured size differs from their native size. Probe with the actual request while omitting
+     * the optional field first: if the returned vectors already match, reuse the response; otherwise
+     * retry once with the requested size and remember the working mode for this model/size pair.</p>
+     */
+    private Mono<EmbeddingResponse> embedResponse(String modelName, List<String> texts,
+                                                   int dimensions, String usageModel,
+                                                   String scenario) {
+        return embeddingModel(modelName).flatMap(model -> {
+            if (dimensions <= 0) {
+                return model.embed(embeddingRequest(texts, 0));
+            }
+
+            EmbeddingDimensionKey key = new EmbeddingDimensionKey(usageModel, dimensions);
+            EmbeddingDimensionMode cachedMode = embeddingDimensionModes.get(key);
+            if (cachedMode != null) {
+                int requested = cachedMode == EmbeddingDimensionMode.EXPLICIT ? dimensions : 0;
+                return model.embed(embeddingRequest(texts, requested))
+                    .flatMap(response -> requireEmbeddingDimensions(response, dimensions,
+                        cachedMode, usageModel));
+            }
+
+            return model.embed(embeddingRequest(texts, 0))
+                .flatMap(nativeResponse -> {
+                    int nativeDimensions = responseDimensions(nativeResponse);
+                    if (nativeDimensions == dimensions) {
+                        embeddingDimensionModes.put(key, EmbeddingDimensionMode.NATIVE);
+                        log.debug("Embedding 模型 {} 原生维度为 {}，省略 dimensions 参数",
+                            usageModel, dimensions);
+                        return Mono.just(nativeResponse);
+                    }
+
+                    // The native probe is a real provider call and must be included in usage data.
+                    recordEmbeddingUsage(usageModel, scenario, nativeResponse, texts);
+                    return model.embed(embeddingRequest(texts, dimensions))
+                        .flatMap(explicitResponse -> {
+                            int actual = responseDimensions(explicitResponse);
+                            if (actual != dimensions) {
+                                return Mono.error(dimensionMismatch(usageModel, dimensions,
+                                    nativeDimensions, actual));
+                            }
+                            embeddingDimensionModes.put(key, EmbeddingDimensionMode.EXPLICIT);
+                            log.debug("Embedding 模型 {} 使用显式 dimensions={}", usageModel,
+                                dimensions);
+                            return Mono.just(explicitResponse);
+                        });
+                });
+        });
+    }
+
+    private Mono<EmbeddingResponse> requireEmbeddingDimensions(EmbeddingResponse response,
+                                                                int expected,
+                                                                EmbeddingDimensionMode mode,
+                                                                String model) {
+        int actual = responseDimensions(response);
+        if (actual == expected) {
+            return Mono.just(response);
+        }
+        embeddingDimensionModes.remove(new EmbeddingDimensionKey(model, expected), mode);
+        return Mono.error(new IllegalStateException("Embedding 模型 " + model
+            + " 返回维度 " + actual + "，与配置维度 " + expected
+            + " 不一致；已清除维度能力缓存，请重新测试模型连接"));
+    }
+
+    private int responseDimensions(EmbeddingResponse response) {
+        if (response == null || response.getEmbeddings() == null
+            || response.getEmbeddings().isEmpty()
+            || response.getEmbeddings().getFirst() == null) {
+            return 0;
+        }
+        int dimensions = response.getEmbeddings().getFirst().length;
+        boolean inconsistent = response.getEmbeddings().stream()
+            .anyMatch(vector -> vector == null || vector.length != dimensions);
+        if (inconsistent) {
+            throw new IllegalStateException("Embedding 模型返回了维度不一致的向量批次");
+        }
+        return dimensions;
+    }
+
+    private IllegalStateException dimensionMismatch(String model, int expected, int nativeSize,
+                                                     int explicitSize) {
+        return new IllegalStateException("Embedding 模型 " + model + " 的原生维度为 "
+            + nativeSize + "，显式请求 " + expected + " 维后返回 " + explicitSize
+            + " 维。请把 AI 智能套件中的向量维度改为模型实际维度后重建索引");
     }
 
     public Mono<List<LlmClient.RerankResult>> rerank(String modelName, String query,
@@ -288,6 +379,14 @@ public class AiFoundationClient {
             builder.dimensions(dimensions);
         }
         return builder.build();
+    }
+
+    private enum EmbeddingDimensionMode {
+        NATIVE,
+        EXPLICIT
+    }
+
+    private record EmbeddingDimensionKey(String model, int dimensions) {
     }
 
     private RerankRequest rerankRequest(String query, List<String> documents, int topN) {

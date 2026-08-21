@@ -15,7 +15,7 @@ ConfigMap 的每个 `data.<group>` 是一段 JSON 字符串。AI 智能套件不
 | --- | --- | --- |
 | `aiFoundationChatModelName` | 空 | AI Foundation 语言模型资源名；为空使用默认语言模型 |
 | `aiFoundationEmbeddingModelName` | 空 | AI Foundation Embedding 模型资源名；为空使用默认嵌入模型 |
-| `embeddingDimensions` | `1024` | 索引向量维度；变更后需全量重建 |
+| `embeddingDimensions` | `1024` | 期望的索引向量维度；固定维度模型使用原生输出，可变维度模型在原生维度不同时才显式请求该值；变更后需全量重建 |
 | `rerankEnabled` | `false` | 是否启用 Rerank 模型能力 |
 | `aiFoundationRerankModelName` | 空 | AI Foundation Rerank 模型资源名；为空使用默认 Rerank 模型 |
 | `queryRewriteEnabled` | `false` | 是否启用 Query Rewrite 模型能力 |
