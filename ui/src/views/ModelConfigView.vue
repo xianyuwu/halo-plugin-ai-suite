@@ -100,6 +100,7 @@
                 <div class="ai-form-field">
                   <label class="ai-field-label">向量维度</label>
                   <input class="ai-input" v-model.number="form.embeddingDimensions" type="number" min="256" max="4096" step="128" />
+                  <span class="ai-helper-text">用于校验索引维度；固定维度模型会自动省略不支持的 dimensions 参数，可变维度模型会按此值请求</span>
                 </div>
               </div>
               <div v-if="testResult.embedding" class="ai-test-feedback" :class="testResult.embedding.ok ? 'success' : 'error'">

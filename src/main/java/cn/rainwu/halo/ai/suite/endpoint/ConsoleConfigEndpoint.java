@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -265,10 +266,25 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
             });
     }
 
-    private String extractErrorMessage(Throwable e) {
-        String msg = e.getMessage();
-        if (msg == null) return "未知错误";
-        return msg.length() > 200 ? msg.substring(0, 200) + "..." : msg;
+    static String extractErrorMessage(Throwable error) {
+        Throwable root = error;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+
+        String message;
+        if (root instanceof WebClientResponseException responseException) {
+            String body = responseException.getResponseBodyAsString();
+            message = body == null || body.isBlank()
+                ? responseException.getStatusCode() + " " + responseException.getStatusText()
+                : responseException.getStatusCode() + " " + body;
+        } else {
+            message = root.getMessage();
+            if (message == null || message.isBlank()) {
+                message = root.getClass().getSimpleName();
+            }
+        }
+        return message.length() > 500 ? message.substring(0, 500) + "..." : message;
     }
 
     /**
@@ -346,7 +362,8 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
                     });
             })
             .onErrorResume(e -> {
-                log.warn("[ConsoleConfigEndpoint] Embedding 连通性测试失败: {}", e.getMessage());
+                log.warn("[ConsoleConfigEndpoint] Embedding 连通性测试失败: {}",
+                    extractErrorMessage(e));
                 return ServerResponse.ok()
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(Map.of(
