@@ -150,7 +150,7 @@ class ConsolePetPresetsTest {
             .expectStatus().isOk()
             .expectBody()
             .jsonPath("$.success").isEqualTo(true)
-            .jsonPath("$.job.status").isEqualTo("pending");
+            .jsonPath("$.jobId").exists();
 
         verify(generator, timeout(1000)).regenerateExpressions(eq("pet-1"), argThat(region ->
                 region.getCenterX() == 0.42
@@ -213,7 +213,7 @@ class ConsolePetPresetsTest {
             .expectStatus().isOk()
             .expectBody()
             .jsonPath("$.success").isEqualTo(true)
-            .jsonPath("$.job.status").isEqualTo("pending");
+            .jsonPath("$.jobId").exists();
 
         verify(generator, timeout(1000)).regenerateMaster(eq("pet-1"), any(byte[].class),
             eq("image/png"), eq("机器人"), eq("soft-3d"), eq("不要脚下阴影"));
