@@ -20,10 +20,98 @@ import reactor.core.publisher.Mono;
 class PublicChatEndpointTest {
 
     private final PublicChatEndpoint endpoint = new PublicChatEndpoint(
-        mock(ChatService.class), mock(AIProperties.class), mock(ChatLogger.class));
+        mock(ChatService.class), mock(AIProperties.class), mock(ChatLogger.class),
+        mock(cn.rainwu.halo.ai.suite.service.PetStore.class));
     private final WebTestClient client = WebTestClient
         .bindToRouterFunction(endpoint.endpoint())
         .build();
+
+    @Test
+    void petWidgetConfigCarriesCropWhileStaticModeKeepsOriginalIcon() {
+        var properties = mock(AIProperties.class);
+        var chat = new AIProperties.ChatConfig();
+        chat.setWidgetTriggerType("pet"); chat.setWidgetPetPreset("mint-robot");
+        chat.setWidgetPetAvatarCrops("{\"preset:mint-robot\":{\"centerX\":0.6,\"centerY\":0.4,\"size\":0.3}}");
+        when(properties.getChatConfig()).thenReturn(Mono.just(chat));
+        when(properties.getRetrievalConfig()).thenReturn(Mono.just(new AIProperties.RetrievalConfig()));
+        when(properties.getSearchConfig()).thenReturn(Mono.just(new AIProperties.SearchConfig()));
+        when(properties.getMindMapConfig()).thenReturn(Mono.just(new AIProperties.MindMapConfig()));
+        var web = WebTestClient.bindToRouterFunction(new PublicChatEndpoint(mock(ChatService.class),
+            properties, mock(ChatLogger.class), mock(cn.rainwu.halo.ai.suite.service.PetStore.class)).endpoint()).build();
+        web.get().uri("/widget-config").exchange().expectStatus().isOk().expectBody()
+            .jsonPath("$.petManifest.avatarCrop.centerX").isEqualTo(0.6)
+            .jsonPath("$.petManifest.avatarCrop.size").isEqualTo(0.3);
+        chat.setWidgetTriggerType("icon");
+        web.get().uri("/widget-config").exchange().expectStatus().isOk().expectBody()
+            .jsonPath("$.petManifest").doesNotExist();
+    }
+
+    @Test
+    void generatedPetAvatarUsesMotherAndFaceRegionDefault() {
+        var properties = mock(AIProperties.class);
+        var chat = new AIProperties.ChatConfig(); chat.setWidgetTriggerType("pet"); chat.setWidgetPetId("a");
+        when(properties.getChatConfig()).thenReturn(Mono.just(chat));
+        when(properties.getRetrievalConfig()).thenReturn(Mono.just(new AIProperties.RetrievalConfig()));
+        when(properties.getSearchConfig()).thenReturn(Mono.just(new AIProperties.SearchConfig()));
+        when(properties.getMindMapConfig()).thenReturn(Mono.just(new AIProperties.MindMapConfig()));
+        var store = mock(cn.rainwu.halo.ai.suite.service.PetStore.class);
+        var pet = new cn.rainwu.halo.ai.suite.service.PetStore.PetRecord(); pet.setName("test");
+        pet.getImages().put("idle", "/mother.png"); pet.getImages().put("happy", "/happy.png");
+        var region = new cn.rainwu.halo.ai.suite.service.PetStore.ExpressionRegion();
+        region.setCenterX(0.6); region.setCenterY(0.4); region.setWidth(0.3); region.setHeight(0.2); pet.setExpressionRegion(region);
+        when(store.get("a")).thenReturn(Mono.just(pet));
+        WebTestClient.bindToRouterFunction(new PublicChatEndpoint(mock(ChatService.class), properties,
+            mock(ChatLogger.class), store).endpoint()).build().get().uri("/widget-config").exchange()
+            .expectStatus().isOk().expectBody().jsonPath("$.petManifest.images.idle").isEqualTo("/mother.png")
+            .jsonPath("$.petManifest.avatarCrop.centerX").isEqualTo(0.6)
+            .jsonPath("$.petManifest.avatarCrop.size").isEqualTo(0.39);
+    }
+
+    @Test
+    void pendingMotherNeverLeaksAndExistingPublicationSurvivesDraftChanges() {
+        var properties = mock(AIProperties.class);
+        var chat = new AIProperties.ChatConfig(); chat.setWidgetTriggerType("pet"); chat.setWidgetPetId("a");
+        when(properties.getChatConfig()).thenReturn(Mono.just(chat));
+        when(properties.getRetrievalConfig()).thenReturn(Mono.just(new AIProperties.RetrievalConfig()));
+        when(properties.getSearchConfig()).thenReturn(Mono.just(new AIProperties.SearchConfig()));
+        when(properties.getMindMapConfig()).thenReturn(Mono.just(new AIProperties.MindMapConfig()));
+        var store = mock(cn.rainwu.halo.ai.suite.service.PetStore.class);
+        var pet = new cn.rainwu.halo.ai.suite.service.PetStore.PetRecord(); pet.setBackgroundStatus("pending");
+        pet.getImages().put("idle", "/unapproved.png");
+        when(store.get("a")).thenReturn(Mono.just(pet));
+        var web = WebTestClient.bindToRouterFunction(new PublicChatEndpoint(mock(ChatService.class), properties,
+            mock(ChatLogger.class), store).endpoint()).build();
+        web.get().uri("/widget-config").exchange().expectStatus().isOk().expectBody().jsonPath("$.petManifest").doesNotExist();
+        var published = new cn.rainwu.halo.ai.suite.service.PetStore.PublishedVersion(); published.setName("old");
+        published.setStyle("pixel"); published.setPixelGridSize(96); published.getImages().put("idle", "/approved.png");
+        pet.setPublishedVersion(published);
+        web.get().uri("/widget-config").exchange().expectStatus().isOk().expectBody()
+            .jsonPath("$.petManifest.images.idle").isEqualTo("/approved.png")
+            .jsonPath("$.petManifest.name").isEqualTo("old")
+            .jsonPath("$.petManifest.imageRendering").isEqualTo("pixelated");
+        when(store.get("a")).thenReturn(Mono.empty());
+        web.get().uri("/widget-config").exchange().expectStatus().isOk().expectBody().jsonPath("$.petManifest").doesNotExist();
+    }
+
+    @Test
+    void parsePetPhrasesTrimsAndFiltersBlankLines() {
+        var phrases = PublicChatEndpoint.parsePetPhrases("  有问题随时问我~ \n\n \n点我聊聊吧！\r\n第三条 ");
+        org.junit.jupiter.api.Assertions.assertEquals(
+            List.of("有问题随时问我~", "点我聊聊吧！", "第三条"), phrases);
+    }
+
+    @Test
+    void parsePetPhrasesHandlesEmptyAndLimits() {
+        org.junit.jupiter.api.Assertions.assertEquals(List.of(), PublicChatEndpoint.parsePetPhrases(null));
+        org.junit.jupiter.api.Assertions.assertEquals(List.of(), PublicChatEndpoint.parsePetPhrases("  \n  "));
+
+        String longLine = "很长的语录".repeat(20);
+        org.junit.jupiter.api.Assertions.assertEquals(
+            40, PublicChatEndpoint.parsePetPhrases(longLine).get(0).length());
+
+        String many = "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl";
+        org.junit.jupiter.api.Assertions.assertEquals(10, PublicChatEndpoint.parsePetPhrases(many).size());
+    }
 
     @Test
     void streamRouteAcceptsPostJsonBody() {
@@ -103,7 +191,8 @@ class PublicChatEndpointTest {
         ChatService chatService = mock(ChatService.class);
         AIProperties properties = mock(AIProperties.class);
         ChatLogger logger = mock(ChatLogger.class);
-        PublicChatEndpoint reasoningEndpoint = new PublicChatEndpoint(chatService, properties, logger);
+        PublicChatEndpoint reasoningEndpoint = new PublicChatEndpoint(chatService, properties,
+            logger, mock(cn.rainwu.halo.ai.suite.service.PetStore.class));
         WebTestClient reasoningClient = WebTestClient
             .bindToRouterFunction(reasoningEndpoint.endpoint())
             .build();

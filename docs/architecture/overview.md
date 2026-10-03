@@ -47,7 +47,7 @@ Lucene 索引由公开文章生成。文章是事实来源，索引是可以全�
 
 ## 关键设计约束
 
-- Java 21、Spring WebFlux；编译基线为 Halo Plugin API 2.25.0，插件运行环境要求 Halo 2.25.0 及以上。
+- Java 21、Spring WebFlux；编译基线为 Halo Plugin API 2.26.0，插件运行环境要求 Halo 2.26.0 及以上。
 - Lucene 版本必须与 Halo 内置版本严格一致。
 - `lucene-core` 等核心依赖使用 `compileOnly`，SmartCN 单独打包且不传递引入 Lucene Core。
 - 模型能力统一通过 Halo AI Foundation 调用，AI 智能套件不再保存模型供应商 Base URL 或 API Key。

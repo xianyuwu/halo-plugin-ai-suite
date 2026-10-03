@@ -294,7 +294,7 @@ const configSummary = computed(() => {
     { label: "检索模式", value: modeLabel[r.searchMode] || r.searchMode || "未设置", tag: r.searchMode || "默认", ok: !!r.searchMode, to: "/ai-suite/retrieval" },
     { label: "切片大小", value: config.value.chunking?.chunkSize ? `${config.value.chunking.chunkSize} 字符` : "500 字符", tag: config.value.chunking?.chunkSize ? "自定义" : "默认", ok: true, to: "/ai-suite/chunking" },
     { label: "系统提示词", value: promptOk ? "已配置" : "未配置", tag: promptOk ? "已配置" : "待配置", ok: promptOk, to: "/ai-suite/chat" },
-    { label: "浮窗主题", value: themeLabel[c.widgetTheme] || c.widgetTheme || "auto", tag: c.widgetTheme || "auto", ok: true, to: "/ai-suite/chat" },
+    { label: "浮窗主题", value: themeLabel[c.widgetTheme] || c.widgetTheme || "auto", tag: c.widgetTheme || "auto", ok: true, to: "/ai-suite/widget" },
   ];
 });
 

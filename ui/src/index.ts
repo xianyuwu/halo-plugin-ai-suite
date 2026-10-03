@@ -10,6 +10,7 @@ import ChunkingView from "./views/ChunkingView.vue";
 import RetrievalView from "./views/RetrievalView.vue";
 import EnhancementView from "./views/EnhancementView.vue";
 import ChatView from "./views/ChatView.vue";
+import WidgetView from "./views/WidgetView.vue";
 import KnowledgeView from "./views/KnowledgeView.vue";
 import ExcerptView from "./views/ExcerptView.vue";
 import WritingView from "./views/WritingView.vue";
@@ -26,7 +27,6 @@ import { disposeOutline } from "./extensions/ai-writing/outline-state";
 import { getWritingEnabled } from "./extensions/ai-writing/writing-enabled";
 
 export default definePlugin({
-  name: "ai-suite",
   components: {},
   deactivated: () => {
     // 清理全局大纲 modal (chat composer / bubble menu 已在 editor onDestroy 清理)
@@ -112,7 +112,13 @@ export default definePlugin({
             path: "chat",
             name: "AISuiteChat",
             component: ChatView,
-            meta: { title: "对话与外观", desc: "定义 AI 助手的对话行为、浮窗外观与访客交互体验" },
+            meta: { title: "对话行为", desc: "定义系统提示词、生成参数、欢迎语、快捷问题与访客权限" },
+          },
+          {
+            path: "widget",
+            name: "AISuiteWidget",
+            component: WidgetView,
+            meta: { title: "浮窗外观", desc: "自定义浮窗位置、主题色、尺寸与触发器样式，管理 AI 贴纸宠物" },
           },
           {
             path: "excerpt",

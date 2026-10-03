@@ -597,7 +597,7 @@ function formatTime(iso: string): string {
 }
 
 // 解析 traceStagesJson 字符串为数组
-function parseTraceStages(json: string): Array<{ name: string; label: string; durationMs: number; status: string; statusLabel: string; detail: string }> {
+function parseTraceStages(json: string): TraceStage[] {
   try { return JSON.parse(json) || []; } catch { return []; }
 }
 

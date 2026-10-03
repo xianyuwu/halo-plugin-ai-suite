@@ -160,6 +160,8 @@ public class AIProperties {
             textVal(node, "aiFoundationRerankModelName", "")));
         c.setAiFoundationQueryRewriteModelName(textVal(aiFoundation, "queryRewriteModelName",
             textVal(node, "aiFoundationQueryRewriteModelName", "")));
+        c.setAiFoundationImageModelName(textVal(aiFoundation, "imageModelName",
+            textVal(node, "aiFoundationImageModelName", "")));
         if (c.getAiFoundationQueryRewriteModelName().isBlank()) {
             c.setAiFoundationQueryRewriteModelName(c.getAiFoundationChatModelName());
         }
@@ -287,6 +289,16 @@ public class AIProperties {
         c.setWidgetTriggerOffsetY(intVal(node, "widgetTriggerOffsetY", 125));
         c.setWidgetTriggerOffsetX(intVal(node, "widgetTriggerOffsetX", 17));
         c.setWidgetTriggerShape(textVal(node, "widgetTriggerShape", "square"));
+        // 交互宠物触发器：icon（默认，静态图标）/ pet（贴纸宠物，含内置皮肤与 AI 生成皮肤）
+        c.setWidgetTriggerType(textVal(node, "widgetTriggerType", "icon"));
+        c.setWidgetPetPreset(textVal(node, "widgetPetPreset", ""));
+        c.setWidgetPetId(textVal(node, "widgetPetId", ""));
+        c.setWidgetPetSize(intVal(node, "widgetPetSize", 96));
+        c.setWidgetPetGreeting(boolVal(node, "widgetPetGreeting", true));
+        // 宠物语录：一行一条，hover 轮换显示；空 = 不显示 hover 气泡
+        c.setWidgetPetPhrases(textVal(node, "widgetPetPhrases", ""));
+        c.setWidgetPetStoragePolicy(textVal(node, "widgetPetStoragePolicy", ""));
+        c.setWidgetPetAvatarCrops(textVal(node, "widgetPetAvatarCrops", "{}"));
         c.setAllowGuest(boolVal(node, "allowGuest", true));
         c.setShowPrivacyTip(boolVal(node, "showPrivacyTip", false));
         c.setShowRetrievalStatus(boolVal(node, "showRetrievalStatus", false));
@@ -389,6 +401,8 @@ public class AIProperties {
         private String aiFoundationEmbeddingModelName;
         private String aiFoundationRerankModelName;
         private String aiFoundationQueryRewriteModelName;
+        /** 图像生成模型资源名（AI Foundation），用于 AI 贴纸宠物生成；空则走 AI Foundation 默认槽位 */
+        private String aiFoundationImageModelName;
 
         @JsonIgnore
         public String getEffectiveChatModel() {
@@ -408,6 +422,11 @@ public class AIProperties {
         @JsonIgnore
         public String getEffectiveQueryRewriteModel() {
             return aiFoundationQueryRewriteModelName;
+        }
+
+        @JsonIgnore
+        public String getEffectiveImageModel() {
+            return aiFoundationImageModelName;
         }
     }
 
@@ -488,6 +507,25 @@ public class AIProperties {
         private int widgetTriggerOffsetX;
         /** 悬浮按钮形状：square（方角）/ rounded（圆角）/ circle（圆形），默认 circle */
         private String widgetTriggerShape;
+        /** 触发器类型：icon（静态图标，默认）/ pet（交互贴纸宠物） */
+        private String widgetTriggerType;
+        /** 内置宠物皮肤名（对应 static/pets/<preset>/），空表示未选 */
+        private String widgetPetPreset;
+        /** AI 生成宠物 id（pets 配置组里的记录 id），非空时优先于 widgetPetPreset */
+        private String widgetPetId;
+        /** 宠物画布直径 px，默认 96；仅 pet 模式生效（图标模式用 widgetTriggerSize） */
+        private int widgetPetSize;
+        /** 首次访问是否显示欢迎气泡 */
+        private boolean widgetPetGreeting;
+        /** 宠物语录：hover 气泡轮换文案，一行一条；首条兼作首次打招呼文案（空则回退欢迎语） */
+        private String widgetPetPhrases;
+        /**
+         * 宠物图上传使用的附件存储策略名。空 = 自动（本地策略优先，失败轮其他策略）；
+         * 非空 = 严格使用该策略，失败即报错不回退。
+         */
+        private String widgetPetStoragePolicy;
+        /** Normalized avatar crops keyed by pet:id / preset:name; absent values use defaults. */
+        private String widgetPetAvatarCrops;
         private boolean allowGuest;
         private boolean showPrivacyTip;
         private boolean showRetrievalStatus;

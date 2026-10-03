@@ -25,38 +25,24 @@
 
         <div class="ai-nav-divider"></div>
 
-        <!-- 区 2 - RAG 流水线（始终展开） -->
-        <div class="ai-nav-group-label">
-          <span class="ai-nav-group-text">RAG 流水线</span>
-        </div>
-        <router-link
-          v-for="child in itemsRag"
-          :key="child.name"
-          :to="{ name: child.name }"
-          class="ai-nav-item ai-nav-item-child"
-          active-class="active"
-          :title="child.label"
-          :aria-label="child.label"
-        >
-          <span class="ai-nav-icon"><component :is="child.icon" /></span>
-          <span class="ai-nav-label">{{ child.label }}</span>
-        </router-link>
-
-        <div class="ai-nav-divider"></div>
-
-        <!-- 区 3 -->
-        <router-link
-          v-for="item in itemsArea3"
-          :key="item.name"
-          :to="{ name: item.name }"
-          class="ai-nav-item"
-          active-class="active"
-          :title="item.label"
-          :aria-label="item.label"
-        >
-          <span class="ai-nav-icon"><component :is="item.icon" /></span>
-          <span class="ai-nav-label">{{ item.label }}</span>
-        </router-link>
+        <!-- 区 2 起 - 功能分组（统一「分组标题 + 子项」的呈现方式） -->
+        <template v-for="group in itemGroups" :key="group.label">
+          <div class="ai-nav-group-label">
+            <span class="ai-nav-group-text">{{ group.label }}</span>
+          </div>
+          <router-link
+            v-for="item in group.items"
+            :key="item.name"
+            :to="{ name: item.name }"
+            class="ai-nav-item ai-nav-item-child"
+            active-class="active"
+            :title="item.label"
+            :aria-label="item.label"
+          >
+            <span class="ai-nav-icon"><component :is="item.icon" /></span>
+            <span class="ai-nav-label">{{ item.label }}</span>
+          </router-link>
+        </template>
       </nav>
     </aside>
     <div class="ai-layout-main">
@@ -85,6 +71,7 @@ import RiMindMap from "~icons/ri/mind-map";
 import RiFlaskLine from "~icons/ri/flask-line";
 import RiRobot2Line from "~icons/ri/robot-2-line";
 import RiRouteLine from "~icons/ri/route-line";
+import RiPaletteLine from "~icons/ri/palette-line";
 import PageTopbar from "../components/PageTopbar.vue";
 import AiSuiteMenuIcon from "../components/AiSuiteMenuIcon.vue";
 
@@ -99,25 +86,48 @@ const itemsArea1 = [
   { name: "AISuiteModels", icon: markRaw(RiRobotLine), label: "模型配置" },
 ];
 
-// 区 2 - RAG 流水线（始终展开，无徽章）
-const itemsRag = [
-  { name: "AISuiteChunking", icon: markRaw(RiScissorsLine), label: "切片设置" },
-  { name: "AISuiteKnowledge", icon: markRaw(RiFolderLine), label: "索引中心" },
-  { name: "AISuiteRetrieval", icon: markRaw(RiFilter3Line), label: "检索策略" },
-  { name: "AISuiteEnhance", icon: markRaw(RiSparkling2Line), label: "检索增强" },
-];
-
-// 区 3 - 其余顶层项
-const itemsArea3 = [
-  { name: "AISuiteChat", icon: markRaw(RiChatSmileLine), label: "对话与外观" },
-  { name: "AISuiteSearch", icon: markRaw(RiSearchLine), label: "AI 搜索" },
-  { name: "AISuiteMindMap", icon: markRaw(RiMindMap), label: "AI 脑图" },
-  { name: "AISuiteExcerpt", icon: markRaw(RiFileTextLine), label: "AI 摘要" },
-  { name: "AISuiteWriting", icon: markRaw(RiQuillPenLine), label: "写作辅助" },
-  { name: "AISuiteChatLogs", icon: markRaw(RiMessage2Line), label: "问答记录" },
-  { name: "AISuiteEvaluation", icon: markRaw(RiFlaskLine), label: "效果评测" },
-  { name: "AISuiteAgent", icon: markRaw(RiRobot2Line), label: "运营智能体" },
-  { name: "AISuiteIntentRoutes", icon: markRaw(RiRouteLine), label: "意图路由" },
-  { name: "AISuiteUsage", icon: markRaw(RiBarChartLine), label: "用量统计" },
+// 区 2 起 - 功能分组：每组一个标题 + 若干子项（RAG 流水线同款呈现）
+// 分组按「配置的对象」划分：知识检索管线 / 对话体验 / 访客侧功能 / 内容创作 / 运营观测
+const itemGroups = [
+  {
+    label: "RAG 流水线",
+    items: [
+      { name: "AISuiteChunking", icon: markRaw(RiScissorsLine), label: "切片设置" },
+      { name: "AISuiteKnowledge", icon: markRaw(RiFolderLine), label: "索引中心" },
+      { name: "AISuiteRetrieval", icon: markRaw(RiFilter3Line), label: "检索策略" },
+      { name: "AISuiteEnhance", icon: markRaw(RiSparkling2Line), label: "检索增强" },
+    ],
+  },
+  {
+    label: "对话体验",
+    items: [
+      { name: "AISuiteChat", icon: markRaw(RiChatSmileLine), label: "对话行为" },
+      { name: "AISuiteWidget", icon: markRaw(RiPaletteLine), label: "浮窗外观" },
+      { name: "AISuiteIntentRoutes", icon: markRaw(RiRouteLine), label: "意图路由" },
+    ],
+  },
+  {
+    label: "访客功能",
+    items: [
+      { name: "AISuiteSearch", icon: markRaw(RiSearchLine), label: "AI 搜索" },
+      { name: "AISuiteMindMap", icon: markRaw(RiMindMap), label: "AI 脑图" },
+    ],
+  },
+  {
+    label: "内容创作",
+    items: [
+      { name: "AISuiteExcerpt", icon: markRaw(RiFileTextLine), label: "AI 摘要" },
+      { name: "AISuiteWriting", icon: markRaw(RiQuillPenLine), label: "写作辅助" },
+    ],
+  },
+  {
+    label: "运营与数据",
+    items: [
+      { name: "AISuiteChatLogs", icon: markRaw(RiMessage2Line), label: "问答记录" },
+      { name: "AISuiteEvaluation", icon: markRaw(RiFlaskLine), label: "效果评测" },
+      { name: "AISuiteAgent", icon: markRaw(RiRobot2Line), label: "运营智能体" },
+      { name: "AISuiteUsage", icon: markRaw(RiBarChartLine), label: "用量统计" },
+    ],
+  },
 ];
 </script>

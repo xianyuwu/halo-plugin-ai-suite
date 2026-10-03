@@ -1,19 +1,19 @@
 # 当前版本能力清单
 
-> 适用版本：AI 智能套件 0.3.x、Halo 2.25+
-> 更新日期：2026-07-04
+> 适用版本：AI 智能套件 0.4.x、Halo 2.26+
+> 更新日期：2026-10-03
 
-本文是 0.3.x 系列的版本事实入口。README 负责产品介绍，具体操作方法在用户手册，本页用于快速确认“当前版本到底包含什么”。补丁版本只包含缺陷修复时，不重复调整整套文档版本口径。
+本文是 0.4.x 系列的版本事实入口。README 负责产品介绍，具体操作方法在用户手册，本页用于快速确认“当前版本到底包含什么”。
 
 ## 运行边界
 
 | 项目 | 当前状态 |
 | --- | --- |
 | 插件 ID | `ai-suite` |
-| 最低 Halo 版本 | `2.25.0` |
-| 模型基础设施 | 强依赖 Halo AI Foundation |
+| 最低 Halo 版本 | `2.26.0` |
+| 模型基础设施 | 强依赖 Halo AI Foundation `1.1.1` 或更高版本 |
 | Java | 21 |
-| 检索引擎 | Halo 内置 Lucene 10.3.2 + SmartCN |
+| 检索引擎 | Halo 2.26 运行时 Lucene 10.5.0 + SmartCN |
 | 配置存储 | ConfigMap `ai-suite-configmap`；用量按日期写入 `ai-suite-usage-YYYY-MM-DD` |
 | 公开 API | `v1alpha1`，聊天另提供 `v1alpha2` 热更新兼容入口 |
 | Console API | `v1alpha1` |
@@ -30,6 +30,7 @@
 - AI 搜索综合回答和 Lucene 关键词结果。
 - 文章 AI 脑图与主题无关的前台注入。
 - 意图命中后的结构化文章卡片。
+- 可配置的交互宠物皮肤与聊天状态表情。
 
 ### Console 与编辑器
 
@@ -40,6 +41,13 @@
 - 问答日志、反馈、Trace、效果评测、用量与限额。
 - 内容缺口运营智能体。
 - 手工编辑意图路由，以及通过自然语言生成、检查、模拟和保存路由草稿。
+- 管理员生成 AI 宠物，审核母版透明背景与四种表情；支持单张重试、背景/边缘清理及改名。
+
+## 0.4.0 的关键变化
+
+1. 新增三款内置交互宠物皮肤及 AI 宠物生成、逐张审核和编辑流程。
+2. 升级到 Halo 2.26 与 AI Foundation 1.1.1 的公开能力，运行环境不再支持 Halo 2.25。
+3. 对齐 Lucene 10.5.0；升级前备份索引并在测试环境验证旧索引可读性。
 
 ## 0.3.2 的关键变化
 
@@ -64,6 +72,7 @@
 - [安装与首次配置](../getting-started/installation.md)
 - [模型、切片与检索配置](../user-guide/models-and-retrieval.md)
 - [访客问答、深度思考与浮窗](../user-guide/rag-chat.md)
+- [交互宠物与 AI 宠物制作](../user-guide/interactive-pets.md)
 - [意图路由使用手册](../user-guide/intent-routing.md)
 - [API 总览](../api/overview.md)
 - [配置参考](configuration-reference.md)

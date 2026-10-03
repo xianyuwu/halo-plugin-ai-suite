@@ -10,7 +10,7 @@
  */
 
 import { marked } from "marked";
-import DOMPurify from "dompurify";
+import DOMPurify, { type Config } from "dompurify";
 
 /**
  * LLM 输出常见不规范 → 预处理后再交给 marked。
@@ -28,7 +28,8 @@ function preprocess(md: string): string {
 
 // DOMPurify 净化配置: 放行 marked 产出的常见排版标签, 剥离 script/事件处理器.
 // outline 是 LLM 输出, 必须净化后再 v-html, 原 markdownToHtml 完全没净化是 XSS 漏洞.
-const PURIFY_CONFIG: DOMPurify.Config = {
+const PURIFY_CONFIG: Config & { RETURN_TRUSTED_TYPE: false } = {
+  RETURN_TRUSTED_TYPE: false,
   ALLOWED_TAGS: [
     "h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "hr",
     "ul", "ol", "li", "blockquote", "code", "pre",
@@ -43,7 +44,7 @@ export function markdownToHtml(md: string): string {
   try {
     const html = marked.parse(preprocessed, { async: false });
     const raw = typeof html === "string" ? html : md;
-    return DOMPurify.sanitize(raw, PURIFY_CONFIG) as string;
+    return DOMPurify.sanitize(raw, PURIFY_CONFIG);
   } catch (e) {
     console.error("[outline] marked error:", e);
     return md.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

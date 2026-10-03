@@ -104,7 +104,8 @@ function renderFlow(spec) {
     ...spec.nodes.map(card),
     ...(spec.notes || []).map(n => `<text x="${n.x}" y="${n.y}" fill="${n.color || "#94A3B8"}" font-family="Inter, PingFang SC, sans-serif" font-size="${n.size || 13}">${esc(n.text)}</text>`),
   ].join("\n");
-  return shell(spec.title, spec.subtitle, spec.width || 1400, spec.height || 700, body);
+  const svg = shell(spec.title, spec.subtitle, spec.width || 1400, spec.height || 700, body);
+  return spec.trimWhitespace ? svg.replace(/[ \t]+$/gm, "") : svg;
 }
 
 function renderSequence(spec) {
@@ -130,6 +131,18 @@ function renderSequence(spec) {
 }
 
 const diagrams = {
+  "pet-generation-journey": {
+    title:"AI 宠物制作与验收",subtitle:"先验收母版透明背景，再生成表情；图片完成后仍需保存浮窗外观配置",height:440,trimWhitespace:true,
+    nodes:[
+      {id:"photo",x:35,y:165,w:185,h:90,title:"上传参考照片",subtitle:"选择画风与要求",tone:"blue"},
+      {id:"master",x:260,y:165,w:185,h:90,title:"生成待机母版",subtitle:"一次模型调用",tone:"purple"},
+      {id:"background",x:485,y:165,w:185,h:90,title:"检查透明背景",subtitle:"清理 · 预览 · 确认",tone:"orange"},
+      {id:"region",x:710,y:165,w:185,h:90,title:"设置表情区域",subtitle:"选择表情生成方式",tone:"indigo"},
+      {id:"expressions",x:935,y:165,w:185,h:90,title:"生成并检查四帧",subtitle:"按需只重试一张",tone:"purple"},
+      {id:"publish",x:1160,y:165,w:205,h:90,title:"保存外观配置",subtitle:"访客页面验收",tone:"green"},
+    ],edges:[{from:"photo",to:"master"},{from:"master",to:"background"},{from:"background",to:"region",tone:"orange"},{from:"region",to:"expressions"},{from:"expressions",to:"publish",tone:"green"}],
+    notes:[{x:52,y:328,text:"母版或单张表情不满意时，可返回对应步骤修改；待确认的新图不会直接覆盖已发布表情。",color:"#CBD5E1",size:14}]
+  },
   "documentation-map": {
     title: "文档体系地图", subtitle: "从产品入口进入不同读者路径，每个页面只解决一个主要问题", height: 650,
     nodes: [

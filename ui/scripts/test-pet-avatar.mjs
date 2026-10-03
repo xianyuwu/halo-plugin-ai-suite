@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+const source=fs.readFileSync('src/main/resources/static/js/chat-widget.js','utf8');
+const crop=source.slice(source.indexOf('  var petAvatarFailedUrl ='),source.indexOf('  // ===== 按钮形状'));
+const handler=source.match(/chatWindow.addEventListener\("error", function \(event\) \{([\s\S]*?)\n  \}, true\);/)[1];
+const avatars=[{innerHTML:''},{innerHTML:''}];
+const context={config:{triggerType:'pet',petManifest:{images:{idle:'/mother.png'},avatarCrop:{centerX:0.5,centerY:0.3,size:0.4}}},getTriggerIconHTML:()=>'<svg>original</svg>',escapeHtml:v=>String(v).replace(/"/g,'&quot;').replace(/</g,'&lt;'),isFinite,chatWindow:{querySelectorAll:()=>avatars}};
+vm.createContext(context);vm.runInContext(crop+';this.onAvatarError=function(event){'+handler+'};this.qa={getAvatarHTML,refreshChatAvatars};',context);
+const html=context.qa.getAvatarHTML();assert.match(html,/mother.png/);assert.match(html,/width:250%/);assert.doesNotMatch(html,/happy/);
+context.qa.refreshChatAvatars();assert.equal(avatars[0].innerHTML,avatars[1].innerHTML);
+context.onAvatarError({target:{classList:{contains:()=>true},getAttribute:()=>'/stale.png'}});assert.match(context.qa.getAvatarHTML(),/mother.png/);
+context.onAvatarError({target:{classList:{contains:()=>true},getAttribute:()=>'/mother.png'}});assert.equal(avatars[0].innerHTML,'<svg>original</svg>');assert.equal(avatars[1].innerHTML,'<svg>original</svg>');
+context.config.petManifest.images.idle='/next.png';assert.match(context.qa.getAvatarHTML(),/next.png/);
+context.config.petManifest.avatarCrop={centerX:Infinity,centerY:NaN,size:0};assert.doesNotMatch(context.qa.getAvatarHTML(),/NaN|Infinity/);
+context.config.triggerType='icon';assert.equal(context.qa.getAvatarHTML(),'<svg>original</svg>');
+console.log('PASS: mother portrait, shared header/reply, stale image errors ignored, load failure fallback, finite crop bounds, static compatibility.');

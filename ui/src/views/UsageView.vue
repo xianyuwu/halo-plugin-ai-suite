@@ -1823,6 +1823,7 @@ function typeLabel(type: string) {
     chat: "Chat",
     embed: "Embedding",
     rerank: "Rerank",
+    image: "图像生成",
   };
   return map[type] || type || "未知";
 }
@@ -1847,6 +1848,7 @@ function scenarioLabel(scenario: string) {
     evaluation_answer: "效果评测 · 生成回答",
     evaluation_judge: "效果评测 · AI 评分",
     agent_content_gap: "运营智能体 · 内容缺口分析",
+    pet_generate: "AI 宠物生成",
   };
   return map[scenario] || scenario || "未标记";
 }

@@ -1,10 +1,16 @@
 pluginManagement {
     repositories {
+        // CI 优先使用官方仓库，避免镜像有元数据却缺少插件传递依赖的 JAR。
+        if (System.getenv('GITHUB_ACTIONS') == 'true') {
+            gradlePluginPortal()
+        }
         // 腾讯云 Gradle 插件镜像
         maven {
             url 'https://mirrors.cloud.tencent.com/nexus/repository/gradle-plugins/'
         }
-        gradlePluginPortal()
+        if (System.getenv('GITHUB_ACTIONS') != 'true') {
+            gradlePluginPortal()
+        }
     }
 }
 rootProject.name = 'plugin-ai-suite'

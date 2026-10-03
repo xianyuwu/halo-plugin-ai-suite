@@ -741,7 +741,7 @@ function ensureMarkmap() {
     return Promise.resolve();
   }
   if (markmapReady) return markmapReady;
-  markmapReady = new Promise((resolve, reject) => {
+  markmapReady = new Promise<void>((resolve, reject) => {
     const existed = document.querySelector<HTMLScriptElement>(`script[src="${MARKMAP_BUNDLE}"]`);
     if (existed) {
       existed.addEventListener("load", () => resolve(), { once: true });

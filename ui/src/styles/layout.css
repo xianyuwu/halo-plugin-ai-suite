@@ -180,7 +180,9 @@
 .ai-layout-main {
   flex: 1;
   min-width: 0;
-  overflow-y: auto;
+  /* 不要设 overflow-y: auto：这里没有高度上限，本就不产生内部滚动（页面靠文档滚），
+     一旦设了 overflow，它就会成为子元素 position: sticky 的滚动容器，而这个容器自己
+     从不滚动 → sticky 失去可移动空间而失效（右侧预览滚到底会消失，侧栏因不在此容器内不受影响）。 */
   background: var(--ai-color-bg-page);
 }
 
