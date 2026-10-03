@@ -19,9 +19,9 @@ JAVA_HOME=~/jdk21/contents/Contents/Home ./gradlew test
 JAVA_HOME=~/jdk21/contents/Contents/Home ./gradlew build
 ```
 
-`build:version` 从 `gradle.properties` 读取版本号，并自动登记到 `docs/versions.json`。将生成的 `docs/.vitepress/dist/` 发布到服务器的 `/opt/ai-suite-docs-versions/<version>/`，随后重新构建并发布根路径的最新版文档。历史版本目录不可覆盖或删除。
+`build:version` 从 `gradle.properties` 读取版本号，并自动登记到 `docs/versions.json`。将生成的 `docs/.vitepress/dist/` 发布到服务器的 `/opt/ai-suite-docs-versions/<version>/`，随后重新构建并发布根路径的最新版文档。历史版本目录不可覆盖或删除；发布前先确认目标版本目录不存在。
 
-首次从线上 0.3.x 切到 0.4.x 时，先把当前线上根路径对应的 0.3.6 静态文档归档到 `/opt/ai-suite-docs-versions/0.3.6/`，确认 `/versions/0.3.6/` 可访问后，再把根路径更新为 0.4.x。不要拿 0.4.x 的构建结果冒充 0.3.6 归档；如尚未完成归档，先保留线上 0.3.x。0.4.0 的新增操作手册见[交互宠物与 AI 宠物制作](../user-guide/interactive-pets.md)。
+0.3.6 的独立快照已从 `v0.3.6` 文档源码以 `DOCS_BASE=/versions/0.3.6/` 构建并发布到 `/opt/ai-suite-docs-versions/0.3.6/`。上线 0.4.x 前再次确认 `/versions/0.3.6/` 的页面及资源可访问，再切换根路径。不能直接把根站静态文件复制到历史子路径：原文件的绝对资源路径仍指向根站，切换最新版后可能加载错误。旧版页面的历史提示提供“前往最新版”链接，0.4.x 顶部版本菜单提供返回 0.3.x 的入口。0.4.0 的新增操作手册见[交互宠物与 AI 宠物制作](../user-guide/interactive-pets.md)。
 
 ## 制品
 
