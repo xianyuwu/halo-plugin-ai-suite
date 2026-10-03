@@ -18,6 +18,7 @@
 | 理解整个系统 | [系统架构](architecture/overview.md) |
 | 核对当前版本能力 | [当前版本能力清单](reference/current-version.md) |
 | 配置深度思考 | [深度思考与推理过程](user-guide/reasoning-mode.md) |
+| 制作交互宠物 | [交互宠物与 AI 宠物制作](user-guide/interactive-pets.md) |
 | 查询所有配置默认值 | [配置参考](reference/configuration-reference.md) |
 | 对接流式接口 | [SSE 协议](api/sse-protocol.md) |
 | 定位运行故障 | [故障排查](operations/troubleshooting.md) |
@@ -37,6 +38,7 @@
 
 - [模型、切片与检索配置](user-guide/models-and-retrieval.md)
 - [访客问答与浮窗](user-guide/rag-chat.md)
+- [交互宠物与 AI 宠物制作](user-guide/interactive-pets.md)
 - [深度思考与推理过程](user-guide/reasoning-mode.md)
 - [AI 搜索](user-guide/ai-search.md)
 - [索引中心](user-guide/knowledge-index.md)

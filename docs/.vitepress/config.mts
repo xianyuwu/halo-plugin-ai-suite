@@ -12,9 +12,21 @@ const siteOrigin = "https://ai-suite-docs.rainwu.cn";
 const siteBase = process.env.DOCS_BASE || "/";
 const historicalVersion = process.env.DOCS_HISTORICAL_VERSION || "";
 const documentationSeries = projectVersion.replace(/\.\d+(?:[-+].*)?$/, ".x");
+const registeredVersions: string[] = JSON.parse(readFileSync(new URL("../versions.json", import.meta.url), "utf8"));
+const previousSeriesVersion = registeredVersions.find(version => version.replace(/\.\d+(?:[-+].*)?$/, ".x") !== documentationSeries);
+const versionNav = historicalVersion || !previousSeriesVersion
+  ? { text: `版本 ${documentationSeries}`, link: "/reference/current-version" }
+  : {
+      text: `版本 ${documentationSeries}`,
+      items: [
+        { text: `${documentationSeries}（当前）`, link: "/reference/current-version" },
+        { text: `${previousSeriesVersion.replace(/\.\d+(?:[-+].*)?$/, ".x")}（历史）`, link: `${siteOrigin}/versions/${previousSeriesVersion}/` },
+      ],
+    };
 const userGuide = [
   { text: "模型、切片与检索", link: "/user-guide/models-and-retrieval" },
   { text: "访客问答与浮窗", link: "/user-guide/rag-chat" },
+  { text: "交互宠物与 AI 宠物制作", link: "/user-guide/interactive-pets" },
   { text: "深度思考与推理过程", link: "/user-guide/reasoning-mode" },
   { text: "AI 搜索", link: "/user-guide/ai-search" },
   { text: "索引中心", link: "/user-guide/knowledge-index" },
@@ -49,7 +61,7 @@ export default defineConfig({
       { text: "用户手册", link: "/user-guide/rag-chat" },
       { text: "架构", link: "/architecture/overview" },
       { text: "API", link: "/api/overview" },
-      { text: `版本 ${documentationSeries}`, link: "/reference/current-version" },
+      versionNav,
     ],
     socialLinks: [
       {

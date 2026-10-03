@@ -72,6 +72,7 @@
 - [安装与首次配置](../getting-started/installation.md)
 - [模型、切片与检索配置](../user-guide/models-and-retrieval.md)
 - [访客问答、深度思考与浮窗](../user-guide/rag-chat.md)
+- [交互宠物与 AI 宠物制作](../user-guide/interactive-pets.md)
 - [意图路由使用手册](../user-guide/intent-routing.md)
 - [API 总览](../api/overview.md)
 - [配置参考](configuration-reference.md)

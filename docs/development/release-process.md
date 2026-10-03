@@ -21,6 +21,8 @@ JAVA_HOME=~/jdk21/contents/Contents/Home ./gradlew build
 
 `build:version` 从 `gradle.properties` 读取版本号，并自动登记到 `docs/versions.json`。将生成的 `docs/.vitepress/dist/` 发布到服务器的 `/opt/ai-suite-docs-versions/<version>/`，随后重新构建并发布根路径的最新版文档。历史版本目录不可覆盖或删除。
 
+首次从线上 0.3.x 切到 0.4.x 时，先把当前线上根路径对应的 0.3.6 静态文档归档到 `/opt/ai-suite-docs-versions/0.3.6/`，确认 `/versions/0.3.6/` 可访问后，再把根路径更新为 0.4.x。不要拿 0.4.x 的构建结果冒充 0.3.6 归档；如尚未完成归档，先保留线上 0.3.x。0.4.0 的新增操作手册见[交互宠物与 AI 宠物制作](../user-guide/interactive-pets.md)。
+
 ## 制品
 
 构建产物位于 `build/libs/plugin-ai-suite-<version>.jar`。发布时记录文件大小和 SHA-256：
