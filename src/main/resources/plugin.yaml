@@ -3,7 +3,7 @@ kind: Plugin
 metadata:
   name: ai-suite
 spec:
-  version: "0.3.6"
+  version: "0.4.0"
   enabled: true
   requires: ">=2.26.0"
   author:

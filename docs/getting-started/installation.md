@@ -1,7 +1,7 @@
 # 安装与首次配置
 
 > 适用读者：Halo 站长、首次部署人员  
-> 适用版本：AI 智能套件 0.3.x、Halo 2.25+
+> 适用版本：AI 智能套件 0.4.x、Halo 2.26+
 > 预计耗时：15～30 分钟
 
 ## 安装完成后的目标状态
@@ -12,8 +12,8 @@
 
 | 项目 | 要求 |
 | --- | --- |
-| Halo | 2.25.0 或更高版本 |
-| 必需插件 | Halo AI Foundation（插件 ID：`ai-foundation`） |
+| Halo | 2.26.0 或更高版本 |
+| 必需插件 | Halo AI Foundation 1.1.1 或更高版本（插件 ID：`ai-foundation`） |
 | 访客搜索入口 | 启用 AI 搜索时，默认还需安装并启用 Halo 官方搜索插件；仅在主题或自定义代码已提供兼容搜索入口时可不安装 |
 | 插件安装方式 | Halo Console 上传 JAR |
 | 语言模型 | 在 Halo AI Foundation 中配置可用 |
@@ -40,7 +40,7 @@ JAVA_HOME=~/jdk21/contents/Contents/Home ./gradlew build
 构建产物位于：
 
 ```text
-build/libs/plugin-ai-suite-0.3.6.jar
+build/libs/plugin-ai-suite-0.4.0.jar
 ```
 
 本项目开发环境不使用 Docker，也不要运行 `./gradlew haloServer`。

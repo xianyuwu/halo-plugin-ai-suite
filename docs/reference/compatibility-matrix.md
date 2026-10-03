@@ -2,11 +2,11 @@
 
 | 组件 | 当前要求 | 说明 |
 | --- | --- | --- |
-| AI 智能套件 | 0.3.x | 文档当前适用版本系列 |
-| Halo | 2.25.0+ | `plugin.yaml` 声明 `>=2.25.0` |
-| Halo AI Foundation | `1.0.1`（已验证） | 必需，公开 API 以 `compileOnly` 接入；manifest 按官方指南声明 `"*"` |
+| AI 智能套件 | 0.4.x | 文档当前适用版本系列 |
+| Halo | 2.26.0+ | `plugin.yaml` 声明 `>=2.26.0`；已在 2.26.1 验证 |
+| Halo AI Foundation | 1.1.1+ | 必需，公开 API 以 `compileOnly` 接入；已在 1.1.1 验证 |
 | Java | 21 | 构建与本地运行要求 |
-| Lucene | 10.3.2 | 必须与 Halo 2.25 内置版本对齐 |
+| Lucene | 10.5.0 | 必须与 Halo 2.26 运行时版本对齐 |
 | Node.js | 20+ | Console 构建 |
 | pnpm | 9+ | Console 依赖管理 |
 | 浏览器 | 支持 fetch/ReadableStream | POST SSE 客户端 |
@@ -17,7 +17,7 @@
 - AI 智能套件只保存业务使用的 AI Foundation 模型资源名和生成参数。
 - 字段为空时使用 AI Foundation 的默认模型；查询改写和写作模型为空时复用语言模型。
 - 不同厂商对 usage、SSE、JSON 输出和 Rerank 支持可能不同，必须先在 AI Foundation 和 AI 智能套件后台连接测试中验证。
-- 推理模型可能返回结构化 reasoning 字段，也可能在文本中输出 `<think>` / `<reasoning>`；0.3.4 会统一解析，并在关闭深度思考时过滤意外透传内容。
+- 推理模型可能返回结构化 reasoning 字段，也可能在文本中输出 `<think>` / `<reasoning>`；插件会统一解析，并在关闭深度思考时过滤意外透传内容。
 - 显式推理参数被供应商拒绝时会自动降级重试，因此“请求成功”不等于模型一定提供了可展示的推理过程。
 - Embedding 维度参数会按模型能力自适应：固定维度模型优先使用其原生向量，只有原生维度与配置不一致时才请求显式维度。
 
@@ -28,7 +28,8 @@
 | 功能 | 是否依赖其他 Halo 插件 | 必需依赖 | 说明 |
 | --- | --- | --- | --- |
 | 访客问答浮窗 | 依赖 AI Foundation | Halo `AdditionalWebFilter`、匿名 RoleTemplate、AI Foundation 语言模型 | 通过全局 WebFilter 注入，不要求主题模板改造。 |
-| RAG 索引 | 依赖 AI Foundation | Halo `Post`、`PostContentService`、AI Foundation Embedding 模型、Halo 内置 Lucene 10.3.2 | 只索引已发布公开文章。 |
+| 交互宠物 | 运行展示不依赖额外插件；AI 生成依赖 AI Foundation | 三款内置皮肤可直接使用；生成新宠物需配置支持参考图的图片模型 | 生图结果需审核母版透明背景和逐张表情，模型兼容性因供应商而异。 |
+| RAG 索引 | 依赖 AI Foundation | Halo `Post`、`PostContentService`、AI Foundation Embedding 模型、Halo 内置 Lucene 10.5.0 | 只索引已发布公开文章。 |
 | AI 搜索能力 | 依赖 AI Foundation | 插件 Lucene 索引、AI Foundation 语言模型 | 关键词结果和 AI 综合回答都由本插件接口提供，不依赖 Halo 官方搜索插件的检索能力。 |
 | AI 搜索入口 | 访客使用时条件必需 | 默认安装并启用 Halo 官方搜索插件；若主题或自定义代码已经提供兼容搜索入口，可替代官方插件 | 未提供入口时接口和快捷键仍可能可用，但普通访客看不到搜索框，不能视为完整启用访客搜索。 |
 | AI 摘要 | 依赖 AI Foundation | Halo 摘要扩展点、AI Foundation 语言模型 | 自动摘要接入 Halo `ExcerptGenerator` 扩展点，批量摘要直接写入文章摘要字段。 |

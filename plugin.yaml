@@ -4,9 +4,9 @@ kind: "Plugin"
 metadata:
   name: "ai-suite"
 spec:
-  version: "0.3.6"
+  version: "0.4.0"
   enabled: true
-  requires: ">=2.25.0"
+  requires: ">=2.26.0"
   author:
     name: "rainwu"
     website: "https://github.com/xianyuwu"
@@ -18,7 +18,7 @@ spec:
   description: "为 Halo 博客提供 AI 智能问答、文档智能编辑、AI 摘要等功能，基于 Halo AI Foundation 统一管理模型能力"
   configMapName: "ai-suite-configmap"
   pluginDependencies:
-    ai-foundation: "*"
+    ai-foundation: ">=1.1.1"
   license:
   - name: "GPL-3.0"
     url: "https://github.com/xianyuwu/halo-plugin-ai-suite/blob/main/LICENSE"

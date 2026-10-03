@@ -10,7 +10,7 @@
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Lucene](https://img.shields.io/badge/Lucene-10.5.0-0a6f3a)](https://lucene.apache.org/)
-[![Version](https://img.shields.io/badge/version-0.3.6-blue)](src/main/resources/plugin.yaml)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue)](src/main/resources/plugin.yaml)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
 [快速开始](#快速开始) · [功能全景](#功能全景) · [完整文档](https://ai-suite-docs.rainwu.cn) · [工作原理](#工作原理) · [开发指南](#开发指南)
@@ -49,6 +49,7 @@
 | **问答反馈**：点赞、点踩结果进入后台分析 | **效果评测**：维护评测集，检查检索命中、回答质量与引用效果 |
 | **意图路由**：确定性问题进入可编排 Pipeline，响应更稳定 | **运营智能体**：分析访客需求与文章覆盖，产出可执行的内容建议 |
 | **主题无关注入**：原生 JS/CSS Widget 接入 Halo 前台 | **用量与审计**：模型 token、调用记录、失败率、限额与检索链路追踪 |
+| **交互宠物**：内置三款皮肤，随聊天状态切换表情 | **AI 宠物制作**：生成母版、清理背景、逐张检查表情并管理宠物 |
 
 > 插件依赖 Halo AI Foundation 提供模型能力。AI 搜索的检索能力由本插件提供；页面搜索按钮则依赖主题、官方搜索插件或自定义入口，未提供按钮时仍可通过快捷键唤起。
 

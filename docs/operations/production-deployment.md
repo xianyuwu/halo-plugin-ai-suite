@@ -1,7 +1,7 @@
 # 生产部署
 
 > 适用读者：Halo 运维人员、站长  
-> 适用版本：AI 智能套件 0.3.x、Halo 2.25+
+> 适用版本：AI 智能套件 0.4.x、Halo 2.26+
 
 ## 推荐部署拓扑
 
@@ -11,8 +11,8 @@
 
 ## 部署前检查
 
-- Halo 版本满足 `>=2.25.0`。
-- Halo AI Foundation 已安装、启用，并配置了可用的语言模型和 Embedding 模型。
+- Halo 版本满足 `>=2.26.0`。
+- Halo AI Foundation `>=1.1.1` 已安装、启用，并配置了可用的语言模型和 Embedding 模型。
 - 插件版本与目标 Halo 版本兼容。
 - AI Foundation 中配置的模型供应商可以从 Halo 所在服务器访问。
 - Halo 数据目录有足够空间保存 Lucene 索引。

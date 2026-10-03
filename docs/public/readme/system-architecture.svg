@@ -21,7 +21,7 @@
   <g transform="translate(60 42)" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif">
     <rect width="56" height="56" rx="14" fill="url(#brand)"/><circle cx="28" cy="17" r="3.5" fill="#FDE047"/><path d="M28 20v5M17 27h22v18H17z" stroke="white" stroke-width="2"/><circle cx="23" cy="35" r="2" fill="white"/><circle cx="33" cy="35" r="2" fill="white"/>
     <text x="76" y="25" fill="#F8FAFC" font-size="28" font-weight="750">AI 智能套件 · 系统全景架构</text>
-    <text x="76" y="50" fill="#94A3B8" font-size="15">Halo 2.25+ · Spring WebFlux · RAG · 意图路由 · 内容运营</text>
+    <text x="76" y="50" fill="#94A3B8" font-size="15">Halo 2.26+ · Spring WebFlux · RAG · 意图路由 · 内容运营</text>
   </g>
   <g transform="translate(1260 53)" font-family="Inter, PingFang SC, sans-serif" font-size="13"><circle cx="5" cy="5" r="5" fill="#60A5FA"/><text x="18" y="10" fill="#CBD5E1">业务调用</text><circle cx="100" cy="5" r="5" fill="#A78BFA"/><text x="113" y="10" fill="#CBD5E1">模型调用</text><circle cx="195" cy="5" r="5" fill="#34D399"/><text x="208" y="10" fill="#CBD5E1">数据流</text></g>
 
