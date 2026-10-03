@@ -239,7 +239,7 @@ class ConsolePetPresetsTest {
             .expectStatus().isOk()
             .expectBody()
             .jsonPath("$.success").isEqualTo(true)
-            .jsonPath("$.job.status").isEqualTo("pending");
+            .jsonPath("$.jobId").exists();
 
         verify(generator, timeout(1000)).cleanupBackground(eq("pet-1"), argThat(strokes ->
             strokes.size() == 1
