@@ -7,6 +7,10 @@ plugins {
 group 'cn.rainwu.halo.ai.suite'
 
 repositories {
+    // CI 优先使用 Maven Central，避免镜像有元数据却缺少实际 JAR。
+    if (System.getenv('GITHUB_ACTIONS') == 'true') {
+        mavenCentral()
+    }
     // 腾讯云 Maven 镜像（国内加速）
     maven {
         url 'https://mirrors.cloud.tencent.com/nexus/repository/maven-public/'
@@ -18,7 +22,9 @@ repositories {
             includeGroupAndSubgroups('run.halo')
         }
     }
-    mavenCentral()
+    if (System.getenv('GITHUB_ACTIONS') != 'true') {
+        mavenCentral()
+    }
 }
 
 dependencies {
