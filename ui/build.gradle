@@ -11,6 +11,8 @@ tasks.register('buildFrontend', PnpmTask) {
     args = ['build']
     dependsOn tasks.named('pnpmInstall')
     inputs.dir(layout.projectDirectory.dir('src'))
+    inputs.dir(layout.projectDirectory.dir('scripts'))
+    inputs.files(rootProject.file('src/main/resources/static/js/chat-widget.js'))
     inputs.files(fileTree(
             dir: layout.projectDirectory,
             includes: ['*.cjs', '*.ts', '*.js', '*.json', '*.yaml']))

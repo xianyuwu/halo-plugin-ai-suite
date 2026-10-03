@@ -23,6 +23,12 @@ import run.halo.aifoundation.chat.StreamTextResult;
 import run.halo.aifoundation.embedding.EmbeddingModel;
 import run.halo.aifoundation.embedding.EmbeddingRequest;
 import run.halo.aifoundation.embedding.EmbeddingResponse;
+import run.halo.aifoundation.image.GenerateImageRequest;
+import run.halo.aifoundation.image.GenerateImageResult;
+import run.halo.aifoundation.image.ImageGenerationModel;
+import run.halo.aifoundation.image.ImageResponseFormat;
+import run.halo.aifoundation.image.ImageUsage;
+import run.halo.aifoundation.media.DataContent;
 import run.halo.aifoundation.message.ModelMessage;
 import run.halo.aifoundation.part.PartType;
 import run.halo.aifoundation.rerank.RerankDocument;
@@ -47,6 +53,8 @@ public class AiFoundationClient {
     private static final Duration CALL_TIMEOUT = Duration.ofSeconds(60);
     private static final Duration EMBEDDING_TIMEOUT = Duration.ofSeconds(30);
     private static final Duration RERANK_TIMEOUT = Duration.ofSeconds(30);
+    // 图像生成普遍需要 30-120s，i2i（图生图）排队慢时可到数分钟，单独放宽
+    private static final Duration IMAGE_TIMEOUT = Duration.ofSeconds(300);
 
     private final ExtensionGetter extensionGetter;
     private final UsageTracker usageTracker;
@@ -259,6 +267,82 @@ public class AiFoundationClient {
             .doOnError(error -> recordFailure(usageModel, "rerank", scenario, error));
     }
 
+    /**
+     * 图像生成：prompt + 可选参考图（图生图）。size 为空则不传，由模型默认决定。
+     * 豆包使用 URL 返回避免大 Base64 响应超出 Foundation 缓冲；其他供应商沿用 BASE64。
+     */
+    public Mono<GenerateImageResult> generateImage(String modelName, String prompt,
+                                                   List<DataContent> images, String size,
+                                                   String scenario) {
+        String usageModel = usageModel(modelName, "ai-foundation-default-image");
+        return imageGenerationModel(modelName)
+            .flatMap(model -> model.generateImage(imageRequest(prompt, images, size,
+                model.providerInfo() != null && "doubao".equals(model.providerInfo().getProviderType())
+                    ? ImageResponseFormat.URL : ImageResponseFormat.BASE64)))
+            .timeout(IMAGE_TIMEOUT)
+            .doOnNext(result -> recordImageUsage(usageModel, scenario, result, prompt))
+            .doOnError(error -> recordFailure(usageModel, "image", scenario, error));
+    }
+
+    private GenerateImageRequest imageRequest(String prompt, List<DataContent> images,
+                                              String size, ImageResponseFormat format) {
+        var builder = GenerateImageRequest.builder()
+            .prompt(prompt)
+            .n(1)
+            .maxRetries(0)
+            .responseFormat(format);
+        if (images != null && !images.isEmpty()) {
+            builder.images(images);
+        }
+        if (hasText(size)) {
+            builder.size(size);
+        }
+        return builder.build();
+    }
+
+    public record ImageModelStatus(boolean available, String reason, String message) {}
+
+    /** Only resolves configuration and advertised capabilities; never sends a generation request. */
+    public Mono<ImageModelStatus> imageModelStatus(String modelName) {
+        return Mono.defer(() -> imageGenerationModel(modelName))
+            .map(model -> {
+                var capabilities = model.capabilities();
+                var image = capabilities == null ? null : capabilities.getImageGeneration();
+                if (image == null || !Boolean.TRUE.equals(image.getTextToImage())
+                    || !Boolean.TRUE.equals(image.getImageToImage())) {
+                    return new ImageModelStatus(false, "capability",
+                        "当前模型未声明同时支持文生图和图生图，请在 AI Foundation 检查模型能力，或选择支持参考图的生图模型。");
+                }
+                return new ImageModelStatus(true, "ready", "生图模型配置已就绪");
+            })
+            .switchIfEmpty(Mono.just(new ImageModelStatus(false, "missing",
+                "尚未配置可用的生图模型，请先在模型配置中选择生图模型，或在 AI Foundation 设置默认生图模型。")))
+            .timeout(java.time.Duration.ofSeconds(10))
+            .onErrorResume(error -> {
+                if (error instanceof run.halo.aifoundation.exception.DefaultModelNotConfiguredException) {
+                    return Mono.just(new ImageModelStatus(false, "missing",
+                        "尚未配置生图模型，请先选择生图模型，或在 AI Foundation 设置默认生图模型。"));
+                }
+                return Mono.just(new ImageModelStatus(false, "unavailable",
+                    "暂时无法确认生图模型是否可用，请检查 AI Foundation 是否启用、所选模型及能力配置，然后重新检查。"));
+            });
+    }
+
+    private Mono<ImageGenerationModel> imageGenerationModel(String modelName) {
+        return aiModelService().flatMap(service -> hasText(modelName)
+            ? service.imageGenerationModel(modelName) : service.imageGenerationModel());
+    }
+
+    private void recordImageUsage(String model, String scenario, GenerateImageResult result,
+                                  String prompt) {
+        ImageUsage usage = result == null ? null : result.getUsage();
+        long input = usage == null || usage.getInputTokens() == null
+            ? estimateTokens(prompt) : usage.getInputTokens();
+        long output = usage == null || usage.getOutputTokens() == null
+            ? 0 : usage.getOutputTokens();
+        usageTracker.recordUsage(model, "image", scenario, input, output, false, 0);
+    }
+
     private Mono<GenerateTextResult> chatOnce(String modelName,
                                                List<Map<String, String>> messages,
                                                float temperature, int maxTokens,
@@ -341,7 +425,14 @@ public class AiFoundationClient {
             .temperature((double) temperature)
             .maxOutputTokens(maxTokens);
         if (responseFormat != null && !responseFormat.isEmpty()) {
-            builder.providerOptions(Map.of("openai", Map.of("response_format", responseFormat)));
+            String type = String.valueOf(responseFormat.get("type"));
+            if ("json_object".equals(type)) {
+                builder.output(run.halo.aifoundation.schema.OutputSpec.json());
+            } else if ("text".equals(type)) {
+                builder.output(run.halo.aifoundation.schema.OutputSpec.text());
+            } else {
+                throw new IllegalArgumentException("不支持的结构化输出格式：" + type);
+            }
         }
         ReasoningOptions reasoning = reasoningOptions(reasoningMode);
         if (reasoning != null) {

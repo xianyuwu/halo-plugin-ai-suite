@@ -6,6 +6,8 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import run.halo.aifoundation.image.GenerateImageResult;
+import run.halo.aifoundation.media.DataContent;
 import cn.rainwu.halo.ai.suite.endpoint.UsageLimit.LimitExceededException;
 import cn.rainwu.halo.ai.suite.state.LimitGuard;
 import cn.rainwu.halo.ai.suite.state.UsageTracker;
@@ -128,6 +130,21 @@ public class LlmClient {
                                            int topN, String scenario) {
         return enforceLimit(model, "rerank", null)
             .then(aiFoundationClient.rerank(model, query, documents, topN, scenario));
+    }
+
+    /**
+     * 图像生成（管理端场景：AI 贴纸宠物）。images 为参考图（图生图），可空。
+     * LimitGuard 目前只对 chat 限流，image 与 embed/rerank 一样自动放行。
+     */
+    public Mono<AiFoundationClient.ImageModelStatus> imageModelStatus(String model) {
+        return aiFoundationClient.imageModelStatus(model);
+    }
+
+    public Mono<GenerateImageResult> generateImage(String model, String prompt,
+                                                   List<DataContent> images, String size,
+                                                   String scenario) {
+        return enforceLimit(model, "image", null)
+            .then(aiFoundationClient.generateImage(model, prompt, images, size, scenario));
     }
 
     private Mono<Long> enforceLimit(String model, String type, String clientIp) {

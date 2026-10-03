@@ -222,7 +222,7 @@
                   </td>
                   <td data-label="最后更新" class="text-center eval-muted-cell">{{ formatUpdatedAt(ds.updatedAt) }}</td>
                   <td data-label="操作" @click.stop>
-                    <VSpace :spacing="4">
+                    <VSpace spacing="xs">
                       <VButton size="xs" type="default" @click="copyDataset(ds)">复制</VButton>
                       <VButton
                         size="xs"
@@ -317,7 +317,7 @@
                   </td>
                   <td data-label="来源" class="text-center">{{ splitList(item.expectedSourcesText).length }}</td>
                   <td data-label="操作">
-                    <VSpace :spacing="4">
+                    <VSpace spacing="xs">
                       <VButton size="xs" type="default" @click="openCaseEditor(pageStart + index)">编辑</VButton>
                       <VButton size="xs" type="danger" @click="removeCase(pageStart + index)">删除</VButton>
                     </VSpace>
@@ -432,7 +432,7 @@
                   <td data-label="耗时" class="text-center eval-muted-cell">{{ formatDuration(item.durationMs) }}</td>
                   <td data-label="时间" class="text-center eval-muted-cell">{{ formatTime(item.startedAt) }}</td>
                   <td data-label="操作">
-                    <VSpace :spacing="4">
+                    <VSpace spacing="xs">
                       <VButton size="xs" type="default" @click="selectRun(item.runId)">查看</VButton>
                       <VButton size="xs" type="danger" @click="askDeleteRun(item)">删除</VButton>
                     </VSpace>
@@ -837,8 +837,8 @@ const progressPct = computed(() => {
   return Math.round((runProgress.value.completed * 100) / runProgress.value.total);
 });
 
-function scoreFmt(value: number) { return value.toFixed(2); }
-function pctFmt(value: number) { return `${value.toFixed(1)}%`; }
+function scoreFmt(value: number | string) { return Number(value).toFixed(2); }
+function pctFmt(value: number | string) { return `${Number(value).toFixed(1)}%`; }
 
 function formatDuration(ms: number) {
   if (ms < 1000) return `${ms}ms`;

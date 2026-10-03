@@ -48,6 +48,7 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
         "aiFoundationEmbeddingModelName",
         "aiFoundationRerankModelName",
         "aiFoundationQueryRewriteModelName",
+        "aiFoundationImageModelName",
         "embeddingDimensions",
         "rerankEnabled",
         "queryRewriteEnabled"
@@ -80,6 +81,7 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
             .POST("/config/test-embedding", this::testEmbedding)
             .POST("/config/test-rerank", this::testRerank)
             .POST("/config/test-query-rewrite", this::testQueryRewrite)
+            .POST("/config/test-image", this::testImage)
             .POST("/chat/debug/stream", this::handleDebugStreamChat)
             .build();
     }
@@ -442,6 +444,44 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
             })
             .onErrorResume(e -> {
                 log.warn("[ConsoleConfigEndpoint] 查询改写连通性测试失败: {}", e.getMessage());
+                return ServerResponse.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(Map.of(
+                        "connected", false,
+                        "error", extractErrorMessage(e)
+                    ));
+            });
+    }
+
+    /**
+     * 测试 AI Foundation 图像生成模型连通性（文生图，极小 prompt）。
+     */
+    @SuppressWarnings("unchecked")
+    private Mono<ServerResponse> testImage(ServerRequest request) {
+        return request.bodyToMono(Map.class)
+            .flatMap(body -> {
+                String model = (String) body.getOrDefault("model", "");
+
+                return aiProperties.getModelConfig()
+                    .flatMap(saved -> {
+                        String finalModel = isBlank(model) ? saved.getEffectiveImageModel() : model;
+
+                        return llmClient.generateImage(finalModel,
+                                "a simple red circle on white background", null, "1024x1024",
+                                UsageScenario.MODEL_TEST)
+                            .flatMap(result -> ServerResponse.ok()
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(Map.of(
+                                    "connected", true,
+                                    "model", finalModel,
+                                    "imageCount", result.getImages() == null
+                                        ? 0 : result.getImages().size()
+                                ))
+                            );
+                    });
+            })
+            .onErrorResume(e -> {
+                log.warn("[ConsoleConfigEndpoint] 图像生成连通性测试失败: {}", e.getMessage());
                 return ServerResponse.ok()
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(Map.of(

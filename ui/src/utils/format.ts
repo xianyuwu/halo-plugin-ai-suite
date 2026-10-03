@@ -17,9 +17,10 @@ export function formatNum(n: number | string): string {
 }
 
 /** 百分比 — 33.33 → "33.3%" */
-export function formatPct(n: number, digits = 1): string {
-  if (!isFinite(n)) return "0%";
-  return n.toFixed(digits) + "%";
+export function formatPct(n: number | string, digits = 1): string {
+  const value = Number(n);
+  if (!isFinite(value)) return "0%";
+  return value.toFixed(digits) + "%";
 }
 
 /**

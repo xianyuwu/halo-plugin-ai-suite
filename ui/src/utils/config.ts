@@ -48,7 +48,10 @@ export async function saveGroup(
       if (resp.ok) allConfig = await resp.json();
     } catch {}
 
-    allConfig[group] = { ...form };
+    // 合并而不是整组覆盖：表单可能只持有该 group 的一部分字段
+    // （如 chat 组被拆到「对话行为」和「浮窗外观」两页），
+    // 直接 {...form} 会把别的页面负责的字段抹回默认值
+    allConfig[group] = { ...allConfig[group], ...form };
 
     const resp = await fetch(API_BASE + "/save", {
       method: "POST",
@@ -167,6 +170,8 @@ export interface DailyStatsEntry {
   byModel: Record<string, { p: number; c: number; e: number; calls: number; failures?: number }>;
 }
 export interface UsageStatsResponse {
+  start: string;
+  end: string;
   range: string;
   days: number;
   daily: DailyStatsEntry[];

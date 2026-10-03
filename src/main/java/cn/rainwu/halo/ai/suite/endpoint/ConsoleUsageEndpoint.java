@@ -335,6 +335,7 @@ public class ConsoleUsageEndpoint implements CustomEndpoint {
             case "chat" -> "Chat";
             case "embed" -> "Embedding";
             case "rerank" -> "Rerank";
+            case "image" -> "图像生成";
             default -> type == null || type.isBlank() ? "未知" : type;
         };
     }
@@ -360,6 +361,7 @@ public class ConsoleUsageEndpoint implements CustomEndpoint {
             case "agent_content_gap" -> "运营智能体 · 内容缺口分析";
             case "intent_detect" -> "意图识别";
             case "intent_pipeline" -> "意图路由";
+            case "pet_generate" -> "AI 宠物生成";
             default -> scenario == null || scenario.isBlank() ? "未标记" : scenario;
         };
     }

@@ -52,6 +52,7 @@ public class PublicChatEndpoint implements CustomEndpoint {
     private final ChatService chatService;
     private final AIProperties aiProperties;
     private final ChatLogger chatLogger;
+    private final cn.rainwu.halo.ai.suite.service.PetStore petStore;
     private final TraceCache traceCache = new TraceCache();
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -538,6 +539,17 @@ public class PublicChatEndpoint implements CustomEndpoint {
                     "square".equals(triggerShape) || "rounded".equals(triggerShape)
                     || "circle".equals(triggerShape)
                         ? triggerShape : "square");
+                // 交互宠物触发器：icon / pet；pet 模式下附带皮肤选择，manifest 由宠物服务补充
+                String triggerType = chatConfig.getWidgetTriggerType();
+                body.put("triggerType", "pet".equals(triggerType) ? "pet" : "icon");
+                body.put("petPreset", chatConfig.getWidgetPetPreset() != null
+                    ? chatConfig.getWidgetPetPreset() : "");
+                body.put("petId", chatConfig.getWidgetPetId() != null
+                    ? chatConfig.getWidgetPetId() : "");
+                body.put("petSize", chatConfig.getWidgetPetSize() > 0
+                    ? chatConfig.getWidgetPetSize() : 96);
+                body.put("petGreeting", chatConfig.isWidgetPetGreeting());
+                body.put("petPhrases", parsePetPhrases(chatConfig.getWidgetPetPhrases()));
                 body.put("stream", chatConfig.isStreamOutput());
                 body.put("allowGuest", chatConfig.isAllowGuest());
                 body.put("showRetrievalStatus", chatConfig.isShowRetrievalStatus());
@@ -555,10 +567,73 @@ public class PublicChatEndpoint implements CustomEndpoint {
                 body.put("mindmapTheme", normalizeComponentTheme(mindMapConfig.getTheme()));
                 body.put("mindmapColor", resolveComponentColor(
                     mindMapConfig.getThemeColor(), chatConfig.getWidgetThemeColor()));
-                return ServerResponse.ok()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(body);
+                return attachPetManifest(body, chatConfig)
+                    .flatMap(enriched -> ServerResponse.ok()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(enriched));
             });
+    }
+
+    /**
+     * pet 模式下把宠物 manifest 挂进 widget-config。
+     * 优先 AI 生成宠物（petId），其次内置皮肤（petPreset）；都找不到则不下发，
+     * widget 端缺 manifest 时回退静态图标。
+     */
+    private Mono<Map<String, Object>> attachPetManifest(
+            Map<String, Object> body, AIProperties.ChatConfig chatConfig) {
+        if (!"pet".equals(body.get("triggerType"))) {
+            return Mono.just(body);
+        }
+        String petId = chatConfig.getWidgetPetId();
+        if (petId != null && !petId.isBlank()) {
+            return petStore.get(petId)
+                .map(record -> {
+                    var version = record.publicVersion();
+                    if (version != null && version.getImages() != null
+                        && version.getImages().containsKey("idle")) {
+                        Map<String, Object> manifest = new LinkedHashMap<>();
+                        manifest.put("name", version.getName());
+                        manifest.put("avatarCrop", cn.rainwu.halo.ai.suite.service.PetAvatarCrop.resolve(
+                            chatConfig.getWidgetPetAvatarCrops(), "pet:" + petId, version.getExpressionRegion()).toMap());
+                        manifest.put("images", version.getImages());
+                        manifest.put("imageRendering", "pixel".equals(version.getStyle())
+                            && Integer.valueOf(96).equals(version.getPixelGridSize()) ? "pixelated" : "auto");
+                        body.put("petManifest", manifest);
+                    }
+                    return body;
+                })
+                .defaultIfEmpty(body)
+                .onErrorReturn(body);
+        }
+        var builtin = cn.rainwu.halo.ai.suite.service.BuiltinPets.find(
+            chatConfig.getWidgetPetPreset());
+        if (builtin != null) {
+            var manifest = new LinkedHashMap<String, Object>(
+                cn.rainwu.halo.ai.suite.service.BuiltinPets.manifest(builtin));
+            manifest.put("avatarCrop", cn.rainwu.halo.ai.suite.service.PetAvatarCrop.resolve(
+                chatConfig.getWidgetPetAvatarCrops(), "preset:" + chatConfig.getWidgetPetPreset(), null).toMap());
+            body.put("petManifest", manifest);
+        }
+        return Mono.just(body);
+    }
+
+    /** 宠物语录原始文本（一行一条）解析为下发数组：去空白行、单条截断 40 字、最多 10 条 */
+    static List<String> parsePetPhrases(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+        List<String> phrases = new ArrayList<>();
+        for (String line : raw.split("\\R")) {
+            String s = line.trim();
+            if (s.isEmpty()) {
+                continue;
+            }
+            phrases.add(s.length() > 40 ? s.substring(0, 40) : s);
+            if (phrases.size() >= 10) {
+                break;
+            }
+        }
+        return phrases;
     }
 
     private static String normalizeComponentTheme(String theme) {

@@ -28,7 +28,7 @@
     <!-- 空状态：未发送过任何问题时展示，引导用户 -->
     <div v-if="stages.length === 0 && !streaming && !aiResponse" class="debug-empty">
       <div class="debug-empty-header">
-        <div class="debug-empty-title"><RiSearchLine /> 调试追踪</div>
+        <div class="debug-empty-title"><RiSearchLine /> 开始一次追踪</div>
         <div class="debug-empty-desc">输入问题后会依次展示管线各阶段的耗时、结果与降级原因，便于排查问答效果。</div>
       </div>
 
@@ -44,26 +44,24 @@
         </div>
       </div>
 
-      <div class="debug-empty-section">
-        <div class="debug-empty-section-title">管线 {{ STAGE_PREVIEW.length }} 个阶段（按顺序）</div>
-        <ol class="debug-empty-stages">
-          <li v-for="(s, i) in STAGE_PREVIEW" :key="s.name">
-            <span class="debug-empty-stage-idx">{{ i + 1 }}</span>
-            <span class="debug-empty-stage-name">{{ s.label }}</span>
-            <span v-if="s.optional" class="debug-empty-stage-tag">可选</span>
-          </li>
-        </ol>
-      </div>
-
-      <div class="debug-empty-section">
-        <div class="debug-empty-section-title">状态图例</div>
-        <div class="debug-empty-legend">
-          <span class="debug-empty-legend-item"><span class="debug-stage-dot ok"></span>完成</span>
-          <span class="debug-empty-legend-item"><span class="debug-stage-dot fallback"></span>降级</span>
-          <span class="debug-empty-legend-item"><span class="debug-stage-dot skipped"></span>跳过</span>
-          <span class="debug-empty-legend-item"><span class="debug-stage-dot error"></span>出错</span>
+      <details class="debug-empty-more" open>
+        <summary>管线 {{ STAGE_PREVIEW.length }} 个阶段与状态图例</summary>
+        <div class="debug-empty-more-body">
+          <ol class="debug-empty-stages">
+            <li v-for="(s, i) in STAGE_PREVIEW" :key="s.name">
+              <span class="debug-empty-stage-idx">{{ i + 1 }}</span>
+              <span class="debug-empty-stage-name">{{ s.label }}</span>
+              <span v-if="s.optional" class="debug-empty-stage-tag">可选</span>
+            </li>
+          </ol>
+          <div class="debug-empty-legend">
+            <span class="debug-empty-legend-item"><span class="debug-stage-dot ok"></span>完成</span>
+            <span class="debug-empty-legend-item"><span class="debug-stage-dot fallback"></span>降级</span>
+            <span class="debug-empty-legend-item"><span class="debug-stage-dot skipped"></span>跳过</span>
+            <span class="debug-empty-legend-item"><span class="debug-stage-dot error"></span>出错</span>
+          </div>
         </div>
-      </div>
+      </details>
     </div>
 
     <!-- 智能诊断：阶段跑完后展示，规则引擎产出 -->
@@ -395,6 +393,9 @@ function fillQuery(text: string) {
   });
 }
 
+// 暴露给父组件：对话行为页的快捷问题「试运行」用它预填并直接发送
+defineExpose({ fillQuery, sendDebug });
+
 // 从问答记录一键追踪时，预填初始问题
 onMounted(() => {
   if (props.initialQuery) {
@@ -673,7 +674,7 @@ async function sendDebug() {
 .debug-empty {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
   padding: 4px 2px 0;
 }
 .debug-empty-header {
@@ -682,9 +683,17 @@ async function sendDebug() {
   gap: 6px;
 }
 .debug-empty-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   font-size: 15px;
   font-weight: 600;
   color: #1e293b;
+}
+.debug-empty-title svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
 }
 .debug-empty-desc {
   font-size: 12px;
@@ -752,8 +761,29 @@ async function sendDebug() {
   justify-content: center;
   flex-shrink: 0;
 }
-.debug-empty-stage-name {
-  flex: 1;
+/* 折叠的管线说明：默认收起，避免空状态信息过载 */
+.debug-empty-more {
+  border-top: 1px solid #eef2f7;
+  padding-top: 10px;
+}
+.debug-empty-more summary {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  user-select: none;
+  list-style-position: inside;
+}
+.debug-empty-more summary:hover {
+  color: #64748b;
+}
+.debug-empty-more-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 12px;
 }
 .debug-empty-stage-tag {
   font-size: 10px;

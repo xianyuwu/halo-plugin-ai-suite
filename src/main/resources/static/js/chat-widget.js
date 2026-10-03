@@ -31,6 +31,11 @@
     triggerOffsetY: 125,
     triggerOffsetX: 17,
     triggerShape: "square",
+    triggerType: "icon",   // icon（静态图标）/ pet（贴纸宠物）
+    petSize: 96,           // pet 模式的宠物画布直径 px
+    petGreeting: true,     // 首次访问欢迎气泡
+    petManifest: null,     // { name, images: { idle, blink?, happy?, sad?, thinking? } }
+    petPhrases: [],        // 宠物语录：hover 轮换气泡文案，[0] 兼作首次打招呼文案
     stream: true,
     allowGuest: true,
     allowVisitorReasoning: true,
@@ -124,8 +129,24 @@
     return TRIGGER_ICONS[config.icon] || TRIGGER_ICONS["ri-sparkling-2-line"];
   }
 
+  var petAvatarFailedUrl = "";
   function getAvatarHTML() {
-    return getTriggerIconHTML();
+    var manifest = config.petManifest;
+    var url = manifest && manifest.images && manifest.images.idle;
+    if (config.triggerType !== "pet" || !url || petAvatarFailedUrl === url) return getTriggerIconHTML();
+    var crop = manifest.avatarCrop || {};
+    var size = typeof crop.size === "number" && isFinite(crop.size) ? Math.max(0.15, Math.min(0.85, crop.size)) : 0.52;
+    var bound = function (value, fallback) { return Math.max(size / 2, Math.min(1 - size / 2, typeof value === "number" && isFinite(value) ? value : fallback)); };
+    var x = bound(crop.centerX, 0.5), y = bound(crop.centerY, 0.34);
+    var style = "width:" + (100 / size) + "%;height:" + (100 / size) + "%;left:" + ((0.5 - x / size) * 100) + "%;top:" + ((0.5 - y / size) * 100) + "%;";
+    if (manifest.imageRendering === "pixelated") style += "image-rendering:pixelated;";
+    return '<span class="ai-pet-avatar-crop" aria-hidden="true"><img class="ai-pet-avatar-image" alt="" src="' + escapeHtml(url) + '" style="' + style + '" /></span>';
+  }
+
+  function refreshChatAvatars() {
+    var avatars = chatWindow.querySelectorAll(".ai-chat-header-avatar, .ai-chat-row-avatar");
+    var html = getAvatarHTML();
+    for (var i = 0; i < avatars.length; i++) avatars[i].innerHTML = html;
   }
 
   // ===== 按钮形状 → border-radius 映射 =====
@@ -147,6 +168,14 @@
 
   var chatWindow = document.createElement("div");
   chatWindow.id = "ai-chat-window";
+  chatWindow.addEventListener("error", function (event) {
+    var image = event.target;
+    if (!image || !image.classList || !image.classList.contains("ai-pet-avatar-image")) return;
+    var currentUrl = config.petManifest && config.petManifest.images && config.petManifest.images.idle;
+    if (image.getAttribute("src") !== currentUrl) return;
+    petAvatarFailedUrl = currentUrl;
+    refreshChatAvatars();
+  }, true);
   chatWindow.innerHTML =
     (isContainerMode ? "" :
       '<div class="ai-chat-resize-handle ai-chat-resize-left" data-resize="left"></div>' +
@@ -333,7 +362,7 @@
     trigger.style.setProperty("--ai-chat-trigger-bottom", bottom + "px");
     chatWindow.style.setProperty(
       "--ai-chat-window-bottom",
-      (bottom + (config.triggerSize || 35) + 8) + "px"
+      (bottom + currentTriggerSize() + 8) + "px"
     );
   }
 
@@ -408,27 +437,116 @@
     }
   }
 
+  // ===== 贴纸宠物模式 =====
+
+  var petScriptLoading = false;
+  var lastPetState = "idle";
+  var petImageFailed = false; // 当前 manifest 主图加载失败过 → 锁定回退图标，直到配置变更
+
+  /** 当前是否应渲染为宠物（配置齐全 + 运行时可用 + 非容器模式 + 主图可加载） */
+  function petModeReady() {
+    return !isContainerMode && config.triggerType === "pet" &&
+      config.petManifest && config.petManifest.images && config.petManifest.images.idle &&
+      !petImageFailed &&
+      window.AIPet && window.AIPet.available();
+  }
+
+  /** 触发器当前占位尺寸：pet 模式用 petSize，图标模式用 triggerSize */
+  function currentTriggerSize() {
+    return petModeReady() ? (config.petSize || 96) : (config.triggerSize || 35);
+  }
+
+  /** 从自身 script 标签推导出静态资源基础路径（含版本戳），用于懒加载 sticker-pet.js */
+  function widgetAssetBase() {
+    var scripts = document.querySelectorAll('script[src*="chat-widget.js"]');
+    for (var i = 0; i < scripts.length; i++) {
+      var src = scripts[i].getAttribute("src") || "";
+      var idx = src.indexOf("/js/chat-widget.js");
+      if (idx > 0) return src.substring(0, idx);
+    }
+    return "/plugins/ai-suite/assets/res";
+  }
+
+  /** 懒加载 sticker-pet.js，成功后重新 applyConfig（宠物替换掉占位图标） */
+  function loadPetScript(done) {
+    if (petScriptLoading) return;
+    petScriptLoading = true;
+    var base = widgetAssetBase();
+    var script = document.createElement("script");
+    // 保留 chat-widget.js 上的 ?v= 版本戳，跟随插件重启刷新缓存
+    var self = document.querySelector('script[src*="chat-widget.js"]');
+    var version = self && self.src.indexOf("?v=") > 0
+      ? self.src.substring(self.src.indexOf("?v=")) : "";
+    script.src = base + "/js/sticker-pet.js" + version;
+    script.onload = function () { done(); };
+    script.onerror = function () {
+      // 加载失败静默回退图标模式
+      petScriptLoading = false;
+    };
+    document.head.appendChild(script);
+  }
+
+  /** 宠物状态透传：过滤重复状态，避免流式期间每个 token 都重写 class */
+  function petSetState(logicalState) {
+    if (logicalState === lastPetState) return;
+    lastPetState = logicalState;
+    if (window.AIPet) window.AIPet.setState(logicalState);
+  }
+
+  /** 根据当前配置渲染或销毁宠物；脚本未加载时先加载再重入 */
+  function syncPetTrigger() {
+    var wantPet = !isContainerMode && config.triggerType === "pet" &&
+      config.petManifest && config.petManifest.images && config.petManifest.images.idle &&
+      !petImageFailed;
+    if (!wantPet) {
+      if (window.AIPet) window.AIPet.destroy();
+      trigger.classList.remove("ai-chat-trigger-pet");
+      return;
+    }
+    if (!window.AIPet) {
+      loadPetScript(function () { applyConfig(); });
+      return;
+    }
+    if (!window.AIPet.available()) {
+      trigger.classList.remove("ai-chat-trigger-pet");
+      return;
+    }
+    window.AIPet.mount(trigger, config.petManifest, {
+      size: config.petSize || 96,
+      greeting: config.petGreeting,
+      greetingText: (config.petPhrases && config.petPhrases[0]) || config.welcome,
+      phrases: config.petPhrases,
+      onError: function () {
+        // 主图加载失败：回退静态图标，并锁定直到 manifest 变更
+        petImageFailed = true;
+        trigger.classList.remove("ai-chat-trigger-pet");
+        trigger.innerHTML = getTriggerIconHTML();
+      }
+    });
+    trigger.classList.add("ai-chat-trigger-pet");
+  }
+
   /** 根据配置更新外观 */
   function applyConfig() {
     // 主题色注入 CSS 变量，整个 widget 内的紫色调（trigger/header/user 气泡/发送按钮/链接等）自动跟随
     chatWindow.style.setProperty("--ai-chat-color", config.color);
     trigger.style.setProperty("--ai-chat-color", config.color);
 
-    // 更新悬浮按钮大小
-    var triggerSize = config.triggerSize || 35;
+    // 更新悬浮按钮大小（pet 模式用 petSize）
+    var triggerSize = currentTriggerSize();
     trigger.style.width = triggerSize + "px";
     trigger.style.height = triggerSize + "px";
     trigger.style.fontSize = (triggerSize * 0.55) + "px";
 
-    // 更新悬浮按钮内容：文字标签优先于图标（内置 SVG，不依赖主题字体）
-    trigger.innerHTML = getTriggerIconHTML();
-
-    // 更新所有 AI 头像为当前配置图标
-    var avatars = chatWindow.querySelectorAll(".ai-chat-header-avatar, .ai-chat-row-avatar");
-    var avatarHTML = getAvatarHTML();
-    for (var ai = 0; ai < avatars.length; ai++) {
-      avatars[ai].innerHTML = avatarHTML;
+    // 更新悬浮按钮内容：pet 模式交给 sticker-pet.js，图标模式文字标签优先于图标
+    if (petModeReady()) {
+      // 内容由 syncPetTrigger() 渲染，这里不动 innerHTML
+    } else {
+      trigger.innerHTML = getTriggerIconHTML();
     }
+
+    // 顶部与回复固定使用同一张宠物母版头像。
+    refreshChatAvatars();
 
     updateTriggerHorizontalPlacement();
 
@@ -449,6 +567,7 @@
     chatWindow.style.width = config.width + "px";
     chatWindow.style.height = config.height + "px";
 
+    syncPetTrigger();
     syncChatAvailability();
   }
 
@@ -795,6 +914,7 @@
   function toggleChat() {
     isOpen = !isOpen;
     chatWindow.classList.toggle("open", isOpen);
+    petSetState(isOpen ? "open" : "close");
     if (isOpen) {
       inputEl.focus();
       // 首次打开时显示隐私提示
@@ -821,6 +941,7 @@
 
     isStreaming = true;
     sendBtn.disabled = true;
+    petSetState("thinking");
 
     // 推理过程只能通过 SSE 分类事件展示。
     if (config.stream || reasoningEnabled) {
@@ -1037,6 +1158,7 @@
           },
           onToken: function (token) {
             content += token;
+            petSetState("streaming");
             ensureAssistantEl();
             renderAssistant(assistantEl, content);
             scrollToBottom();
@@ -1089,6 +1211,7 @@
         isStreaming = false;
         sendBtn.disabled = false;
         inputEl.focus();
+        petSetState("done");
       });
   }
 
@@ -1096,6 +1219,7 @@
     isStreaming = false;
     sendBtn.disabled = false;
     inputEl.focus();
+    petSetState("done");
 
     if (content) history.push({ role: "assistant", content: content });
 
@@ -1615,6 +1739,7 @@
           } else if (type === "dislike" && disBtn) {
             disBtn.classList.add("disliked");
           }
+          petSetState(type === "like" ? "liked" : "disliked");
           showToast(type === "like" ? "感谢你的反馈 👍" : "已记录,谢谢反馈 👎");
         } else {
           // 失败：恢复按钮，允许重试
@@ -1724,6 +1849,14 @@
           if (typeof data.triggerOffsetY === "number") config.triggerOffsetY = data.triggerOffsetY;
           if (typeof data.triggerOffsetX === "number") config.triggerOffsetX = data.triggerOffsetX;
           if (data.triggerShape) config.triggerShape = data.triggerShape;
+          if (data.triggerType === "pet" || data.triggerType === "icon") config.triggerType = data.triggerType;
+          if (typeof data.petSize === "number" && data.petSize > 0) config.petSize = data.petSize;
+          config.petGreeting = data.petGreeting !== false;
+          if (Array.isArray(data.petPhrases)) config.petPhrases = data.petPhrases;
+          if (data.petManifest && data.petManifest.images && data.petManifest.images.idle) {
+            config.petManifest = data.petManifest;
+            petImageFailed = false;
+          }
           config.stream = data.stream !== false;
           config.allowGuest = data.allowGuest !== false;
           config.allowVisitorReasoning = data.allowVisitorReasoning === true;
@@ -1838,6 +1971,7 @@
     if (data.color) { config.color = data.color; needApply = true; }
     if (data.width) { config.width = data.width; needApply = true; }
     if (data.height) { config.height = data.height; needApply = true; }
+    if (data.position) { config.position = data.position; needApply = true; }
     if (data.theme) { config.theme = data.theme; needApply = true; }
     if (data.icon) { config.icon = data.icon; needApply = true; }
     if (data.triggerLabel !== undefined) { config.triggerLabel = data.triggerLabel; needApply = true; }
@@ -1846,6 +1980,14 @@
     if (data.triggerOffsetX !== undefined) { config.triggerOffsetX = data.triggerOffsetX; needApply = true; }
     if (data.triggerShape !== undefined) { config.triggerShape = data.triggerShape; needApply = true; }
     if (data.triggerSize !== undefined) { config.triggerSize = data.triggerSize; needApply = true; }
+    if (data.triggerType !== undefined) { config.triggerType = data.triggerType; needApply = true; }
+    if (data.petSize !== undefined) { config.petSize = data.petSize; needApply = true; }
+    if (data.petGreeting !== undefined) { config.petGreeting = data.petGreeting; needApply = true; }
+    if (data.petPhrases !== undefined) {
+      config.petPhrases = Array.isArray(data.petPhrases) ? data.petPhrases : [];
+      needApply = true;
+    }
+    if (data.petManifest !== undefined) { config.petManifest = data.petManifest; petImageFailed = false; needApply = true; }
     if (needApply) applyConfig();
 
     // 欢迎语：仅在无对话历史时更新第一条 assistant 消息

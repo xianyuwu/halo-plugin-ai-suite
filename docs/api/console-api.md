@@ -11,6 +11,7 @@
 | POST | `/config/save` | 保存配置组 |
 | POST | `/config/test-connection` | 通用连接测试 |
 | POST | `/config/test-model` | Chat 模型测试 |
+| POST | `/config/test-image` | 生图连通性测试，实际调用模型并可能计费 |
 | POST | `/config/test-embedding` | Embedding 测试 |
 | POST | `/config/test-rerank` | Rerank 测试 |
 | POST | `/config/test-query-rewrite` | Query Rewrite 测试 |
@@ -215,3 +216,46 @@
 - 外部自动化不要使用匿名权限访问 Console API。
 - 删除、清空、批量生成和重建属于有副作用操作，先在测试环境验证。
 - `v1alpha1` 响应允许新增字段，客户端解析应保持前向兼容。
+
+
+## AI 交互宠物
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/pets/list` | 获取管理员可见的宠物草稿、已确认快照与候选 |
+| GET | `/pets/presets` | 三套内置皮肤及资源预览 |
+| GET | `/pets/policies` | 可选附件存储策略 |
+| GET | `/pets/model-status` | 模型配置及文生图/图生图能力检查，不调用模型 |
+| POST | `/pets/prompt-preview` | 预览服务端组合提示词，不调用模型 |
+| POST | `/pets/generate` | multipart 新建母版任务 |
+| POST | `/pets/{id}/regenerate-master` | multipart 重做母版，成功才更新草稿 |
+| POST | `/pets/{id}/background/cleanup` | 母版 Alpha 橡皮擦清理任务 |
+| POST | `/pets/{id}/rename` | 修改生成宠物名称，不调用模型 |
+| POST | `/pets/{id}/background/approve` | 确认所见母版背景并发布 |
+| POST | `/pets/{id}/background/reset` | 恢复原始母版并重新等待审核 |
+| POST | `/pets/{id}/cleanup-background` | 兼容背景清理路径，仍需版本参数 |
+| POST | `/pets/{id}/regenerate` | 整组局部表情合成任务 |
+| POST | `/pets/{id}/expressions/generate` | 四帧或指定单帧的表情/轻动作候选任务 |
+| POST | `/pets/{id}/expressions/{state}/approve` | 确认指定候选，仅替换该状态 |
+| POST | `/pets/{id}/expressions/{state}/cleanup` | 指定候选 Alpha 清理任务 |
+| POST | `/pets/{id}/expressions/{state}/reset` | 恢复原始候选，仍需审核 |
+| GET | `/pets/jobs/{jobId}` | 查询异步任务状态及真实处理阶段 |
+| DELETE | `/pets/{id}` | 移除宠物记录；带归属标记的无引用附件延迟回收 |
+
+新建 multipart 字段为 file/name/style/withExpressions/customPrompt，照片限 JPEG/PNG/WebP、5MB。新前端传 style=soft-3d 或 pixel、withExpressions=false；chibi/flat 保留旧接口兼容。母版补充要求最多 500 字，表情最多 300 字，最终质量约束由服务端追加。
+
+背景审核 JSON 必须携带 masterUrl 和整数 masterRevision，清理额外传 strokes 和/或 mask；字段缺失或母版已变化要求刷新。候选审核携带 candidateUrl，清理额外传 strokes 和/或 mask。表情生成 JSON 支持 centerX/centerY/width/height/feather/customPrompt/mode，mode=face 或 motion；state 可指定 blink/happy/sad/thinking，省略则四张。像素风不支持轻动作。
+
+颜色清理选区为 `mask: {width, height, runs: [[start, length], ...]}`。runs 按原图行优先顺序编码，必须升序、不重叠、正长度且不越界；最多 100000 段，原图最多 16777216 像素，尺寸必须与当前版本图片完全一致。只清除所选 Alpha，保留 RGB 和未选像素，颜色选区不再次重采样像素风母版。旧请求缺 mask 时保留原橡皮擦行为；无选区无笔画拒绝执行，不调用图像模型。
+
+改名入口接收 `{name: "新名称"}`，去除首尾空白后非空、最多20个Unicode码点，不含控制字符。仅更新记录及已有公开快照的名称，图片、候选、审核状态、ID和选用配置不变，不创建公开快照或调用模型。与同一宠物的生成/清理共享互斥，正在处理时拒绝并提示等待；成功返回 `{success: true, pet: ...}`，校验失败或宠物不存在沿用宠物接口约定，返回 `{success: false, message: "中文说明"}`。
+
+异步接口返回 success/jobId；任务 status 为 pending/done/failed，附 progress.stage/currentState/completed/total/completedStates/elapsedSeconds。任务不存在或过期返回 success=false/code=JOB_GONE/message，客户端应停止等待、重新读取宠物列表，禁止自动再次付费。历史保留 30 分钟、最多 128 条，运行最多 16 个；整体任务最长 25 分钟。服务停止取消本地任务订阅，供应商已受理的生成可能继续且仍产生费用；本接口不提供供应商任务取消保证。
+
+全部修改与删除按宠物互斥；确认之前继续公开已确认快照，新建待审核母版不公开。删除记录不强制更改聊天配置，前台找不到该宠物时回退静态入口。附件回收仅处理归属明确、超过一小时且无草稿/快照/恢复/候选引用的文件；历史无标记附件保留。详细约定见 [宠物开发文档](../development/widget-development.md)。
+
+### 背景重编辑与边缘优化
+
+- POST `/pets/{id}/expressions/{state}/edit`：`{candidateUrl}`为当前状态图片URL，创建不影响公开版本的编辑副本；已有待审核图或版本不符时拒绝。
+- POST `/pets/{id}/expressions/{state}/cancel-edit`：`{candidateUrl}`为副本当前URL，仅移除editingExisting副本，保持已发布图片。
+- POST `/pets/{id}/background/edge-preview`、`/pets/{id}/background/edge-apply`：`{state, url, revision, shrink, dewhite}`，state为空表示母版，否则表示候选；revision用于母版版本校验，shrink为0–2像素、dewhite为0–100且至少一项非零。预览返回`{success,image}`（PNG data URL），不上传或修改记录；应用返回`{success,pet}`，候选需确认才发布，母版需重新验收。失败沿用success=false/message格式。

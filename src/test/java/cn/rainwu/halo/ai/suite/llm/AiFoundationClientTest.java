@@ -36,6 +36,137 @@ class AiFoundationClientTest {
     private final AiFoundationClient client = new AiFoundationClient(extensionGetter, usageTracker);
 
     @Test
+    void streamsTextAndRecordsFinalProviderUsageOnce() {
+        var model = streamingLanguageModel();
+        var stream = mock(run.halo.aifoundation.chat.StreamTextResult.class);
+        when(model.streamText(any(GenerateTextRequest.class))).thenReturn(stream);
+        when(stream.textStream()).thenReturn(reactor.core.publisher.Flux.just("hello", " world"));
+        when(stream.result()).thenReturn(Mono.just(GenerateTextResult.builder().text("hello world")
+            .usage(run.halo.aifoundation.chat.LanguageModelUsage.builder().inputTokens(7).outputTokens(9).build()).build()));
+        assertThat(client.chatStream("", List.of(Map.of("role", "user", "content", "hello")),
+            .2f, 128, null, "test", "default").collectList().block()).containsExactly("hello", " world");
+        verify(usageTracker).recordUsage("ai-foundation-default-language", "chat", "test", 7L, 9L, false, 0);
+        verify(model).streamText(any(GenerateTextRequest.class));
+    }
+
+    @Test
+    void mapsNativeReasoningAndTextEventsOnFormalSdk() {
+        var model = streamingLanguageModel();
+        var stream = mock(run.halo.aifoundation.chat.StreamTextResult.class);
+        when(model.streamText(any(GenerateTextRequest.class))).thenReturn(stream);
+        when(stream.fullStream()).thenReturn(reactor.core.publisher.Flux.just(
+            run.halo.aifoundation.part.TextStreamPart.reasoningStart("r"),
+            run.halo.aifoundation.part.TextStreamPart.reasoningDelta("r", "consider", Map.of()),
+            run.halo.aifoundation.part.TextStreamPart.reasoningEnd("r"),
+            run.halo.aifoundation.part.TextStreamPart.textDelta("t", "answer")));
+        when(stream.result()).thenReturn(Mono.just(GenerateTextResult.builder().text("answer").build()));
+        var events = client.chatStreamEvents("", List.of(Map.of("role", "user", "content", "hello")),
+            .2f, 128, null, "test", "enabled").collectList().block();
+        assertThat(events).extracting(LlmClient.StreamEvent::type).containsExactly(
+            LlmClient.StreamEvent.REASONING_START, LlmClient.StreamEvent.REASONING_DELTA,
+            LlmClient.StreamEvent.REASONING_END, LlmClient.StreamEvent.TEXT);
+        assertThat(events).extracting(LlmClient.StreamEvent::content).containsExactly("", "consider", "", "answer");
+    }
+
+    @Test
+    void terminalStreamFailureIsPropagatedWithoutRepeatingGeneration() {
+        var model = streamingLanguageModel();
+        var stream = mock(run.halo.aifoundation.chat.StreamTextResult.class);
+        when(model.streamText(any(GenerateTextRequest.class))).thenReturn(stream);
+        when(stream.fullStream()).thenReturn(reactor.core.publisher.Flux.just(
+            run.halo.aifoundation.part.TextStreamPart.textDelta("t", "partial")));
+        when(stream.result()).thenReturn(Mono.error(new IllegalStateException("provider interrupted")));
+        assertThatThrownBy(() -> client.chatStreamEvents("", List.of(Map.of("role", "user", "content", "hello")),
+            .2f, 128, null, "test", "default").collectList().block())
+            .hasMessageContaining("provider interrupted");
+        verify(model, times(1)).streamText(any(GenerateTextRequest.class));
+    }
+
+    private LanguageModel streamingLanguageModel() {
+        var model = mock(LanguageModel.class);
+        when(extensionGetter.getEnabledExtension(AiModelService.class)).thenReturn(Mono.just(modelService));
+        when(modelService.languageModel()).thenReturn(Mono.just(model));
+        return model;
+    }
+
+    @Test
+    void doubaoUsesUrlWhileOtherProvidersKeepBase64WithoutRetry() {
+        var model = mock(run.halo.aifoundation.image.ImageGenerationModel.class);
+        var info = new run.halo.aifoundation.model.ProviderInfo();
+        info.setProviderType("doubao");
+        when(model.providerInfo()).thenReturn(info);
+        when(extensionGetter.getEnabledExtension(AiModelService.class)).thenReturn(Mono.just(modelService));
+        when(modelService.imageGenerationModel("image")).thenReturn(Mono.just(model));
+        when(model.generateImage(any(run.halo.aifoundation.image.GenerateImageRequest.class)))
+            .thenReturn(Mono.just(run.halo.aifoundation.image.GenerateImageResult.builder().images(List.of()).build()));
+        client.generateImage("image", "prompt", List.of(), "2048x2048", "test").block();
+        info.setProviderType("dashscope");
+        client.generateImage("image", "prompt", List.of(), "1024x1024", "test").block();
+        var captor = ArgumentCaptor.forClass(run.halo.aifoundation.image.GenerateImageRequest.class);
+        verify(model, times(2)).generateImage(captor.capture());
+        assertThat(captor.getAllValues()).extracting(run.halo.aifoundation.image.GenerateImageRequest::getResponseFormat)
+            .containsExactly(run.halo.aifoundation.image.ImageResponseFormat.URL, run.halo.aifoundation.image.ImageResponseFormat.BASE64);
+    }
+
+    @Test
+    void modelPrecheckUsesDefaultWithoutGeneratingOrRecordingUsage() {
+        var model = mock(run.halo.aifoundation.image.ImageGenerationModel.class);
+        var image = new run.halo.aifoundation.capability.ImageGenerationCapability();
+        image.setTextToImage(true);
+        image.setImageToImage(true);
+        when(model.capabilities()).thenReturn(
+            run.halo.aifoundation.capability.ModelCapabilities.imageGeneration(image));
+        when(extensionGetter.getEnabledExtension(AiModelService.class)).thenReturn(Mono.just(modelService));
+        when(modelService.imageGenerationModel()).thenReturn(Mono.just(model));
+        assertThat(client.imageModelStatus("").block().available()).isTrue();
+        verify(modelService).imageGenerationModel();
+        org.mockito.Mockito.verifyNoInteractions(usageTracker);
+        verify(model, org.mockito.Mockito.never()).generateImage(any(run.halo.aifoundation.image.GenerateImageRequest.class));
+    }
+
+    @Test
+    void modelPrecheckBlocksSelectedModelWithoutReferenceImageCapability() {
+        var model = mock(run.halo.aifoundation.image.ImageGenerationModel.class);
+        var image = new run.halo.aifoundation.capability.ImageGenerationCapability();
+        image.setTextToImage(true);
+        image.setImageToImage(false);
+        when(model.capabilities()).thenReturn(
+            run.halo.aifoundation.capability.ModelCapabilities.imageGeneration(image));
+        when(extensionGetter.getEnabledExtension(AiModelService.class)).thenReturn(Mono.just(modelService));
+        when(modelService.imageGenerationModel("selected")).thenReturn(Mono.just(model));
+        assertThat(client.imageModelStatus("selected").block().reason()).isEqualTo("capability");
+        verify(modelService).imageGenerationModel("selected");
+        org.mockito.Mockito.verifyNoInteractions(usageTracker);
+    }
+
+    @Test
+    void modelPrecheckDistinguishesMissingDefaultFromInspectionFailure() {
+        when(extensionGetter.getEnabledExtension(AiModelService.class)).thenReturn(Mono.just(modelService));
+        when(modelService.imageGenerationModel()).thenReturn(Mono.error(
+            new run.halo.aifoundation.exception.DefaultModelNotConfiguredException("image")));
+        assertThat(client.imageModelStatus(null).block().reason()).isEqualTo("missing");
+        when(modelService.imageGenerationModel()).thenReturn(Mono.error(new IllegalStateException("offline")));
+        assertThat(client.imageModelStatus(null).block().reason()).isEqualTo("unavailable");
+        when(extensionGetter.getEnabledExtension(AiModelService.class)).thenReturn(Mono.empty());
+        assertThat(client.imageModelStatus(null).block().available()).isFalse();
+        org.mockito.Mockito.verifyNoInteractions(usageTracker);
+    }
+
+    @Test
+    void structuredJsonUsesPortableOutputSpecWithoutProviderOptions() {
+        LanguageModel model = mock(LanguageModel.class);
+        when(extensionGetter.getEnabledExtension(AiModelService.class)).thenReturn(Mono.just(modelService));
+        when(modelService.languageModel()).thenReturn(Mono.just(model));
+        when(model.generateText(any(GenerateTextRequest.class)))
+            .thenReturn(Mono.just(GenerateTextResult.builder().text("{\"ok\":true}").build()));
+        assertThat(client.chat("", List.of(Map.of("role", "user", "content", "json")),
+            .2f, 128, Map.of("type", "json_object"), "test", "default").block()).isEqualTo("{\"ok\":true}");
+        var captor = ArgumentCaptor.forClass(GenerateTextRequest.class);
+        verify(model).generateText(captor.capture());
+        assertThat(captor.getValue().getOutput().getType()).isEqualTo(run.halo.aifoundation.schema.OutputType.JSON);
+    }
+
+    @Test
     void usesDefaultLanguageModelAndTypedRequestWhenModelNameIsBlank() {
         LanguageModel model = mock(LanguageModel.class);
         when(extensionGetter.getEnabledExtension(AiModelService.class))

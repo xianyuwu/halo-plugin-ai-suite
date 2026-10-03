@@ -229,6 +229,49 @@
               点击右上角「未启用」标签即可开启查询改写
             </div>
           </article>
+
+          <article class="ai-model-card">
+            <div class="ai-model-card-header">
+              <div class="ai-model-title-wrap">
+                <div class="ai-model-icon"><RiImageAiLine /></div>
+                <div>
+                  <div class="ai-model-title">图像生成</div>
+                  <div class="ai-model-subtitle">用于 AI 贴纸宠物生成（照片 → Q 版角色 + 表情变体）</div>
+                </div>
+              </div>
+              <div class="ai-model-status">
+                <span class="ai-status-chip">
+                  <span class="ai-dot" :class="statusDotClass('image')"></span>
+                  {{ statusLabel('image') }}
+                </span>
+              </div>
+            </div>
+            <div class="ai-model-card-body">
+              <div class="ai-form-grid">
+                <div class="ai-form-field">
+                  <label class="ai-field-label">图像生成模型 <span class="ai-label-hint">来自 AI Foundation，需支持图生图</span></label>
+                  <select class="ai-input ai-select" v-model="form.aiFoundationImageModelName" :disabled="modelOptionsLoading">
+                    <option value="">{{ defaultOptionLabel("image", "使用 AI Foundation 默认图像模型") }}</option>
+                    <option v-for="option in imageOptions" :key="option.name" :value="option.name">
+                      {{ modelOptionLabel(option) }}
+                    </option>
+                    <option v-if="unknownSelectedOption('image', form.aiFoundationImageModelName)" :value="form.aiFoundationImageModelName">
+                      当前配置：{{ form.aiFoundationImageModelName }}
+                    </option>
+                  </select>
+                  <span class="ai-helper-text">{{ selectedModelHint("image", form.aiFoundationImageModelName, "留空时使用 AI Foundation 默认图像模型；列表为空说明还没在 AI Foundation 里配图像模型") }}</span>
+                </div>
+              </div>
+              <div v-if="testResult.image" class="ai-test-feedback" :class="testResult.image.ok ? 'success' : 'error'">
+                <template v-if="testResult.image.ok"><RiCheckLine /> 连接成功 — 返回 {{ testResult.image.imageCount }} 张图片</template>
+                <template v-else><RiCloseLine /> {{ testResult.image.error }}</template>
+              </div>
+              <div style="justify-content: flex-end;" class="ai-card-actions">
+                <VButton @click="testImage" :disabled="testing.image">{{ testing.image ? '生成测试中（约 1 分钟）...' : '测试连通性' }}</VButton>
+                <VButton type="primary" @click="saveModel('image')" :disabled="saving.image">{{ saving.image ? '保存中...' : '保存配置' }}</VButton>
+              </div>
+            </div>
+          </article>
         </div>
       </div>
     </div>
@@ -242,13 +285,14 @@ import RiChatSmileLine from "~icons/ri/chat-smile-line";
 import RiStackLine from "~icons/ri/stack-line";
 import RiSortDesc from "~icons/ri/sort-desc";
 import RiSearchAiLine from "~icons/ri/search-ai-line";
+import RiImageAiLine from "~icons/ri/image-ai-line";
 import RiCheckLine from "~icons/ri/check-line";
 import RiCloseLine from "~icons/ri/close-line";
 
 const CONFIG_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/config";
 const AI_FOUNDATION_API = "/apis/console.api.aifoundation.halo.run/v1alpha1";
 
-type ModelType = "language" | "embedding" | "rerank";
+type ModelType = "language" | "embedding" | "rerank" | "image";
 
 interface ModelOption {
   name: string;
@@ -269,6 +313,7 @@ interface DefaultModelSlots {
   languageModelName?: string;
   embeddingModelName?: string;
   rerankModelName?: string;
+  imageGenerationModelName?: string;
 }
 
 const MODEL_FIELDS: Record<string, string[]> = {
@@ -276,6 +321,7 @@ const MODEL_FIELDS: Record<string, string[]> = {
   embedding: ["aiFoundationEmbeddingModelName", "embeddingDimensions"],
   rerank: ["rerankEnabled", "aiFoundationRerankModelName"],
   queryRewrite: ["queryRewriteEnabled", "aiFoundationQueryRewriteModelName"],
+  image: ["aiFoundationImageModelName"],
 };
 
 const form = reactive({
@@ -283,32 +329,36 @@ const form = reactive({
   aiFoundationEmbeddingModelName: "",
   aiFoundationRerankModelName: "",
   aiFoundationQueryRewriteModelName: "",
+  aiFoundationImageModelName: "",
   embeddingDimensions: 1024,
   rerankEnabled: false,
   queryRewriteEnabled: false,
 });
 
-const saving = reactive({ chat: false, embedding: false, rerank: false, queryRewrite: false });
-const testing = reactive({ chat: false, embedding: false, rerank: false, queryRewrite: false });
+const saving = reactive<Record<string, boolean>>({ chat: false, embedding: false, rerank: false, queryRewrite: false, image: false });
+const testing = reactive<Record<string, boolean>>({ chat: false, embedding: false, rerank: false, queryRewrite: false, image: false });
 const modelOptionsLoading = ref(false);
 const modelOptionsError = ref("");
 const modelOptions = reactive<Record<ModelType, ModelOption[]>>({
   language: [],
   embedding: [],
   rerank: [],
+  image: [],
 });
 const defaultSlots = reactive<DefaultModelSlots>({});
 
-const testResult = reactive<Record<string, { ok: boolean; reply?: string; model?: string; dimensions?: number; relevanceScore?: number; error?: string } | null>>({
+const testResult = reactive<Record<string, { ok: boolean; reply?: string; model?: string; dimensions?: number; relevanceScore?: number; imageCount?: number; error?: string } | null>>({
   chat: null,
   embedding: null,
   rerank: null,
   queryRewrite: null,
+  image: null,
 });
 
 const languageOptions = computed(() => modelOptions.language);
 const embeddingOptions = computed(() => modelOptions.embedding);
 const rerankOptions = computed(() => modelOptions.rerank);
+const imageOptions = computed(() => modelOptions.image);
 
 function modelOptionLabel(option: ModelOption) {
   const modelName = option.displayName || option.modelId || option.name;
@@ -319,6 +369,7 @@ function modelOptionLabel(option: ModelOption) {
 function defaultSlotName(type: ModelType) {
   if (type === "language") return defaultSlots.languageModelName || "";
   if (type === "embedding") return defaultSlots.embeddingModelName || "";
+  if (type === "image") return defaultSlots.imageGenerationModelName || "";
   return defaultSlots.rerankModelName || "";
 }
 
@@ -466,6 +517,24 @@ async function testRerank() {
   }
 }
 
+async function testImage() {
+  testing.image = true;
+  testResult.image = null;
+  try {
+    const resp = await fetch(CONFIG_API + "/test-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: form.aiFoundationImageModelName }),
+    });
+    const data = await resp.json();
+    testResult.image = { ok: data.connected, model: data.model, imageCount: data.imageCount, error: data.error };
+  } catch (e: any) {
+    testResult.image = { ok: false, error: e.message };
+  } finally {
+    testing.image = false;
+  }
+}
+
 async function testQueryRewrite() {
   testing.queryRewrite = true;
   testResult.queryRewrite = null;
@@ -505,15 +574,17 @@ async function loadAiFoundationModels() {
   modelOptionsLoading.value = true;
   modelOptionsError.value = "";
   try {
-    const [language, embedding, rerank, slots] = await Promise.all([
+    const [language, embedding, rerank, image, slots] = await Promise.all([
       fetchModelOptions("language"),
       fetchModelOptions("embedding"),
       fetchModelOptions("rerank"),
+      fetchModelOptions("image"),
       fetchDefaultModelSlots(),
     ]);
     modelOptions.language = language;
     modelOptions.embedding = embedding;
     modelOptions.rerank = rerank;
+    modelOptions.image = image;
     Object.assign(defaultSlots, slots);
   } catch (e: any) {
     modelOptionsError.value = "无法读取 AI Foundation 模型列表：" + (e?.message || "未知错误");
@@ -524,7 +595,8 @@ async function loadAiFoundationModels() {
 
 async function fetchModelOptions(type: ModelType) {
   const params = new URLSearchParams({
-    modelType: type,
+    // AI Foundation 的 ModelType 枚举值：image 对应 "image-generation"
+    modelType: type === "image" ? "image-generation" : type,
     available: "true",
     enabled: "true",
   });

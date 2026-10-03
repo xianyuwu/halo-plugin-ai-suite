@@ -4,12 +4,12 @@
 
 **把 Halo 博客变成一个能回答、会检索、可辅助创作，也懂内容运营的 AI 知识站。**
 
-面向 Halo 2.25+ 的一体化 AI 插件，提供 RAG 智能问答、AI 搜索、写作辅助、摘要、脑图、效果评测、意图路由与运营智能体。基于 Halo AI Foundation 统一管理模型能力，内置 Lucene 混合检索，无需额外部署向量数据库。
+面向 Halo 2.26+ 的一体化 AI 插件，提供 RAG 智能问答、AI 搜索、写作辅助、摘要、脑图、效果评测、意图路由与运营智能体。基于 Halo AI Foundation 统一管理模型能力，内置 Lucene 混合检索，无需额外部署向量数据库。
 
-[![Halo](https://img.shields.io/badge/Halo-%E2%89%A52.25.0-1e87f0?logo=halo&logoColor=white)](https://halo.run)
+[![Halo](https://img.shields.io/badge/Halo-%E2%89%A52.26.0-1e87f0?logo=halo&logoColor=white)](https://halo.run)
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
-[![Lucene](https://img.shields.io/badge/Lucene-10.3.2-0a6f3a)](https://lucene.apache.org/)
+[![Lucene](https://img.shields.io/badge/Lucene-10.5.0-0a6f3a)](https://lucene.apache.org/)
 [![Version](https://img.shields.io/badge/version-0.3.6-blue)](src/main/resources/plugin.yaml)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
@@ -130,8 +130,8 @@
 
 ### 环境要求
 
-- Halo 2.25.0 或更高版本
-- 已安装并配置 Halo AI Foundation 插件
+- Halo 2.26.0 或更高版本
+- 已安装并配置 Halo AI Foundation 1.1.1 或更高版本
 - Chat 模型与 Embedding 模型为必需；Rerank、Query Rewrite 模型可选
 
 > Embedding 模型决定索引向量维度。更换模型或维度后，请在「索引中心」执行全量重建。
@@ -243,7 +243,7 @@ location / {
 
 ### 为什么不需要外部向量数据库
 
-插件直接使用与 Halo 2.25.0 对齐的 Lucene 10.3.2：BM25 负责关键词召回，HNSW 负责向量召回，再通过 RRF 融合结果。索引保存在 Halo 数据目录中，适合个人博客和中小型内容站点的一体化部署。
+插件直接使用与 Halo 2.26.0 对齐的 Lucene 10.5.0：BM25 负责关键词召回，HNSW 负责向量召回，再通过 RRF 融合结果。索引保存在 Halo 数据目录中，适合个人博客和中小型内容站点的一体化部署。
 
 > Lucene 版本必须与 Halo 内置版本严格一致。核心依赖使用 `compileOnly` 复用 Halo ClassLoader，SmartChineseAnalyzer 单独打包且不传递引入 `lucene-core`。
 
@@ -287,10 +287,10 @@ location / {
 
 | 层 | 技术 |
 | --- | --- |
-| 插件后端 | Java 21、Spring WebFlux、Halo Plugin API 2.25.0 编译基线（运行要求 Halo 2.25+） |
+| 插件后端 | Java 21、Spring WebFlux、Halo Plugin API 2.26.0 编译基线（运行要求 Halo 2.26+） |
 | Console | Vue 3、TypeScript、Vite、Tiptap |
 | 主题侧 | 原生 JavaScript / CSS，通过 AdditionalWebFilter 注入 |
-| 检索 | Apache Lucene 10.3.2、BM25、HNSW、RRF、SmartChineseAnalyzer |
+| 检索 | Apache Lucene 10.5.0、BM25、HNSW、RRF、SmartChineseAnalyzer |
 | 构建 | Gradle 9.4、Node.js 20+、pnpm 9+ |
 
 ## 项目结构

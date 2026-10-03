@@ -1,0 +1,16 @@
+{
+  "master": "../path/to/idle-master.png",
+  "mask": "../path/to/expression-mask.png",
+  "sources": {
+    "blink": "../path/to/blink-from-model.png",
+    "happy": "../path/to/happy-from-model.png",
+    "sad": "../path/to/sad-from-model.png",
+    "thinking": "../path/to/thinking-from-model.png"
+  },
+  "output_dir": "../path/to/output",
+  "review": "../path/to/review.png",
+  "report": "../path/to/quality-report.json",
+  "output_size": [384, 384],
+  "widget_size": [96, 96],
+  "backgrounds": ["#f4f6f8", "#18222d"]
+}
