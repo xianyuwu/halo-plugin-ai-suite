@@ -195,6 +195,16 @@ const pageSizeOptions = [10, 20, 50];
 const totalPages = computed(() => Math.max(1, Math.ceil(articleTotal.value / pageSize.value)));
 
 
+const selectedCount = computed(() => selected.value.length);
+const allChecked = computed(() => articleList.value.length > 0 && articleList.value.every(item => selected.value.includes(item.postName)));
+const statsText = computed(() => `当前页已生成 ${articleList.value.filter(item => item.hasExcerpt).length} / ${articleList.value.length} 篇`);
+function toggleAll() {
+  if (allChecked.value) {
+    const current = new Set(articleList.value.map(item => item.postName));
+    selected.value = selected.value.filter(name => !current.has(name));
+  } else selected.value = [...new Set([...selected.value, ...articleList.value.map(item => item.postName)])];
+}
+
 function excerptStatusClass(item: ArticleItem) {
   return item.hasExcerpt ? "status-indexed" : "status-not-indexed";
 }
