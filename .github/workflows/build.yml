@@ -39,3 +39,11 @@ jobs:
           node --check src/main/resources/static/js/chat-widget.js
           node --check src/main/resources/static/js/sticker-pet.js
           git diff --check
+      - name: Save verified plugin JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-ai-suite-${{ github.sha }}-foundation-${{ matrix.foundation }}
+          path: build/libs/plugin-ai-suite-*.jar
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
