@@ -54,12 +54,13 @@
                   <span class="ai-helper-text">{{ selectedModelHint("language", form.aiFoundationChatModelName, "留空时使用 AI Foundation 默认语言模型") }}</span>
                 </div>
               </div>
-              <div v-if="testResult.chat" class="ai-test-feedback" :class="testResult.chat.ok ? 'success' : 'error'">
+              <div v-if="testResult.chat" class="ai-test-feedback" :class="testResult.chat.ok === null ? 'waiting' : testResult.chat.ok ? 'success' : 'error'">
                 <template v-if="testResult.chat.ok"><RiCheckLine /> 连接成功 ({{ testResult.chat.reply }})</template>
-                <template v-else><RiCloseLine /> {{ testResult.chat.error }}</template>
+                <template v-else><RiCloseLine v-if="testResult.chat.ok === false" /> {{ testResult.chat.error }}</template>
               </div>
               <div style="justify-content: flex-end;" class="ai-card-actions">
-                <VButton @click="testChat" :disabled="testing.chat">{{ testing.chat ? '测试中...' : '测试连通性' }}</VButton>
+                <VButton @click="testChat" :disabled="testing.chat">{{ testing.chat ? '测试中...' : testJobIds.chat ? '继续查询' : '测试连通性' }}</VButton>
+                <VButton v-if="testJobIds.chat && !testing.chat" @click="runModelTest('chat', true)">开始新测试</VButton>
                 <VButton type="primary" @click="saveModel('chat')" :disabled="saving.chat">{{ saving.chat ? '保存中...' : '保存配置' }}</VButton>
               </div>
             </div>
@@ -103,12 +104,13 @@
                   <span class="ai-helper-text">用于校验索引维度；固定维度模型会自动省略不支持的 dimensions 参数，可变维度模型会按此值请求</span>
                 </div>
               </div>
-              <div v-if="testResult.embedding" class="ai-test-feedback" :class="testResult.embedding.ok ? 'success' : 'error'">
+              <div v-if="testResult.embedding" class="ai-test-feedback" :class="testResult.embedding.ok === null ? 'waiting' : testResult.embedding.ok ? 'success' : 'error'">
                 <template v-if="testResult.embedding.ok"><RiCheckLine /> 连接成功 — 模型: {{ testResult.embedding.model || '默认模型' }}，维度: {{ testResult.embedding.dimensions }}</template>
-                <template v-else><RiCloseLine /> {{ testResult.embedding.error }}</template>
+                <template v-else><RiCloseLine v-if="testResult.embedding.ok === false" /> {{ testResult.embedding.error }}</template>
               </div>
               <div style="justify-content: flex-end;" class="ai-card-actions">
-                <VButton @click="testEmbedding" :disabled="testing.embedding">{{ testing.embedding ? '测试中...' : '测试连通性' }}</VButton>
+                <VButton @click="testEmbedding" :disabled="testing.embedding">{{ testing.embedding ? '测试中...' : testJobIds.embedding ? '继续查询' : '测试连通性' }}</VButton>
+                <VButton v-if="testJobIds.embedding && !testing.embedding" @click="runModelTest('embedding', true)">开始新测试</VButton>
                 <VButton type="primary" @click="saveModel('embedding')" :disabled="saving.embedding">{{ saving.embedding ? '保存中...' : '保存配置' }}</VButton>
               </div>
             </div>
@@ -166,12 +168,13 @@
                   <span class="ai-helper-text">{{ selectedModelHint("rerank", form.aiFoundationRerankModelName, "留空时使用 AI Foundation 默认 Rerank 模型") }}</span>
                 </div>
               </div>
-              <div v-if="testResult.rerank" class="ai-test-feedback" :class="testResult.rerank.ok ? 'success' : 'error'">
+              <div v-if="testResult.rerank" class="ai-test-feedback" :class="testResult.rerank.ok === null ? 'waiting' : testResult.rerank.ok ? 'success' : 'error'">
                 <template v-if="testResult.rerank.ok"><RiCheckLine /> 连接成功 — 相关度: {{ testResult.rerank.relevanceScore }}</template>
-                <template v-else><RiCloseLine /> {{ testResult.rerank.error }}</template>
+                <template v-else><RiCloseLine v-if="testResult.rerank.ok === false" /> {{ testResult.rerank.error }}</template>
               </div>
               <div style="justify-content: flex-end;" class="ai-card-actions">
-                <VButton @click="testRerank" :disabled="testing.rerank">{{ testing.rerank ? '测试中...' : '测试连通性' }}</VButton>
+                <VButton @click="testRerank" :disabled="testing.rerank">{{ testing.rerank ? '测试中...' : testJobIds.rerank ? '继续查询' : '测试连通性' }}</VButton>
+                <VButton v-if="testJobIds.rerank && !testing.rerank" @click="runModelTest('rerank', true)">开始新测试</VButton>
                 <VButton type="primary" @click="saveModel('rerank')" :disabled="saving.rerank">{{ saving.rerank ? '保存中...' : '保存配置' }}</VButton>
               </div>
             </div>
@@ -216,12 +219,13 @@
                   <span class="ai-helper-text">{{ selectedModelHint("language", form.aiFoundationQueryRewriteModelName, "留空时复用对话模型") }}</span>
                 </div>
               </div>
-              <div v-if="testResult.queryRewrite" class="ai-test-feedback" :class="testResult.queryRewrite.ok ? 'success' : 'error'">
+              <div v-if="testResult.queryRewrite" class="ai-test-feedback" :class="testResult.queryRewrite.ok === null ? 'waiting' : testResult.queryRewrite.ok ? 'success' : 'error'">
                 <template v-if="testResult.queryRewrite.ok"><RiCheckLine /> 连接成功 — {{ testResult.queryRewrite.reply }}</template>
-                <template v-else><RiCloseLine /> {{ testResult.queryRewrite.error }}</template>
+                <template v-else><RiCloseLine v-if="testResult.queryRewrite.ok === false" /> {{ testResult.queryRewrite.error }}</template>
               </div>
               <div style="justify-content: flex-end;" class="ai-card-actions">
-                <VButton @click="testQueryRewrite" :disabled="testing.queryRewrite">{{ testing.queryRewrite ? '测试中...' : '测试连通性' }}</VButton>
+                <VButton @click="testQueryRewrite" :disabled="testing.queryRewrite">{{ testing.queryRewrite ? '测试中...' : testJobIds.queryRewrite ? '继续查询' : '测试连通性' }}</VButton>
+                <VButton v-if="testJobIds.queryRewrite && !testing.queryRewrite" @click="runModelTest('queryRewrite', true)">开始新测试</VButton>
                 <VButton type="primary" @click="saveModel('queryRewrite')" :disabled="saving.queryRewrite">{{ saving.queryRewrite ? '保存中...' : '保存配置' }}</VButton>
               </div>
             </div>
@@ -262,12 +266,13 @@
                   <span class="ai-helper-text">{{ selectedModelHint("image", form.aiFoundationImageModelName, "留空时使用 AI Foundation 默认图像模型；列表为空说明还没在 AI Foundation 里配图像模型") }}</span>
                 </div>
               </div>
-              <div v-if="testResult.image" class="ai-test-feedback" :class="testResult.image.ok ? 'success' : 'error'">
+              <div v-if="testResult.image" class="ai-test-feedback" :class="testResult.image.ok === null ? 'waiting' : testResult.image.ok ? 'success' : 'error'">
                 <template v-if="testResult.image.ok"><RiCheckLine /> 连接成功 — 返回 {{ testResult.image.imageCount }} 张图片</template>
-                <template v-else><RiCloseLine /> {{ testResult.image.error }}</template>
+                <template v-else><RiCloseLine v-if="testResult.image.ok === false" /> {{ testResult.image.error }}</template>
               </div>
               <div style="justify-content: flex-end;" class="ai-card-actions">
-                <VButton @click="testImage" :disabled="testing.image">{{ testing.image ? '生成测试中（约 1 分钟）...' : '测试连通性' }}</VButton>
+                <VButton @click="testImage" :disabled="testing.image">{{ testing.image ? '测试中...' : testJobIds.image ? '继续查询' : '测试连通性' }}</VButton>
+                <VButton v-if="testJobIds.image && !testing.image" @click="runModelTest('image', true)">开始新测试</VButton>
                 <VButton type="primary" @click="saveModel('image')" :disabled="saving.image">{{ saving.image ? '保存中...' : '保存配置' }}</VButton>
               </div>
             </div>
@@ -279,7 +284,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, onMounted } from "vue";
+import { computed, reactive, ref, onMounted, onUnmounted } from "vue";
 import { Toast, VButton } from "@halo-dev/components";
 import RiChatSmileLine from "~icons/ri/chat-smile-line";
 import RiStackLine from "~icons/ri/stack-line";
@@ -288,6 +293,8 @@ import RiSearchAiLine from "~icons/ri/search-ai-line";
 import RiImageAiLine from "~icons/ri/image-ai-line";
 import RiCheckLine from "~icons/ri/check-line";
 import RiCloseLine from "~icons/ri/close-line";
+
+import { ModelTestRunner, createTestRequestId, type TestKind, type TestResult } from "../utils/model-test-jobs";
 
 const CONFIG_API = "/apis/console.api.ai-suite.halo.run/v1alpha1/config";
 const AI_FOUNDATION_API = "/apis/console.api.aifoundation.halo.run/v1alpha1";
@@ -347,7 +354,7 @@ const modelOptions = reactive<Record<ModelType, ModelOption[]>>({
 });
 const defaultSlots = reactive<DefaultModelSlots>({});
 
-const testResult = reactive<Record<string, { ok: boolean; reply?: string; model?: string; dimensions?: number; relevanceScore?: number; imageCount?: number; error?: string } | null>>({
+const testResult = reactive<Record<string, TestResult | null>>({
   chat: null,
   embedding: null,
   rerank: null,
@@ -401,11 +408,12 @@ function openAiFoundationDefaults() {
   window.location.href = "/console/ai-foundation/defaults";
 }
 
-function getConnectionStatus(model: string): "connected" | "error" | "testing" | "configured" {
+function getConnectionStatus(model: string): "connected" | "error" | "testing" | "unknown" | "configured" {
   const tr = testResult[model];
   if (testing[model]) return "testing";
   if (tr?.ok) return "connected";
-  if (tr && !tr.ok) return "error";
+  if (tr?.ok === false) return "error";
+  if (tr?.ok === null) return "unknown";
   return "configured";
 }
 
@@ -415,6 +423,7 @@ function statusDotClass(model: string) {
     connected: "ai-dot-green",
     error: "ai-dot-red",
     testing: "ai-dot-blue",
+    unknown: "ai-dot-blue",
     configured: "ai-dot-green",
   }[s];
 }
@@ -425,6 +434,7 @@ function statusLabel(model: string) {
     connected: "已连接",
     error: "连接失败",
     testing: "测试中...",
+    unknown: "状态待确认",
     configured: "AI Foundation",
   }[s];
 }
@@ -460,100 +470,46 @@ async function saveModel(model: string) {
   }
 }
 
-async function testChat() {
-  testing.chat = true;
-  testResult.chat = null;
-  try {
-    const resp = await fetch(CONFIG_API + "/test-model", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: form.aiFoundationChatModelName }),
-    });
-    const data = await resp.json();
-    testResult.chat = { ok: data.connected, reply: data.reply, model: data.model, error: data.error };
-  } catch (e: any) {
-    testResult.chat = { ok: false, error: e.message };
-  } finally {
-    testing.chat = false;
-  }
+const testJobIds = reactive<Partial<Record<TestKind, string>>>({});
+// Accessing sessionStorage itself can throw in restricted browser contexts.
+const jobStorage = {
+  getItem: (key: string) => window.sessionStorage.getItem(key),
+  setItem: (key: string, value: string) => window.sessionStorage.setItem(key, value),
+  removeItem: (key: string) => window.sessionStorage.removeItem(key),
+};
+const testRunner = new ModelTestRunner({
+  fetch: (...args) => fetch(...args),
+  storage: jobStorage,
+  uuid: createTestRequestId,
+  update: (kind, active, id, result) => {
+    testing[kind] = active;
+    if (id) testJobIds[kind] = id;
+    else delete testJobIds[kind];
+    testResult[kind] = result;
+  },
+});
+function runModelTest(kind: TestKind, newTest = false) {
+  const models = {
+    chat: form.aiFoundationChatModelName,
+    embedding: form.aiFoundationEmbeddingModelName,
+    rerank: form.aiFoundationRerankModelName,
+    queryRewrite: form.aiFoundationQueryRewriteModelName || form.aiFoundationChatModelName,
+    image: form.aiFoundationImageModelName,
+  };
+  void testRunner.start(kind, {
+    model: models[kind],
+    ...(kind === "embedding" ? { dimensions: form.embeddingDimensions } : {}),
+  }, newTest);
 }
-
-async function testEmbedding() {
-  testing.embedding = true;
-  testResult.embedding = null;
-  try {
-    const resp = await fetch(CONFIG_API + "/test-embedding", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: form.aiFoundationEmbeddingModelName,
-        dimensions: form.embeddingDimensions,
-      }),
-    });
-    const data = await resp.json();
-    testResult.embedding = { ok: data.connected, model: data.model, dimensions: data.dimensions, error: data.error };
-  } catch (e: any) {
-    testResult.embedding = { ok: false, error: e.message };
-  } finally {
-    testing.embedding = false;
-  }
-}
-
-async function testRerank() {
-  testing.rerank = true;
-  testResult.rerank = null;
-  try {
-    const resp = await fetch(CONFIG_API + "/test-rerank", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: form.aiFoundationRerankModelName }),
-    });
-    const data = await resp.json();
-    testResult.rerank = { ok: data.connected, model: data.model, relevanceScore: data.relevanceScore, error: data.error };
-  } catch (e: any) {
-    testResult.rerank = { ok: false, error: e.message };
-  } finally {
-    testing.rerank = false;
-  }
-}
-
-async function testImage() {
-  testing.image = true;
-  testResult.image = null;
-  try {
-    const resp = await fetch(CONFIG_API + "/test-image", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: form.aiFoundationImageModelName }),
-    });
-    const data = await resp.json();
-    testResult.image = { ok: data.connected, model: data.model, imageCount: data.imageCount, error: data.error };
-  } catch (e: any) {
-    testResult.image = { ok: false, error: e.message };
-  } finally {
-    testing.image = false;
-  }
-}
-
-async function testQueryRewrite() {
-  testing.queryRewrite = true;
-  testResult.queryRewrite = null;
-  try {
-    const resp = await fetch(CONFIG_API + "/test-query-rewrite", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: form.aiFoundationQueryRewriteModelName || form.aiFoundationChatModelName }),
-    });
-    const data = await resp.json();
-    testResult.queryRewrite = { ok: data.connected, model: data.model, reply: data.reply, error: data.error };
-  } catch (e: any) {
-    testResult.queryRewrite = { ok: false, error: e.message };
-  } finally {
-    testing.queryRewrite = false;
-  }
-}
+const testChat = () => runModelTest("chat");
+const testEmbedding = () => runModelTest("embedding");
+const testRerank = () => runModelTest("rerank");
+const testImage = () => runModelTest("image");
+const testQueryRewrite = () => runModelTest("queryRewrite");
+onUnmounted(() => testRunner.dispose());
 
 onMounted(async () => {
+  testRunner.restore();
   await Promise.all([loadConfig(), loadAiFoundationModels()]);
 });
 
@@ -907,6 +863,12 @@ async function fetchDefaultModelSlots() {
   line-height: 1.5;
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+.ai-test-feedback.waiting {
+  color: #92400e;
+  background: #fffbeb;
+  border-color: #fde68a;
 }
 
 .ai-test-feedback.success {

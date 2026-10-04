@@ -7,7 +7,7 @@
     "dev": "vite build --watch",
     "build": "pnpm typecheck && pnpm test:unit && vite build && pnpm build:markmap",
     "build:markmap": "esbuild src/markmap-entry.ts --bundle --minify --format=iife --target=es2020 --outfile=../src/main/resources/static/js/markmap-bundle.min.js && node scripts/verify-local-markmap.mjs",
-    "test:unit": "cd .. && node ui/scripts/test-pet-flow.mjs && node ui/scripts/test-pet-avatar.mjs && node ui/scripts/test-pet-color-selection.mjs",
+    "test:unit": "cd .. && node ui/scripts/test-pet-flow.mjs && node ui/scripts/test-pet-avatar.mjs && node ui/scripts/test-pet-color-selection.mjs && node ui/scripts/test-model-test-jobs.mjs",
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
