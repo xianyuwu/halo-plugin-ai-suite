@@ -1,7 +1,7 @@
 # 当前版本能力清单
 
 > 适用版本：AI 智能套件 0.4.x、Halo 2.26+
-> 更新日期：2026-10-03
+> 更新日期：2026-10-09
 
 本文是 0.4.x 系列的版本事实入口。README 负责产品介绍，具体操作方法在用户手册，本页用于快速确认“当前版本到底包含什么”。
 
@@ -34,7 +34,7 @@
 
 ### Console 与编辑器
 
-- AI Foundation Chat、Embedding、Rerank、Query Rewrite 模型选择与测试。
+- AI Foundation Chat、Embedding、Rerank、Query Rewrite、图像模型选择与测试；0.4.1 起使用后台任务，支持继续查询。
 - 切片、索引、混合检索、Query Rewrite、HyDE、Rerank、跨语言检索。
 - 对话提示词、深度思考策略、快捷问题和 Widget 外观。
 - AI 摘要、文章脑图、编辑器多轮写作和大纲生成。

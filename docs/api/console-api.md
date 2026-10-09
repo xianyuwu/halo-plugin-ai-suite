@@ -15,9 +15,37 @@
 | POST | `/config/test-embedding` | Embedding 测试 |
 | POST | `/config/test-rerank` | Rerank 测试 |
 | POST | `/config/test-query-rewrite` | Query Rewrite 测试 |
+| POST | `/config/test-jobs` | 提交后台模型测试，立即返回任务编号 |
+| GET | `/config/test-jobs/{jobId}` | 查询当前管理员提交的测试任务 |
 | POST | `/chat/debug/stream` | 带 Trace 的调试 SSE |
 
 `/config/save` 接收以配置组为键的 JSON。字段、默认值和重建影响见 [配置参考](../reference/configuration-reference.md)。
+
+### 后台模型测试
+
+模型配置页的五类测试统一使用 `/config/test-jobs`，避免慢模型依赖浏览器到源站的一次长 HTTP 连接。旧的同步测试端点保留兼容；直接调用旧端点仍受代理等待限制。
+
+提交示例：
+
+```json
+{
+  "requestId": "b8ecf6a3-475f-4e7f-9ccd-890a11c8af60",
+  "kind": "image",
+  "model": "",
+  "dimensions": 0
+}
+```
+
+- `requestId`：客户端生成的 UUID，同时作为任务编号。当前管理员使用同一编号及相同参数重复提交时，在任务记录保留期间返回原任务；参数不同返回 HTTP 409。
+- `kind`：`chat`、`queryRewrite`、`embedding`、`rerank` 或 `image`。
+- `model`：AI Foundation 模型资源名；空值使用现有配置及默认槽逻辑。
+- `dimensions`：Embedding 请求维度；未指定或为 0 时使用已保存的维度。
+
+提交成功返回 HTTP 202，包含 `jobId` 和 `job`。前端每 2 秒查询一次，状态为 `pending`、`done` 或 `failed`。成功时 `job.result` 保留对应测试的 `model`、`reply`、`dimensions`、`requestedDimensions`、`relevanceScore` 或 `imageCount`；失败时返回 `job.error`。
+
+任务在后台独立执行，保留请求认证上下文；关闭页面只停止查询。原供应商调用超时不变，任务另有 6 分钟总时限；全局最多同时执行 4 个测试，超限提交返回 HTTP 429。任务仅保存在本机内存中，完成记录保留最多 30 分钟，总历史上限 128 条（满时先移除最早完成的记录）。插件停止时清理任务；多实例部署需要请求粘性或后续共享存储支持。
+
+提交结果不确定时，模型配置页保留请求编号，并只查询原任务，不自动重发 POST。页面刷新后通过当前标签页的 `sessionStorage` 恢复查询。连续 5 次查询异常或等待超过 7 分钟后，显示“状态待确认”，允许“继续查询”；用户主动“开始新测试”可能产生额外费用。HTTP 错误、空响应和非 JSON 响应显示中文说明，不将网络问题显示为模型连接失败，也不修改模型配置。HTTP 404 表示记录不存在或失效，无法据此推断供应商是否完成了调用。
 
 调试 SSE 除 citations/token 外还会发送 `trace_stage` 和 `trace_summary`，仅用于后台调试界面。
 

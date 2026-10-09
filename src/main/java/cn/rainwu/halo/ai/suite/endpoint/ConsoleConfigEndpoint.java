@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -69,6 +71,7 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
     private final LlmClient llmClient;
     private final ReactiveExtensionClient extensionClient;
     private final ChatService chatService;
+    private final ModelTestJobs modelTestJobs;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -82,6 +85,8 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
             .POST("/config/test-rerank", this::testRerank)
             .POST("/config/test-query-rewrite", this::testQueryRewrite)
             .POST("/config/test-image", this::testImage)
+            .POST("/config/test-jobs", this::submitModelTest)
+            .GET("/config/test-jobs/{jobId}", this::getModelTest)
             .POST("/chat/debug/stream", this::handleDebugStreamChat)
             .build();
     }
@@ -489,6 +494,75 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
                         "error", extractErrorMessage(e)
                     ));
             });
+    }
+
+    private Mono<ServerResponse> submitModelTest(ServerRequest request) {
+        return request.bodyToMono(ModelTestJobs.TestRequest.class)
+            .switchIfEmpty(Mono.error(new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "缺少测试参数")))
+            .map(ModelTestJobs.TestRequest::validate)
+            .flatMap(body -> request.principal()
+                .switchIfEmpty(Mono.error(new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED, "请重新登录")))
+                .flatMap(owner -> Mono.deferContextual(context -> {
+                    var job = modelTestJobs.submit(owner.getName(), body, context,
+                        () -> executeModelTest(body).doOnError(error ->
+                            log.warn("模型测试任务 {} ({}) 失败: {}", body.requestId(),
+                                body.kind(), extractErrorMessage(error))));
+                    return ServerResponse.accepted().bodyValue(Map.of(
+                        "jobId", body.requestId(), "job", job.snapshot()));
+                })))
+            .onErrorResume(ResponseStatusException.class,
+                e -> ServerResponse.status(e.getStatusCode()).bodyValue(Map.of(
+                    "error", e.getReason() == null ? "测试请求无效" : e.getReason())));
+    }
+
+    private Mono<ServerResponse> getModelTest(ServerRequest request) {
+        return request.principal().flatMap(owner -> {
+            var job = modelTestJobs.get(owner.getName(), request.pathVariable("jobId"));
+            if (job == null) return ServerResponse.notFound().build();
+            return ServerResponse.ok().bodyValue(Map.of("job", job.snapshot()));
+        }).switchIfEmpty(ServerResponse.status(401).bodyValue(Map.of("error", "请重新登录")));
+    }
+
+    private Mono<Map<String, Object>> executeModelTest(ModelTestJobs.TestRequest request) {
+        return aiProperties.getModelConfig().flatMap(saved -> {
+            String fallback = switch (request.kind()) {
+                case "chat" -> saved.getEffectiveChatModel();
+                case "queryRewrite" -> isBlank(saved.getEffectiveQueryRewriteModel())
+                    ? saved.getEffectiveChatModel() : saved.getEffectiveQueryRewriteModel();
+                case "embedding" -> saved.getEffectiveEmbeddingModel();
+                case "rerank" -> saved.getEffectiveRerankModel();
+                case "image" -> saved.getEffectiveImageModel();
+                default -> throw new IllegalArgumentException("不支持的测试类型");
+            };
+            String model = isBlank(request.model()) ? fallback : request.model();
+            if (model == null) model = "";
+            String finalModel = model;
+            return switch (request.kind()) {
+                case "chat", "queryRewrite" -> llmClient.chatStream(finalModel,
+                    List.of(Map.of("role", "user", "content", "你好，请用一句话回复：模型连接测试成功")),
+                    0.0f, 128, null, null, UsageScenario.MODEL_TEST)
+                    .collectList().map(chunks -> Map.<String, Object>of(
+                        "model", finalModel, "reply", String.join("", chunks)));
+                case "embedding" -> {
+                    int dimensions = request.dimensions() > 0
+                        ? request.dimensions() : saved.getEmbeddingDimensions();
+                    yield llmClient.embed(finalModel, "Hello", dimensions, UsageScenario.MODEL_TEST)
+                        .map(vector -> Map.<String, Object>of("model", finalModel,
+                            "dimensions", vector.length, "requestedDimensions", dimensions));
+                }
+                case "rerank" -> llmClient.rerank(finalModel, "什么是机器学习",
+                    List.of("机器学习是人工智能的一个分支。"), 1, UsageScenario.MODEL_TEST)
+                    .map(results -> Map.<String, Object>of("model", finalModel,
+                        "relevanceScore", results.isEmpty() ? 0 : results.get(0).relevanceScore()));
+                case "image" -> llmClient.generateImage(finalModel,
+                    "a simple red circle on white background", null, "1024x1024", UsageScenario.MODEL_TEST)
+                    .map(result -> Map.<String, Object>of("model", finalModel,
+                        "imageCount", result.getImages() == null ? 0 : result.getImages().size()));
+                default -> Mono.error(new IllegalArgumentException("不支持的测试类型"));
+            };
+        });
     }
 
     private static boolean isBlank(String s) {
