@@ -10,7 +10,7 @@
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Lucene](https://img.shields.io/badge/Lucene-10.5.0-0a6f3a)](https://lucene.apache.org/)
-[![Version](https://img.shields.io/badge/version-0.4.0-blue)](src/main/resources/plugin.yaml)
+[![Version](https://img.shields.io/badge/version-0.4.1-blue)](src/main/resources/plugin.yaml)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
 [快速开始](#快速开始) · [功能全景](#功能全景) · [完整文档](https://ai-suite-docs.rainwu.cn) · [工作原理](#工作原理) · [开发指南](#开发指南)
@@ -157,7 +157,7 @@ JAVA_HOME=/path/to/jdk21 ./gradlew build
 
 1. 先在 Halo AI Foundation 中配置模型供应商、密钥和默认模型。
 2. 在 AI 智能套件中选择或填写 Chat、Embedding、Rerank、Query Rewrite 等 AI Foundation 模型资源名。
-3. 分别执行连通性测试，确认配置可用。
+3. 分别执行连通性测试，确认配置可用。测试在后台执行；查询中断时优先点击“继续查询”，避免重复调用。
 4. 确认 Embedding 模型向量维度后，进入「索引中心」重建索引。
 
 模型供应商、Base URL、API Key 和默认模型均由 Halo AI Foundation 统一维护。AI 智能套件只保存各业务使用的模型资源名与生成参数。
