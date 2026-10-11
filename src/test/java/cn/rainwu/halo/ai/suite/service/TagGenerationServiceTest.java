@@ -36,8 +36,8 @@ class TagGenerationServiceTest {
         when(properties.getWritingConfig()).thenReturn(Mono.just(new AIProperties.WritingConfig()));
         when(contentService.getHeadContent("post-a"))
             .thenReturn(Mono.just(ContentWrapper.builder().raw("<p>正文内容</p>").build()));
-        when(llm.chatInternal(eq("mock-model"), anyList(), eq(0.2f), eq(256),
-            anyMap(), eq(UsageScenario.TAG_GENERATE)))
+        when(llm.chatInternal(eq("mock-model"), anyList(), eq(0.2f), eq(2048),
+            isNull(), eq(UsageScenario.TAG_GENERATE), eq("disabled")))
             .thenReturn(Mono.just("{\"tags\":[\"Halo\",\"AI 写作\"]}"));
 
         var result = service.generate("post-a", 2).block();
@@ -50,7 +50,7 @@ class TagGenerationServiceTest {
         verify(llm).chatInternal(eq("mock-model"), argThat(messages ->
                 messages.getFirst().get("content").contains("正文内容")
                     && messages.getFirst().get("content").contains("Halo AI 文章")),
-            eq(0.2f), eq(256), anyMap(), eq(UsageScenario.TAG_GENERATE));
+            eq(0.2f), eq(2048), isNull(), eq(UsageScenario.TAG_GENERATE), eq("disabled"));
         verify(client, never()).update(any(Post.class));
     }
 

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.RouterFunction;
@@ -26,6 +27,7 @@ import run.halo.app.extension.ReactiveExtensionClient;
 /** Console-only article tag generation and application API. */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class ConsoleTagEndpoint implements CustomEndpoint {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private final ReactiveExtensionClient extensionClient;
@@ -100,7 +102,11 @@ public class ConsoleTagEndpoint implements CustomEndpoint {
                 int count = boundedInt(root.path("count").asText("5"), 5, 1, 8);
                 return tagGenerationService.generate(postName, count)
                     .flatMap(result -> ServerResponse.ok().bodyValue(result))
-                    .onErrorResume(this::failure);
+                    .onErrorResume(error -> {
+                        log.warn("AI 标签生成失败: post={}, type={}, message={}", postName,
+                            error.getClass().getSimpleName(), error.getMessage());
+                        return failure(error);
+                    });
             });
     }
 
@@ -125,7 +131,7 @@ public class ConsoleTagEndpoint implements CustomEndpoint {
         HttpStatus status = error instanceof IllegalArgumentException
             ? HttpStatus.BAD_REQUEST : HttpStatus.INTERNAL_SERVER_ERROR;
         String message = error instanceof IllegalArgumentException
-            ? error.getMessage() : "操作失败，请稍后重试";
+            ? error.getMessage() : "AI 标签操作失败，请检查模型配置或稍后重试";
         return ServerResponse.status(status).bodyValue(Map.of("message", message));
     }
 

@@ -29,6 +29,8 @@ import run.halo.app.extension.ReactiveExtensionClient;
 public class TagGenerationService {
     private static final int MAX_CONTENT_LENGTH = 6000;
     private static final int MAX_TAGS = 8;
+    // Some reasoning models consume their output budget before emitting the JSON result.
+    private static final int MAX_RESPONSE_TOKENS = 2048;
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ReactiveExtensionClient extensionClient;
@@ -86,8 +88,8 @@ public class TagGenerationService {
                         + "站内已有标签：" + existingNames + "\n文章标题：" + title + "\n文章正文：" + input;
                     return llmClient.chatInternal(model,
                             List.of(Map.of("role", "user", "content", prompt)),
-                            0.2f, 256, Map.of("type", "json_object"),
-                            UsageScenario.TAG_GENERATE)
+                            0.2f, MAX_RESPONSE_TOKENS, null,
+                            UsageScenario.TAG_GENERATE, "disabled")
                         .map(rawOutput -> {
                             List<SuggestedTag> suggestions = parseSuggestions(rawOutput, count, byName);
                             List<String> current = tagDisplayNames(post, allTags);
