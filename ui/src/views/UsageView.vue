@@ -1844,6 +1844,7 @@ function scenarioLabel(scenario: string) {
     keyword_extract: "生成关键词",
     mindmap_generate: "AI 脑图生成",
     summary_generate: "AI 摘要生成",
+    tag_generate: "AI 标签生成",
     writing_assist: "写作辅助",
     evaluation_answer: "效果评测 · 生成回答",
     evaluation_judge: "效果评测 · AI 评分",

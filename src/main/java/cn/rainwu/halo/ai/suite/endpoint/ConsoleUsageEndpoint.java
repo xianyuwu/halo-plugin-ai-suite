@@ -355,6 +355,7 @@ public class ConsoleUsageEndpoint implements CustomEndpoint {
             case "keyword_extract" -> "生成关键词";
             case "mindmap_generate" -> "AI 脑图生成";
             case "summary_generate" -> "AI 摘要生成";
+            case "tag_generate" -> "AI 标签生成";
             case "writing_assist" -> "写作辅助";
             case "evaluation_answer" -> "效果评测 · 生成回答";
             case "evaluation_judge" -> "效果评测 · AI 评分";

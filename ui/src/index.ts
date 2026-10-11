@@ -13,6 +13,7 @@ import ChatView from "./views/ChatView.vue";
 import WidgetView from "./views/WidgetView.vue";
 import KnowledgeView from "./views/KnowledgeView.vue";
 import ExcerptView from "./views/ExcerptView.vue";
+import TagsView from "./views/TagsView.vue";
 import WritingView from "./views/WritingView.vue";
 import UsageView from "./views/UsageView.vue";
 import SearchView from "./views/SearchView.vue";
@@ -125,6 +126,12 @@ export default definePlugin({
             name: "AISuiteExcerpt",
             component: ExcerptView,
             meta: { title: "AI 摘要", desc: "AI 自动生成文章摘要，写入 excerpt 字段用于 SEO 和社交分享" },
+          },
+          {
+            path: "tags",
+            name: "AISuiteTags",
+            component: TagsView,
+            meta: { title: "AI 标签", desc: "为文章生成标签建议，选择后应用到文章" },
           },
           {
             path: "writing",
