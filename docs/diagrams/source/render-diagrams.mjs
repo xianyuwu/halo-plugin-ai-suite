@@ -131,6 +131,23 @@ function renderSequence(spec) {
 }
 
 const diagrams = {
+  "content-model-routing": {
+    title:"内容创作模型回退关系",subtitle:"摘要、标签和写作可单独指定语言模型；留空时逐级复用",height:780,
+    nodes:[
+      {id:"excerpt",x:75,y:160,w:320,h:88,title:"AI 摘要模型",subtitle:"单独指定时直接使用",tone:"indigo"},
+      {id:"tag",x:540,y:160,w:320,h:88,title:"AI 标签模型",subtitle:"单独指定时直接使用",tone:"indigo"},
+      {id:"writing",x:1005,y:160,w:320,h:88,title:"写作辅助模型",subtitle:"单独指定时直接使用",tone:"indigo"},
+      {id:"content",x:510,y:340,w:380,h:88,title:"内容创作默认模型",subtitle:"模型配置页面设置，可留空",tone:"purple"},
+      {id:"chat",x:510,y:475,w:380,h:88,title:"对话模型",subtitle:"内容创作默认模型留空时复用",tone:"blue"},
+      {id:"foundation",x:510,y:610,w:380,h:88,title:"AI Foundation 默认语言模型",subtitle:"对话模型也留空时使用",tone:"green"},
+    ],edges:[
+      {from:"excerpt",to:"content",label:"留空",dashed:true},
+      {from:"tag",to:"content",label:"留空",dashed:true},
+      {from:"writing",to:"content",label:"留空",dashed:true},
+      {from:"content",to:"chat",label:"留空",dashed:true},
+      {from:"chat",to:"foundation",label:"留空",dashed:true,tone:"green"},
+    ],notes:[{x:80,y:730,text:"所有选择项都是 AI Foundation 的语言模型资源；仅改变生成用模型，不需要重建文章索引。",color:"#CBD5E1",size:14}]
+  },
   "pet-generation-journey": {
     title:"AI 宠物制作与验收",subtitle:"先验收母版透明背景，再生成表情；图片完成后仍需保存浮窗外观配置",height:440,trimWhitespace:true,
     nodes:[
@@ -242,15 +259,15 @@ const diagrams = {
     ],edges:[{from:"q",to:"endpoint"},{from:"endpoint",to:"route"},{from:"route",to:"pipeline",label:"指定或命中意图",tone:"orange"},{from:"route",to:"rag",label:"未命中"},{from:"pipeline",to:"intentresp",tone:"orange"},{from:"rag",to:"foundation"}]
   },
   "frontend-boundaries": {
-    title:"前后端与权限边界",subtitle:"三种浏览器入口分别进入公开或管理 API，再汇入同一服务层",height:560,
+    title:"前后端与权限边界",subtitle:"访客 Widget、Console 页面及其扩展点分别进入公开或管理 API",height:560,
     groups:[{x:45,y:125,w:550,h:330,title:"BROWSER"},{x:650,y:125,w:705,h:330,title:"HALO JVM"}],
     nodes:[
       {id:"widget",x:80,y:165,w:210,h:78,title:"访客 Widget",subtitle:"原生 JS / CSS",tone:"blue"},
       {id:"console",x:80,y:270,w:210,h:78,title:"Vue Console",subtitle:"管理员页面",tone:"indigo"},
-      {id:"editor",x:330,y:270,w:210,h:78,title:"Tiptap 扩展",subtitle:"编辑器写作辅助",tone:"purple"},
+      {id:"editor",x:330,y:270,w:210,h:78,title:"Console 扩展点",subtitle:"文章操作 · Tiptap 写作",tone:"purple"},
       {id:"public",x:700,y:165,w:240,h:78,title:"公开 Endpoint",subtitle:"匿名 RoleTemplate",tone:"green"},
       {id:"admin",x:700,y:300,w:240,h:78,title:"Console Endpoint",subtitle:"管理员认证",tone:"orange"},
-      {id:"services",x:1040,y:230,w:260,h:90,title:"业务服务层",subtitle:"Chat · RAG · Intent · Writing",tone:"purple"},
+      {id:"services",x:1040,y:230,w:260,h:90,title:"业务服务层",subtitle:"Chat · RAG · Writing · Tags",tone:"purple"},
     ],edges:[{from:"widget",to:"public",tone:"green"},{from:"console",to:"admin",tone:"orange"},{from:"editor",to:"admin",tone:"orange"},{from:"public",to:"services",tone:"green"},{from:"admin",to:"services"}]
   },
   "rrf-fusion": {

@@ -30,6 +30,8 @@ ConfigMap 的每个 `data.<group>` 是一段 JSON 字符串。AI 智能套件不
 
 内容创作模型的回退顺序为“功能单独指定 → 内容创作默认模型 → 对话模型 → AI Foundation 默认语言模型”。写作辅助的独立模型字段位于 `writing.writingModel`；AI 摘要和 AI 标签的独立模型字段位于 `models`。更改这些语言模型不会要求重建文章索引。
 
+[![内容创作模型回退关系](../diagrams/exported/content-model-routing.svg)](/diagrams/exported/content-model-routing.svg)
+
 ## 切片配置 `chunking`
 
 | 字段 | 默认值 | 说明 |

@@ -6,13 +6,13 @@
 
 [![AI 智能套件系统全景架构](../../assets/readme/system-architecture.svg)](/readme/system-architecture.svg)
 
-系统由六层组成：体验入口、API 与权限边界、业务能力、AI 编排核心、共享基础能力、数据与知识。
+系统由六层组成：体验入口、API 与权限边界、业务能力、访客问答的 AI 编排核心、共享基础能力、数据与知识。摘要、标签和写作等内容生成功能通过业务服务与模型接入层调用 Halo AI Foundation，不进入访客问答的意图或 RAG 流程。
 
 | 层 | 主要职责 | 核心实现 |
 | --- | --- | --- |
-| 体验入口 | 访客 Widget、搜索页、编辑器与 Console | Widget JS/CSS、Vue、Tiptap |
+| 体验入口 | 访客 Widget、搜索页、编辑器与 Console；文章列表操作菜单 | Widget JS/CSS、Vue、Halo Console 扩展点、Tiptap |
 | API 边界 | 公开和管理接口、认证、参数校验、SSE | Public/Console Endpoint |
-| 业务能力 | 访客问答、搜索、内容生成、评测与运营 | Chat、Writing、Summary、MindMap、Evaluation、Agent Service |
+| 业务能力 | 访客问答、搜索、摘要、标签、写作、脑图、评测与运营 | Chat、Writing、Summary、TagGeneration、MindMap、Evaluation、Agent Service |
 | 编排核心 | 意图与 RAG 双路径、统一响应协议 | ChatService、IntentDetector、PipelineExecutor、RAGPipeline |
 | 共享能力 | 模型接入、索引、用量、限流与 Trace | AiFoundationClient、LlmClient、LuceneIndexService、UsageTracker、LimitGuard |
 | 数据与知识 | 配置、业务记录、文章、Lucene 索引 | ConfigMap、GVK、Lucene |

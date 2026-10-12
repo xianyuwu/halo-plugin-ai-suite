@@ -207,7 +207,7 @@ location / {
 
 ### 系统全景架构
 
-主图采用“体验入口 → API 与权限边界 → 业务能力 → AI 编排核心 → 共享基础能力 → 数据与知识”的阅读路径，并单独展示 Halo AI Foundation 到外部模型能力的调用边界。蓝色表示业务调用，紫色表示模型调用，绿色表示数据流；具体类级调用继续由下方专项图展开。
+主图展示体验入口、API 权限、业务能力、访客问答的意图与 RAG 编排，以及共享能力和数据层。摘要、标签等内容生成通过所选语言模型调用 Halo AI Foundation，不经过访客问答的 RAG 管线。蓝色表示业务调用，紫色表示模型调用，绿色表示数据流；具体类级调用继续由下方专项图展开。
 
 [![AI 智能套件系统全景架构](assets/readme/system-architecture.svg)](assets/readme/system-architecture.svg)
 
