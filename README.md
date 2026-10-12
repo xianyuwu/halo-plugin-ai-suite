@@ -69,7 +69,7 @@
 
 ## 实际界面
 
-以下截图来自 `dev.rainwu.cn` 测试环境，部分截图早于当前开发分支。站点内容、统计数字和界面细节会随数据与版本变化；AI 标签的最新操作步骤以[用户手册](docs/user-guide/ai-tags.md)为准。
+内容创作相关截图来自当前本地开发环境，其余部分截图来自较早版本的 `dev.rainwu.cn` 测试环境。站点内容、统计数字和界面细节会随数据与版本变化；AI 标签的操作步骤以[用户手册](docs/user-guide/ai-tags.md)为准。
 
 ### 访客端
 
@@ -114,10 +114,15 @@
 | [![对话与外观配置及实时预览](assets/readme/screenshots/console-chat.png)](assets/readme/screenshots/console-chat.png) | [![AI 脑图配置与管理页面](assets/readme/screenshots/console-mindmap.jpg)](assets/readme/screenshots/console-mindmap.jpg) |
 | 配置问答规则、快捷问题、访客浮窗并实时预览 | 设置生成参数、独立主题，并管理文章脑图 |
 
-| AI 摘要 | 写作辅助 |
+| AI 摘要 | AI 标签 |
 | --- | --- |
-| [![AI 摘要配置与文章管理](assets/readme/screenshots/console-excerpt.jpg)](assets/readme/screenshots/console-excerpt.jpg) | [![编辑器 AI 写作辅助配置页面](assets/readme/screenshots/console-writing.jpg)](assets/readme/screenshots/console-writing.jpg) |
-| 配置摘要生成参数并批量管理文章摘要 | 配置编辑器 AI 动作、写作模型与大纲生成 |
+| [![AI 摘要配置与文章管理](assets/readme/screenshots/console-excerpt.jpg)](assets/readme/screenshots/console-excerpt.jpg) | [![AI 标签配置与文章管理](assets/readme/screenshots/console-tags.jpg)](assets/readme/screenshots/console-tags.jpg) |
+| 配置摘要生成参数并批量管理文章摘要 | 为文章生成候选标签，确认后应用到文章 |
+
+| 写作辅助 | 内容创作默认模型 |
+| --- | --- |
+| [![编辑器 AI 写作辅助配置页面](assets/readme/screenshots/console-writing.jpg)](assets/readme/screenshots/console-writing.jpg) | [![内容创作默认模型配置](assets/readme/screenshots/console-models-content.jpg)](assets/readme/screenshots/console-models-content.jpg) |
+| 配置编辑器 AI 动作、写作模型与大纲生成 | 为 AI 摘要、AI 标签和写作辅助设置默认模型 |
 
 | 问答记录 | 用量统计 |
 | --- | --- |
