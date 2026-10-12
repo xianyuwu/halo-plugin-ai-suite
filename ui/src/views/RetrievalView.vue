@@ -116,7 +116,7 @@
             </div>
           </SectionCard>
 
-          <SectionCard title="优化建议" :icon-component="RiLightbulbLine" headerTitle="使用指南" headerDesc="检索参数配置的注意事项与最佳实践">
+          <SectionCard class="ai-guide-card" title="优化建议" :icon-component="RiLightbulbLine" headerTitle="使用指南" headerDesc="检索参数配置的注意事项与最佳实践">
           <div class="ai-card-body">
             <ul class="ai-tips-list">
               <li>混合检索模式适合大多数场景，建议作为默认选项</li>
@@ -200,12 +200,6 @@ onMounted(async () => {
 
 .ai-right-col > :deep(.ai-section-block:first-child) .ai-section-card {
   /* 检索流程卡片保持默认白底 */
-}
-
-.ai-right-col > :deep(.ai-section-block:last-child) .ai-section-card {
-  background: #f8fafc;
-  border-color: #e2e8f0;
-  box-shadow: none;
 }
 
 /* ===== Tips 列表 ===== */

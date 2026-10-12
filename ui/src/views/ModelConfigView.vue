@@ -120,6 +120,44 @@
 
       <div class="ai-section-block">
         <div class="ai-section-heading">
+          <h2>内容创作模型</h2>
+          <span class="ai-section-tag ai-tag-optional">可选</span>
+        </div>
+        <div class="ai-model-grid">
+          <article class="ai-model-card">
+            <div class="ai-model-card-header">
+              <div class="ai-model-title-wrap">
+                <div class="ai-model-icon"><RiFileTextLine /></div>
+                <div>
+                  <div class="ai-model-title">内容创作默认模型</div>
+                  <div class="ai-model-subtitle">AI 摘要、AI 标签与写作辅助默认使用此模型</div>
+                </div>
+              </div>
+            </div>
+            <div class="ai-model-card-body">
+              <div class="ai-form-field">
+                <label class="ai-field-label">语言模型 <span class="ai-label-hint">来自 AI Foundation</span></label>
+                <select class="ai-input ai-select" v-model="form.aiFoundationContentModelName" :disabled="modelOptionsLoading">
+                  <option value="">复用对话模型：{{ chatModelLabel }}</option>
+                  <option v-for="option in languageOptions" :key="option.name" :value="option.name">
+                    {{ modelOptionLabel(option) }}
+                  </option>
+                  <option v-if="unknownSelectedOption('language', form.aiFoundationContentModelName)" :value="form.aiFoundationContentModelName">
+                    当前配置：{{ form.aiFoundationContentModelName }}
+                  </option>
+                </select>
+                <span class="ai-helper-text">{{ contentModelHint }}</span>
+              </div>
+              <div class="ai-card-actions" style="justify-content: flex-end;">
+                <VButton type="primary" @click="saveModel('content')" :disabled="saving.content">{{ saving.content ? '保存中...' : '保存配置' }}</VButton>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <div class="ai-section-block">
+        <div class="ai-section-heading">
           <h2>高级模型</h2>
           <span class="ai-section-tag ai-tag-optional">可选</span>
         </div>
@@ -287,6 +325,7 @@
 import { computed, reactive, ref, onMounted, onUnmounted } from "vue";
 import { Toast, VButton } from "@halo-dev/components";
 import RiChatSmileLine from "~icons/ri/chat-smile-line";
+import RiFileTextLine from "~icons/ri/file-text-line";
 import RiStackLine from "~icons/ri/stack-line";
 import RiSortDesc from "~icons/ri/sort-desc";
 import RiSearchAiLine from "~icons/ri/search-ai-line";
@@ -325,6 +364,7 @@ interface DefaultModelSlots {
 
 const MODEL_FIELDS: Record<string, string[]> = {
   chat: ["aiFoundationChatModelName"],
+  content: ["aiFoundationContentModelName"],
   embedding: ["aiFoundationEmbeddingModelName", "embeddingDimensions"],
   rerank: ["rerankEnabled", "aiFoundationRerankModelName"],
   queryRewrite: ["queryRewriteEnabled", "aiFoundationQueryRewriteModelName"],
@@ -333,6 +373,7 @@ const MODEL_FIELDS: Record<string, string[]> = {
 
 const form = reactive({
   aiFoundationChatModelName: "",
+  aiFoundationContentModelName: "",
   aiFoundationEmbeddingModelName: "",
   aiFoundationRerankModelName: "",
   aiFoundationQueryRewriteModelName: "",
@@ -342,7 +383,7 @@ const form = reactive({
   queryRewriteEnabled: false,
 });
 
-const saving = reactive<Record<string, boolean>>({ chat: false, embedding: false, rerank: false, queryRewrite: false, image: false });
+const saving = reactive<Record<string, boolean>>({ chat: false, content: false, embedding: false, rerank: false, queryRewrite: false, image: false });
 const testing = reactive<Record<string, boolean>>({ chat: false, embedding: false, rerank: false, queryRewrite: false, image: false });
 const modelOptionsLoading = ref(false);
 const modelOptionsError = ref("");
@@ -363,6 +404,16 @@ const testResult = reactive<Record<string, TestResult | null>>({
 });
 
 const languageOptions = computed(() => modelOptions.language);
+const chatModelLabel = computed(() => {
+  const name = form.aiFoundationChatModelName || defaultSlots.languageModelName || "";
+  const option = findModelOption("language", name);
+  return option?.displayName || option?.modelId || name || "AI Foundation 默认";
+});
+const contentModelHint = computed(() => {
+  if (!form.aiFoundationContentModelName) return `保存后使用：${chatModelLabel.value}（复用对话模型）`;
+  const option = findModelOption("language", form.aiFoundationContentModelName);
+  return `保存后使用：${option ? modelOptionLabel(option) : form.aiFoundationContentModelName}（内容创作默认模型）`;
+});
 const embeddingOptions = computed(() => modelOptions.embedding);
 const rerankOptions = computed(() => modelOptions.rerank);
 const imageOptions = computed(() => modelOptions.image);

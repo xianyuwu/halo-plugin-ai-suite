@@ -4,6 +4,21 @@
       <div class="ai-excerpt-cols">
         <SectionCard title="自动摘要设置" :icon-component="RiFileTextLine" headerTitle="AI 自动摘要" headerDesc="启用后，在文章编辑页勾选「自动生成摘要」并保存时，将由 AI 自动生成摘要内容">
           <div class="ai-card-body">
+            <p class="ai-config-hint">{{ excerptModelDescription }}</p>
+            <details class="ai-model-override">
+              <summary>模型设置（可选）</summary>
+              <div class="ai-model-override-fields">
+                <label class="ai-config-label" for="excerpt-model">摘要模型</label>
+                <select id="excerpt-model" v-model="excerptModelDraft" class="ai-config-input" :disabled="!optionsAvailable || savingModel">
+                  <option value="">复用内容创作默认模型</option>
+                  <option v-for="option in modelOptions" :key="option.name" :value="option.name">{{ displayName(option.name) }}</option>
+                  <option v-if="excerptModelDraft && !modelOptions.some(option => option.name === excerptModelDraft)" :value="excerptModelDraft">当前配置：{{ excerptModelDraft }}</option>
+                </select>
+                <span class="ai-config-hint">单独指定仅影响 AI 摘要，包括文章保存时自动生成和手动、批量生成。</span>
+                <span v-if="!optionsAvailable" class="ai-config-hint">模型列表暂不可用，请刷新页面后重试。</span>
+                <VButton type="primary" :disabled="!optionsAvailable || savingModel" @click="saveExcerptModel">{{ savingModel ? '保存中...' : '保存模型' }}</VButton>
+              </div>
+            </details>
             <div class="ai-toggle-row">
               <label class="ai-switch-label">
                 <span class="ai-switch-track" :class="{ off: !excerptEnabled }" @click="toggleExcerpt"></span>
@@ -25,7 +40,7 @@
                   :disabled="savingConfig"
                   @change="saveExcerptConfig"
                 />
-                <span class="ai-config-hint">建议 120-200 字，传给 LLM 的目标长度约束</span>
+                <span class="ai-config-hint">仅用于文章保存时自动生成；建议 120-200 字，作为模型的目标长度</span>
               </div>
               <div class="ai-config-item">
                 <label class="ai-config-label">输入内容最大字符数</label>
@@ -39,19 +54,19 @@
                   :disabled="savingConfig"
                   @change="saveExcerptConfig"
                 />
-                <span class="ai-config-hint">超出部分会被截断，避免长文耗尽 LLM token</span>
+                <span class="ai-config-hint">仅用于文章保存时自动生成；超出部分会被截断</span>
               </div>
             </div>
           </div>
         </SectionCard>
 
-        <SectionCard title="使用说明" :icon-component="RiLightbulbLine" headerTitle="如何使用" headerDesc="AI 摘要功能的使用方式和注意事项">
+        <SectionCard class="ai-guide-card" title="使用说明" :icon-component="RiLightbulbLine" headerTitle="如何使用" headerDesc="AI 摘要功能的使用方式和注意事项">
           <div class="ai-card-body">
             <ul class="ai-tips-list">
-              <li>启用后前往任意文章编辑页，在右侧「摘要」区域勾选「自动生成摘要」</li>
-              <li>保存文章时 AI 将自动生成摘要并写入 excerpt 字段，长度由「摘要最大长度」控制</li>
-              <li>批量生成仅处理尚未生成摘要的已发布文章</li>
-              <li>摘要可用于搜索引擎 SEO description 和社交媒体分享卡片</li>
+              <li>自动生成：开启上方开关，在文章编辑页右侧「摘要」区域勾选「自动生成摘要」，保存文章时生成摘要。上方长度和输入限制仅适用于这种方式。</li>
+              <li>手动生成：在下方已发布文章列表点击「生成」或「重生成」，结果会写入文章摘要；重生成会覆盖原摘要。</li>
+              <li>批量生成：先勾选文章再点「批量生成」；「全部生成」会处理所有已发布文章。两者都会覆盖已有摘要。</li>
+              <li>模型：默认使用「模型配置」中的内容创作默认模型；如需单独指定，在上方「模型设置（可选）」中选择并保存。该选择适用于自动、手动和批量生成。</li>
             </ul>
           </div>
         </SectionCard>
@@ -164,9 +179,33 @@ import SectionCard from "../components/SectionCard.vue";
 import RiFileTextLine from "~icons/ri/file-text-line";
 import RiLightbulbLine from "~icons/ri/lightbulb-line";
 import RiSearchLine from "~icons/ri/search-line";
+import { useContentModel } from "../composables/useContentModel";
 
 const API_BASE = "/apis/console.api.ai-suite.halo.run/v1alpha1";
 const CONFIG_API = `${API_BASE}/config`;
+const {
+  load: loadContentModel, excerptModel, excerptModelDescription,
+  options: modelOptions, optionsAvailable, displayName, saveOverride,
+} = useContentModel();
+const excerptModelDraft = ref("");
+const savingModel = ref(false);
+
+async function saveExcerptModel() {
+  savingModel.value = true;
+  try {
+    await saveOverride("excerpt", excerptModelDraft.value);
+    Toast.success("摘要模型已保存");
+  } catch (error) {
+    Toast.error(error instanceof Error ? error.message : "保存失败");
+  } finally {
+    savingModel.value = false;
+  }
+}
+
+async function loadExcerptModel() {
+  await loadContentModel();
+  excerptModelDraft.value = excerptModel.value;
+}
 
 const excerptEnabled = ref(false);
 const excerptMaxLength = ref(160);
@@ -412,10 +451,15 @@ async function clearAll() {
   finally { batchRunning.value = false; }
 }
 
-onMounted(() => { loadArticles(); loadExcerptConfig(); });
+onMounted(() => { loadArticles(); loadExcerptConfig(); loadExcerptModel(); });
 </script>
 
 <style scoped>
+.ai-model-override { margin: 10px 0 18px; border: 1px solid var(--ai-color-border); border-radius: 8px; padding: 10px 12px; }
+.ai-model-override summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.ai-model-override-fields { display: grid; gap: 8px; margin-top: 14px; }
+.ai-model-override-fields .ai-config-input { width: 100%; }
+.ai-model-override-fields button { justify-self: end; }
 /* 搜索框 — 表格上方（嵌在批量工具栏内，工具栏"全选"右面）*/
 .ai-batch-toolbar {
   /* 已在 pages.css 定义 justify-content: space-between — 3 子元素时
@@ -478,13 +522,6 @@ onMounted(() => { loadArticles(); loadExcerptConfig(); });
 .ai-excerpt-cols > :deep(.ai-section-block) {
   flex: 1;
   min-width: 0;
-}
-
-/* 使用说明卡片——纯提示性质，底色区别于功能卡片 */
-.ai-excerpt-cols > :deep(.ai-section-block:last-child) .ai-section-card {
-  background: #f8fafc;
-  border-color: #e2e8f0;
-  box-shadow: none;
 }
 
 .ai-toggle-row {

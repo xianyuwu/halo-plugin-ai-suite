@@ -42,7 +42,7 @@ public class TagGenerationService {
 
     public record GenerationResult(List<SuggestedTag> tags, List<String> currentTags) {}
 
-    public record ApplyResult(List<String> tags, int added) {}
+    public record ApplyResult(List<String> tags, int added, List<Tag> tagResources) {}
 
     public Mono<GenerationResult> generate(String postName, int requestedCount) {
         int count = Math.max(1, Math.min(requestedCount, MAX_TAGS));
@@ -50,21 +50,21 @@ public class TagGenerationService {
             extensionClient.fetch(Post.class, postName)
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("文章不存在"))),
             extensionClient.list(Tag.class, tag -> true, null).collectList(),
-            aiProperties.getModelConfig(),
-            aiProperties.getWritingConfig()
+            aiProperties.getModelConfig()
         ).flatMap(tuple -> {
             Post post = tuple.getT1();
             List<Tag> allTags = tuple.getT2();
             var modelConfig = tuple.getT3();
-            var writingConfig = tuple.getT4();
             if (post.isDeleted() || post.getSpec() == null) {
                 return Mono.error(new IllegalArgumentException("文章不可用"));
             }
             Map<String, Tag> byName = indexTags(allTags);
+            List<String> current = tagDisplayNames(post, allTags);
+            Set<String> currentKeys = new LinkedHashSet<>();
+            current.stream().filter(name -> name != null && !name.isBlank())
+                .map(TagGenerationService::key).forEach(currentKeys::add);
             String title = post.getSpec().getTitle() == null ? "" : post.getSpec().getTitle();
-            String model = writingConfig.getWritingModel() != null
-                && !writingConfig.getWritingModel().isBlank()
-                ? writingConfig.getWritingModel() : modelConfig.getEffectiveChatModel();
+            String model = modelConfig.getEffectiveTagModel();
             return postContentService.getHeadContent(postName)
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("文章尚无可用内容")))
                 .flatMap(content -> {
@@ -82,17 +82,26 @@ public class TagGenerationService {
                         .filter(name -> !name.isBlank())
                         .distinct().limit(150)
                         .reduce((a, b) -> a + "、" + b).orElse("无");
-                    String prompt = "请为文章推荐 " + count + " 个准确、简短的标签。优先复用站内已有标签，"
-                        + "只有完全不匹配时才提出新标签。不要用过于宽泛的词。"
+                    String currentNames = current.stream()
+                        .filter(name -> name != null && !name.isBlank())
+                        .reduce((a, b) -> a + "、" + b).orElse("无");
+                    String prompt = "请为文章推荐 " + count + " 个尚未添加的准确、简短标签。"
+                        + "优先复用站内已有标签，只有完全不匹配时才提出新标签。"
+                        + "不要重复文章已有标签，也不要用过于宽泛的词。"
                         + "只返回 JSON，格式为 {\"tags\":[\"标签1\",\"标签2\"]}。\n"
-                        + "站内已有标签：" + existingNames + "\n文章标题：" + title + "\n文章正文：" + input;
+                        + "站内已有标签：" + existingNames + "\n文章已有标签：" + currentNames
+                        + "\n文章标题：" + title + "\n文章正文：" + input;
                     return llmClient.chatInternal(model,
                             List.of(Map.of("role", "user", "content", prompt)),
                             0.2f, MAX_RESPONSE_TOKENS, null,
                             UsageScenario.TAG_GENERATE, "disabled")
                         .map(rawOutput -> {
-                            List<SuggestedTag> suggestions = parseSuggestions(rawOutput, count, byName);
-                            List<String> current = tagDisplayNames(post, allTags);
+                            List<SuggestedTag> suggestions = parseSuggestions(rawOutput, MAX_TAGS, byName)
+                                .stream().filter(tag -> !currentKeys.contains(key(tag.name())))
+                                .limit(count).toList();
+                            if (suggestions.isEmpty()) {
+                                throw new IllegalArgumentException("模型未返回可用标签，请重试或调整文章内容");
+                            }
                             return new GenerationResult(suggestions, current);
                         });
                 });
@@ -119,7 +128,7 @@ public class TagGenerationService {
                         return Flux.fromIterable(selected)
                             .concatMap(name -> {
                                 Tag match = existing.get(key(name));
-                                if (match != null) return Mono.just(match.getMetadata().getName());
+                                if (match != null) return Mono.just(match);
                                 Tag tag = new Tag();
                                 Metadata metadata = new Metadata();
                                 metadata.setGenerateName("tag-");
@@ -128,21 +137,27 @@ public class TagGenerationService {
                                 spec.setDisplayName(name);
                                 spec.setSlug("ai-" + UUID.randomUUID().toString().substring(0, 12));
                                 tag.setSpec(spec);
-                                return extensionClient.create(tag)
-                                    .map(created -> created.getMetadata().getName());
+                                return extensionClient.create(tag);
                             })
                             .collectList()
-                            .flatMap(names -> extensionClient.fetch(Post.class, postName)
+                            .flatMap(selectedTags -> extensionClient.fetch(Post.class, postName)
                                 .switchIfEmpty(Mono.error(new IllegalArgumentException("文章不存在")))
                                 .flatMap(latest -> {
+                                    List<String> names = selectedTags.stream()
+                                        .map(tag -> tag.getMetadata().getName()).toList();
                                     List<String> current = latest.getSpec().getTags();
                                     int before = current == null ? 0 : new LinkedHashSet<>(current).size();
                                     List<String> merged = mergeTagIds(current, names);
+                                    Map<String, Tag> byId = new LinkedHashMap<>();
+                                    tags.forEach(tag -> byId.put(tag.getMetadata().getName(), tag));
+                                    selectedTags.forEach(tag -> byId.put(tag.getMetadata().getName(), tag));
+                                    List<Tag> tagResources = merged.stream()
+                                        .map(byId::get).filter(java.util.Objects::nonNull).toList();
                                     latest.getSpec().setTags(merged);
                                     return extensionClient.update(latest)
                                         .map(updated -> new ApplyResult(
                                             tagDisplayNames(updated, tags, selected, names),
-                                            merged.size() - before));
+                                            merged.size() - before, tagResources));
                                 }));
                     });
             });
@@ -194,7 +209,11 @@ public class TagGenerationService {
                 array.forEach(node -> { if (node.isTextual()) names.add(node.asText()); });
             }
         } catch (Exception ignored) {
-            for (String part : cleaned.split("[,，、\\n]")) names.add(part);
+            // Do not turn malformed JSON fragments into tag names.
+            if (cleaned.startsWith("{") || cleaned.startsWith("[")) return List.of();
+            for (String part : cleaned.split("[,，、\\n]")) {
+                names.add(part.replaceFirst("^\\s*(?:[-*•]|\\d+[.)、])\\s*", ""));
+            }
         }
         return normalizeNames(names, limit).stream()
             .map(name -> {
@@ -216,7 +235,9 @@ public class TagGenerationService {
                 byId.put(tag.getMetadata().getName(), tag.getSpec().getDisplayName());
             }
         }
-        for (int i = 0; i < selectedIds.size(); i++) byId.put(selectedIds.get(i), selected.get(i));
+        for (int i = 0; i < selectedIds.size(); i++) {
+            byId.putIfAbsent(selectedIds.get(i), selected.get(i));
+        }
         if (post.getSpec().getTags() == null) return List.of();
         return post.getSpec().getTags().stream()
             .map(id -> byId.getOrDefault(id, id)).toList();

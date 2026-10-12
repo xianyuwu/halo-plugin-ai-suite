@@ -131,7 +131,7 @@ public class WritingService {
             }
             String act = v.action();
 
-            String model = isNotBlank(writingCfg.getWritingModel()) ? writingCfg.getWritingModel() : modelCfg.getEffectiveChatModel();
+            String model = isNotBlank(writingCfg.getWritingModel()) ? writingCfg.getWritingModel() : modelCfg.getEffectiveContentModel();
 
             // 大纲温度从配置读，其他 action 用硬编码温度表
             float temperature;
@@ -178,7 +178,7 @@ public class WritingService {
             }
             String act = v.action();
 
-            String model = isNotBlank(writingCfg.getWritingModel()) ? writingCfg.getWritingModel() : modelCfg.getEffectiveChatModel();
+            String model = isNotBlank(writingCfg.getWritingModel()) ? writingCfg.getWritingModel() : modelCfg.getEffectiveContentModel();
 
             float temperature;
             if ("outline".equals(act)) {

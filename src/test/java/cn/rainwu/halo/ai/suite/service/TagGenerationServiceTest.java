@@ -29,29 +29,47 @@ class TagGenerationServiceTest {
         Post post = post("post-a", "Halo AI 文章", java.util.List.of("tag-halo"));
         Tag halo = tag("tag-halo", "Halo");
         var models = new AIProperties.ModelConfig();
-        models.setAiFoundationChatModelName("mock-model");
+        models.setAiFoundationChatModelName("chat-model");
+        models.setAiFoundationContentModelName("content-model");
+        models.setAiFoundationTagModelName("tag-model");
         when(client.fetch(Post.class, "post-a")).thenReturn(Mono.just(post));
         when(client.list(eq(Tag.class), any(), isNull())).thenReturn(Flux.just(halo));
         when(properties.getModelConfig()).thenReturn(Mono.just(models));
-        when(properties.getWritingConfig()).thenReturn(Mono.just(new AIProperties.WritingConfig()));
         when(contentService.getHeadContent("post-a"))
             .thenReturn(Mono.just(ContentWrapper.builder().raw("<p>正文内容</p>").build()));
-        when(llm.chatInternal(eq("mock-model"), anyList(), eq(0.2f), eq(2048),
+        when(llm.chatInternal(eq("tag-model"), anyList(), eq(0.2f), eq(2048),
             isNull(), eq(UsageScenario.TAG_GENERATE), eq("disabled")))
-            .thenReturn(Mono.just("{\"tags\":[\"Halo\",\"AI 写作\"]}"));
+            .thenReturn(Mono.just("{\"tags\":[\"Halo\",\"AI 写作\",\"Java\"]}"));
 
         var result = service.generate("post-a", 2).block();
 
         assertThat(result).isNotNull();
         assertThat(result.tags()).containsExactly(
-            new TagGenerationService.SuggestedTag("Halo", true),
-            new TagGenerationService.SuggestedTag("AI 写作", false));
+            new TagGenerationService.SuggestedTag("AI 写作", false),
+            new TagGenerationService.SuggestedTag("Java", false));
         assertThat(result.currentTags()).containsExactly("Halo");
-        verify(llm).chatInternal(eq("mock-model"), argThat(messages ->
+        verify(llm).chatInternal(eq("tag-model"), argThat(messages ->
                 messages.getFirst().get("content").contains("正文内容")
-                    && messages.getFirst().get("content").contains("Halo AI 文章")),
+                    && messages.getFirst().get("content").contains("Halo AI 文章")
+                    && messages.getFirst().get("content").contains("文章已有标签：Halo")),
             eq(0.2f), eq(2048), isNull(), eq(UsageScenario.TAG_GENERATE), eq("disabled"));
         verify(client, never()).update(any(Post.class));
+        verify(properties, never()).getWritingConfig();
+    }
+
+    @Test
+    void contentModelFallsBackToChatModelWhenUnset() {
+        var models = new AIProperties.ModelConfig();
+        models.setAiFoundationChatModelName("chat-model");
+        assertThat(models.getEffectiveContentModel()).isEqualTo("chat-model");
+        models.setAiFoundationContentModelName("content-model");
+        assertThat(models.getEffectiveContentModel()).isEqualTo("content-model");
+        assertThat(models.getEffectiveExcerptModel()).isEqualTo("content-model");
+        assertThat(models.getEffectiveTagModel()).isEqualTo("content-model");
+        models.setAiFoundationExcerptModelName("excerpt-model");
+        models.setAiFoundationTagModelName("tag-model");
+        assertThat(models.getEffectiveExcerptModel()).isEqualTo("excerpt-model");
+        assertThat(models.getEffectiveTagModel()).isEqualTo("tag-model");
     }
 
     @Test
@@ -70,11 +88,13 @@ class TagGenerationServiceTest {
         });
         when(client.update(any(Post.class))).thenAnswer(call -> Mono.just(call.getArgument(0)));
 
-        var result = service.apply("post-a", java.util.List.of("Halo", "AI 写作")).block();
+        var result = service.apply("post-a", java.util.List.of("halo", "AI 写作")).block();
 
         assertThat(result).isNotNull();
         assertThat(result.tags()).containsExactly("Halo", "AI 写作");
         assertThat(result.added()).isEqualTo(1);
+        assertThat(result.tagResources()).extracting(tag -> tag.getMetadata().getName())
+            .containsExactly("tag-halo", "tag-new");
         assertThat(post.getSpec().getTags()).containsExactly("tag-halo", "tag-new");
         verify(client).create(argThat((Tag created) ->
             "AI 写作".equals(created.getSpec().getDisplayName())));
@@ -114,6 +134,21 @@ class TagGenerationServiceTest {
             "Java, <script>, Java, Spring", 5, Map.of());
         assertThat(result).extracting(TagGenerationService.SuggestedTag::name)
             .containsExactly("Java", "Spring");
+    }
+
+    @Test
+    void doesNotTurnMalformedJsonIntoTags() {
+        var result = TagGenerationService.parseSuggestions(
+            "{\"tags\":[\"Java\",\"Spring\"", 5, Map.of());
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void acceptsNumberedPlainTextTags() {
+        var result = TagGenerationService.parseSuggestions(
+            "1. Java\n2. Spring\n- Halo", 5, Map.of());
+        assertThat(result).extracting(TagGenerationService.SuggestedTag::name)
+            .containsExactly("Java", "Spring", "Halo");
     }
 
     private static Tag tag(String displayName) {

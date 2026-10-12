@@ -162,7 +162,7 @@
             </div>
           </SectionCard>
 
-          <SectionCard title="配置建议" :icon-component="RiLightbulbLine" headerTitle="使用指南" headerDesc="检索增强配置的注意事项与最佳实践">
+          <SectionCard class="ai-guide-card" title="配置建议" :icon-component="RiLightbulbLine" headerTitle="使用指南" headerDesc="检索增强配置的注意事项与最佳实践">
             <div class="ai-card-body">
               <ul class="ai-tips-list">
                 <li>查询改写在多轮对话场景效果最显著，建议开启「包含对话历史」</li>
@@ -255,12 +255,6 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 24px;
-}
-
-.ai-layout-right > :deep(.ai-section-block:last-child) .ai-section-card {
-  background: #f8fafc;
-  border-color: #e2e8f0;
-  box-shadow: none;
 }
 
 /* ===== 增强策略子区域 ===== */

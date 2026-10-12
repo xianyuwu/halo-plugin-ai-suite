@@ -47,6 +47,9 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
     private static final String LEGACY_CONFIG_MAP_NAME = "ai-assistant-configmap";
     private static final Set<String> MODEL_FIELDS = Set.of(
         "aiFoundationChatModelName",
+        "aiFoundationContentModelName",
+        "aiFoundationExcerptModelName",
+        "aiFoundationTagModelName",
         "aiFoundationEmbeddingModelName",
         "aiFoundationRerankModelName",
         "aiFoundationQueryRewriteModelName",
