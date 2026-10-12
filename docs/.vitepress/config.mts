@@ -32,6 +32,7 @@ const userGuide = [
   { text: "索引中心", link: "/user-guide/knowledge-index" },
   { text: "AI 脑图", link: "/user-guide/mindmap" },
   { text: "AI 摘要", link: "/user-guide/excerpt" },
+  { text: "AI 标签", link: "/user-guide/ai-tags" },
   { text: "写作辅助", link: "/user-guide/writing-assistant" },
   { text: "意图路由", link: "/user-guide/intent-routing" },
   { text: "效果评测", link: "/user-guide/evaluation" },

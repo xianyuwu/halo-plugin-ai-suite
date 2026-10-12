@@ -5,9 +5,9 @@
 ## 发布前
 
 1. 更新 `gradle.properties` 版本。
-2. 同步 `plugin.yaml` 与 `ui/package.json`。
-3. 重新生成文档图表。
-4. 更新 README、兼容矩阵和升级说明。
+2. 同步根目录和 `src/main/resources/` 下的 `plugin.yaml`、`ui/package.json` 与 `docs/package.json`，确认版本一致。
+3. 重新生成文档图表，更新受影响的 README 和用户手册截图。
+4. 更新 README、CHANGELOG、当前版本能力清单、兼容矩阵、配置参考、用户手册、Console API 和升级说明；待发布功能进入 Release Notes 后，再移除文档中的“待发布”标识。
 5. 为本次版本生成文档快照。
 6. 运行文档检查、测试和完整构建。
 
@@ -35,7 +35,7 @@ shasum -a 256 build/libs/plugin-ai-suite-*.jar
 
 - JAR 能在干净的 Halo 2.26+ 环境安装并启用，并能识别已安装的 Halo AI Foundation 1.1.1+。
 - 配置保存和重新打开一致。
-- 索引、聊天、搜索、脑图、写作、评测可用。
+- 索引、聊天、搜索、脑图、摘要、AI 标签、写作和评测可用；检查内容创作模型与各功能独立模型的回退关系。
 - 匿名 RoleTemplate 权限准确。
 - SSE 在直连和 Nginx 环境逐帧返回。
 - 上一版本升级数据能够迁移。

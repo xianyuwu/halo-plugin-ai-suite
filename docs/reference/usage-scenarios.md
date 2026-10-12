@@ -2,6 +2,8 @@
 
 > 事实来源：`llm/UsageScenario.java`
 
+`tag_generate` 属于当前本地开发分支，尚未包含在已发布的 0.4.1 JAR 中。
+
 | 场景 | 业务含义 |
 | --- | --- |
 | `model_test` | 模型连接测试 |
@@ -17,6 +19,7 @@
 | `keyword_extract` | 自动关键词提取 |
 | `mindmap_generate` | 脑图生成 |
 | `summary_generate` | 摘要生成 |
+| `tag_generate` | AI 标签候选生成；应用标签不调用模型 |
 | `writing_assist` | 写作辅助与大纲 |
 | `evaluation_answer` | 评测回答 |
 | `evaluation_judge` | 评审模型评分 |

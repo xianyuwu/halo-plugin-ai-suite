@@ -4,7 +4,7 @@
 
 **把 Halo 博客变成一个能回答、会检索、可辅助创作，也懂内容运营的 AI 知识站。**
 
-面向 Halo 2.26+ 的一体化 AI 插件，提供 RAG 智能问答、AI 搜索、写作辅助、摘要、脑图、效果评测、意图路由与运营智能体。基于 Halo AI Foundation 统一管理模型能力，内置 Lucene 混合检索，无需额外部署向量数据库。
+面向 Halo 2.26+ 的一体化 AI 插件，提供 RAG 智能问答、AI 搜索、写作辅助、摘要、AI 标签、脑图、效果评测、意图路由与运营智能体。基于 Halo AI Foundation 统一管理模型能力，内置 Lucene 混合检索，无需额外部署向量数据库。
 
 [![Halo](https://img.shields.io/badge/Halo-%E2%89%A52.26.0-1e87f0?logo=halo&logoColor=white)](https://halo.run)
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
@@ -26,6 +26,8 @@
 - 在线文档：[AI 智能套件文档中心](https://ai-suite-docs.rainwu.cn)
 - 文档源码：[docs/](docs/)
 
+> 当前本地开发分支已包含 AI 标签、文章列表生成弹窗及内容创作模型分配，尚未包含在已发布的 0.4.1 JAR 中。下文涉及这些功能的说明以当前分支源码为准，发布版本请核对 [更新日志](CHANGELOG.md)。
+
 ## 它解决什么问题
 
 博客通常不缺内容，缺的是让内容被重新发现、准确回答和持续复用的能力。AI 智能套件围绕文章从生产到消费的完整链路工作：
@@ -33,7 +35,7 @@
 - **访客找答案**：基于站内文章进行多轮问答，回答附带原文引用；支持访客按次开启深度思考并折叠查看推理过程。
 - **搜索更直接**：在关键词结果之外，先给出一段可追溯的 AI 综合回答。
 - **作者写得更快**：在 Halo 编辑器内完成润色、续写、扩写、简化、翻译和大纲生成。
-- **内容更易理解**：自动生成文章摘要与可交互脑图。
+- **内容更易理解**：自动生成文章摘要、推荐文章标签与可交互脑图。
 - **运营有依据**：从真实访客问题中发现内容缺口，形成选题、大纲和旧文优化建议。
 - **高频问题走捷径**：用可配置的意图路由处理“最新文章”“热门内容”“某标签文章”等确定性请求，并可用自然语言生成、检查和模拟路由草稿。
 
@@ -67,7 +69,7 @@
 
 ## 实际界面
 
-以下截图来自 `dev.rainwu.cn` 测试环境，展示当前版本的真实运行效果。站点内容、统计数字和界面细节会随数据与版本变化。
+以下截图来自 `dev.rainwu.cn` 测试环境，部分截图早于当前开发分支。站点内容、统计数字和界面细节会随数据与版本变化；AI 标签的最新操作步骤以[用户手册](docs/user-guide/ai-tags.md)为准。
 
 ### 访客端
 
@@ -156,7 +158,7 @@ JAVA_HOME=/path/to/jdk21 ./gradlew build
 进入「AI 智能套件 → 模型配置」：
 
 1. 先在 Halo AI Foundation 中配置模型供应商、密钥和默认模型。
-2. 在 AI 智能套件中选择或填写 Chat、Embedding、Rerank、Query Rewrite 等 AI Foundation 模型资源名。
+2. 在 AI 智能套件中选择或填写对话、Embedding、Rerank、Query Rewrite 等 AI Foundation 模型资源名。当前开发分支还可设置内容创作默认模型，并在 AI 摘要、AI 标签、写作辅助页面分别覆盖。
 3. 分别执行连通性测试，确认配置可用。测试在后台执行；查询中断时优先点击“继续查询”，避免重复调用。
 4. 确认 Embedding 模型向量维度后，进入「索引中心」重建索引。
 
@@ -218,7 +220,7 @@ location / {
 | Console 与编辑器 | Vue 管理页面、`AiWritingExtension`、Console 系列 Endpoint |
 | AI 编排核心 | `ChatService`、`IntentDetector`、`PipelineExecutor`、`RAGPipeline`、`AiFoundationClient`、`LlmClient` |
 | 检索与索引 | `DocumentChunker`、`HybridRetriever`、`LuceneIndexService`、`PostIndexReconciler` |
-| 内容与运营 | `WritingService`、`SummaryService`、`MindMapService`、`EvaluationService`、`ContentGapAgentService` |
+| 内容与运营 | `WritingService`、`SummaryService`、`TagGenerationService`、`MindMapService`、`EvaluationService`、`ContentGapAgentService` |
 | 安全与观测 | `LimitGuard`、`VisitorRateLimiter`、`UsageTracker`、`ChatLogger`、`PipelineTrace`、`TraceCache` |
 | Halo 数据 | Post / Tag / Category / Counter、ConfigMap、自定义 Extension、AI Foundation 模型配置 |
 
@@ -252,14 +254,14 @@ location / {
 
 | Console 页面 | 主要用途 |
 | --- | --- |
-| 模型配置 | Chat、Embedding、Rerank、Query Rewrite 模型与连通性测试 |
+| 模型配置 | 对话、Embedding、Rerank、Query Rewrite 模型与连通性测试；内容创作默认模型 |
 | 切片设置 | 切片大小、重叠、标题/句子边界与自动关键词 |
 | 索引中心 | 索引重建、文章状态、切片与关键词检查 |
 | 检索策略 / 检索增强 | BM25/向量混合检索、Top-K、阈值、HyDE、Rerank、跨语言 |
 | 对话与外观 | 系统提示词、历史轮数、访客开关与浮窗样式 |
 | AI 搜索 / AI 脑图 / AI 摘要 | 各前台与内容生成功能的开关和参数 |
-| AI 标签 | 为文章生成候选标签，人工选择后应用 |
-| 写作辅助 | 编辑器写作模型、大纲深度与输入限制 |
+| AI 标签 | 在独立页面或文章列表操作菜单中生成候选标签，人工选择后应用；可单独指定标签模型 |
+| 写作辅助 | 编辑器写作模型、大纲深度与输入限制；可单独指定写作模型 |
 | 意图路由 | 触发规则、Pipeline、优先级与输出模板 |
 | 效果评测 | 评测数据集、运行记录和质量问题定位 |
 | 运营智能体 | 内容缺口、选题、大纲与旧文更新建议 |
@@ -267,9 +269,12 @@ location / {
 
 “对话与外观”还负责深度思考策略和结构化快捷问题。快捷问题可以直接绑定已启用的意图路由，避免依赖文案模糊匹配。
 
-## 0.3.4 文档重点
+## 0.4.x 文档重点
 
 - [当前版本能力清单](docs/reference/current-version.md)
+- [AI 标签使用手册](docs/user-guide/ai-tags.md)
+- [AI 摘要使用手册](docs/user-guide/excerpt.md)
+- [模型配置与回退关系](docs/reference/configuration-reference.md#模型配置-models)
 - [深度思考与推理过程](docs/user-guide/reasoning-mode.md)
 - [AI 创建与管理意图路由](docs/user-guide/intent-routing.md)
 - [Public API 与 v1alpha2 兼容入口](docs/api/public-api.md)

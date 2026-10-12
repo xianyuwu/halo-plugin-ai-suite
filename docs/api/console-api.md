@@ -75,6 +75,18 @@
 
 分页列表常用参数包括 `page`、`size`、`sort`、`keyword`。批量端点接收 JSON 字符串体，前端当前使用 `postName`、`postNames` 和 `enabled` 等字段；外部集成应锁定插件版本。
 
+## AI 标签
+
+> 以下接口在当前本地开发分支实现，尚未包含在已发布的 0.4.1 JAR 中。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/tags/articles` | 查询草稿及已发布文章、当前标签与发布状态 |
+| POST | `/tags/generate` | 根据已保存的文章内容生成候选；不修改文章 |
+| POST | `/tags/apply` | 应用人工选择的标签；保留现有标签并新建缺失标签 |
+
+列表参数：`page` 从 1 开始，`size` 范围 1～50，`keyword` 匹配文章标题。生成请求为 `{"postName":"文章资源名","count":5}`，`count` 范围 1～8；返回 `tags`（每项包含 `name`、`existing`）和 `currentTags`。应用请求为 `{"postName":"文章资源名","tags":["标签 A","标签 B"]}`，需提供 1～8 个有效且不重复的名称；返回 `tags`、`added` 和 `tagResources`。生成会调用模型并可能产生费用，应用只修改 Halo 文章和标签资源。
+
 ## 脑图
 
 | 方法 | 路径 | 说明 |

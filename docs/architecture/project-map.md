@@ -29,13 +29,13 @@
 | 索引 | `DocumentChunker`、`ReindexService`、`PostIndexReconciler` | 文章清洗切片、关键词、Embedding、增量同步 |
 | 意图 | `IntentDetector`、`PipelineExecutor`、`processor/*` | 正则/LLM 分类、处理器编排、实时文章查询 |
 | AI 创建路由 | `IntentRouteGenerationService` | 自然语言生成白名单 Pipeline、校验与冲突提示 |
-| 内容生成 | `WritingService`、`SummaryService`、`MindMapService` | 写作、摘要和脑图生成 |
+| 内容生成 | `WritingService`、`SummaryService`、`TagGenerationService`、`MindMapService` | 写作、摘要、标签和脑图生成 |
 | 质量与运营 | `EvaluationService`、`ContentGapAgentService` | 数据集评测、内容缺口分析 |
 | 观测与保护 | `UsageTracker`、`LimitGuard`、`VisitorRateLimiter`、`ChatLogger` | 用量、限额、匿名限流、日志与反馈 |
 
 ## Console 页面
 
-Console 以 `ui/src/index.ts` 注册路由，`AISuiteLayout.vue` 提供套件内侧栏。当前页面包括：总览、模型配置、切片设置、索引中心、检索策略、检索增强、对话与外观、AI 搜索、AI 脑图、AI 摘要、写作辅助、问答记录、效果评测、运营智能体、意图路由和用量统计。
+Console 以 `ui/src/index.ts` 注册路由，`AISuiteLayout.vue` 提供套件内侧栏。当前页面包括：总览、模型配置、切片设置、索引中心、检索策略、检索增强、对话与外观、AI 搜索、AI 脑图、AI 摘要、AI 标签、写作辅助、问答记录、效果评测、运营智能体、意图路由和用量统计。AI 标签另通过文章列表操作扩展点挂载弹窗。
 
 意图路由有两个编辑入口：
 

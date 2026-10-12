@@ -11,7 +11,9 @@
 
 | 页面 | 决定什么 | 典型变更影响 |
 | --- | --- | --- |
-| 模型配置 | AI Foundation 语言、Embedding、Rerank、Query Rewrite 模型资源名 | Embedding 变化需重建索引 |
+| 模型配置 | AI Foundation 对话、内容创作、Embedding、Rerank、Query Rewrite 模型资源名 | Embedding 变化需重建索引；内容创作模型变化不需要 |
+
+当前开发分支的内容创作默认模型由 AI 摘要、AI 标签和写作辅助复用；三个功能也可分别指定模型。详见[配置参考](../reference/configuration-reference.md#模型配置-models)。这部分尚未包含在已发布的 0.4.1 JAR 中。
 | 切片设置 | 文章怎样拆成可检索片段 | 变化后需重建受影响文章 |
 | 检索策略 | keyword/vector/hybrid、候选数和阈值 | 保存后对新请求生效 |
 | 检索增强 | Rewrite、HyDE、Rerank、跨语言 | 增加效果、延迟和费用 |
