@@ -8,7 +8,7 @@
 | Public Chat 兼容 API | `/apis/api.ai-suite.halo.run/v1alpha2` | 匿名；聊天、非流式聊天与 Widget 配置 |
 | Console API | `/apis/console.api.ai-suite.halo.run/v1alpha1` | Halo 管理员会话/认证 |
 
-Public API 只用于访客 Widget、搜索和脑图读取。配置、索引、AI 标签、用量、日志、评测和任务接口都属于 Console API，不应匿名开放。AI 标签接口仅在当前本地开发分支提供，尚未进入已发布的 0.4.1 JAR。
+Public API 只用于访客 Widget、搜索和脑图读取。配置、索引、AI 标签、用量、日志、评测和任务接口都属于 Console API，不应匿名开放。AI 标签接口随待发布的 0.4.2 源码提供，尚未进入已发布的 0.4.1 JAR。
 
 ## 内容类型
 

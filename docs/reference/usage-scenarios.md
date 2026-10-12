@@ -2,7 +2,7 @@
 
 > 事实来源：`llm/UsageScenario.java`
 
-`tag_generate` 属于当前本地开发分支，尚未包含在已发布的 0.4.1 JAR 中。
+`tag_generate` 随待发布的 0.4.2 源码提供，尚未包含在已发布的 0.4.1 JAR 中。
 
 | 场景 | 业务含义 |
 | --- | --- |

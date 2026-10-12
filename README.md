@@ -10,7 +10,7 @@
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Lucene](https://img.shields.io/badge/Lucene-10.5.0-0a6f3a)](https://lucene.apache.org/)
-[![Version](https://img.shields.io/badge/version-0.4.1-blue)](src/main/resources/plugin.yaml)
+[![Version](https://img.shields.io/badge/version-0.4.2--dev-blue)](src/main/resources/plugin.yaml)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
 [快速开始](#快速开始) · [功能全景](#功能全景) · [完整文档](https://ai-suite-docs.rainwu.cn) · [工作原理](#工作原理) · [开发指南](#开发指南)
@@ -26,7 +26,7 @@
 - 在线文档：[AI 智能套件文档中心](https://ai-suite-docs.rainwu.cn)
 - 文档源码：[docs/](docs/)
 
-> 当前本地开发分支已包含 AI 标签、文章列表生成弹窗及内容创作模型分配，尚未包含在已发布的 0.4.1 JAR 中。下文涉及这些功能的说明以当前分支源码为准，发布版本请核对 [更新日志](CHANGELOG.md)。
+> 当前源码为待发布的 0.4.2，已包含 AI 标签、文章列表生成弹窗及内容创作模型分配。这些功能尚未包含在已发布的 0.4.1 JAR 中；安装发布版本时请核对 [更新日志](CHANGELOG.md)。
 
 ## 它解决什么问题
 
@@ -163,7 +163,7 @@ JAVA_HOME=/path/to/jdk21 ./gradlew build
 进入「AI 智能套件 → 模型配置」：
 
 1. 先在 Halo AI Foundation 中配置模型供应商、密钥和默认模型。
-2. 在 AI 智能套件中选择或填写对话、Embedding、Rerank、Query Rewrite 等 AI Foundation 模型资源名。当前开发分支还可设置内容创作默认模型，并在 AI 摘要、AI 标签、写作辅助页面分别覆盖。
+2. 在 AI 智能套件中选择或填写对话、Embedding、Rerank、Query Rewrite 等 AI Foundation 模型资源名。待发布的 0.4.2 还可设置内容创作默认模型，并在 AI 摘要、AI 标签、写作辅助页面分别覆盖。
 3. 分别执行连通性测试，确认配置可用。测试在后台执行；查询中断时优先点击“继续查询”，避免重复调用。
 4. 确认 Embedding 模型向量维度后，进入「索引中心」重建索引。
 
