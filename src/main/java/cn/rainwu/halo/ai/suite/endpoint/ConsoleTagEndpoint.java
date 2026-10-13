@@ -4,13 +4,14 @@ import cn.rainwu.halo.ai.suite.service.TagGenerationService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.server.RouterFunction;
@@ -22,7 +23,10 @@ import run.halo.app.core.extension.content.Post;
 import run.halo.app.core.extension.content.Tag;
 import run.halo.app.core.extension.endpoint.CustomEndpoint;
 import run.halo.app.extension.GroupVersion;
+import run.halo.app.extension.ListOptions;
+import run.halo.app.extension.PageRequestImpl;
 import run.halo.app.extension.ReactiveExtensionClient;
+import run.halo.app.extension.index.query.Queries;
 
 /** Console-only article tag generation and application API. */
 @Component
@@ -50,44 +54,50 @@ public class ConsoleTagEndpoint implements CustomEndpoint {
     private Mono<ServerResponse> articles(ServerRequest request) {
         int page = boundedInt(request.queryParam("page").orElse("1"), 1, 1, 100000);
         int size = boundedInt(request.queryParam("size").orElse("10"), 10, 1, 50);
-        String keyword = request.queryParam("keyword").orElse("").trim().toLowerCase(Locale.ROOT);
-        return Mono.zip(
-            extensionClient.list(Post.class, post -> !post.isDeleted()
-                && post.getSpec() != null
-                && (keyword.isEmpty() || (post.getSpec().getTitle() != null
-                    && post.getSpec().getTitle().toLowerCase(Locale.ROOT).contains(keyword))), null)
-                .collectList(),
-            extensionClient.list(Tag.class, tag -> true, null).collectList()
-        ).flatMap(tuple -> {
-            List<Post> posts = tuple.getT1();
-            Map<String, String> names = new LinkedHashMap<>();
-            for (Tag tag : tuple.getT2()) {
-                if (tag.getSpec() != null) {
-                    names.put(tag.getMetadata().getName(), tag.getSpec().getDisplayName());
+        String keyword = request.queryParam("keyword").orElse("").trim();
+        ListOptions.ListOptionsBuilder options = ListOptions.builder()
+            .andQuery(Queries.equal("spec.deleted", "false"))
+            .andQuery(Queries.isNull("metadata.deletionTimestamp"));
+        if (!keyword.isEmpty()) {
+            options.andQuery(Queries.contains("spec.title", keyword));
+        }
+        Sort sort = Sort.by(Sort.Order.desc("metadata.creationTimestamp"),
+            Sort.Order.asc("metadata.name"));
+        return extensionClient.listBy(Post.class, options.build(),
+            PageRequestImpl.of(page, size, sort)).flatMap(result -> {
+            List<Post> posts = result.getItems();
+            Set<String> tagIds = new LinkedHashSet<>();
+            posts.forEach(post -> {
+                if (post.getSpec().getTags() != null) tagIds.addAll(post.getSpec().getTags());
+            });
+            Mono<List<Tag>> pageTags = tagIds.isEmpty() ? Mono.just(List.of())
+                : extensionClient.listAll(Tag.class, ListOptions.builder()
+                    .andQuery(Queries.in("metadata.name", new ArrayList<Object>(tagIds)))
+                    .build(), Sort.unsorted()).collectList();
+            return pageTags.flatMap(tags -> {
+                Map<String, String> names = new LinkedHashMap<>();
+                for (Tag tag : tags) {
+                    if (tag.getSpec() != null) {
+                        names.put(tag.getMetadata().getName(), tag.getSpec().getDisplayName());
+                    }
                 }
-            }
-            posts.sort(Comparator.comparing(
-                (Post post) -> post.getMetadata().getCreationTimestamp(),
-                Comparator.nullsLast(Comparator.reverseOrder())));
-            int total = posts.size();
-            int from = (int) Math.min((long) (page - 1) * size, total);
-            int to = Math.min(from + size, total);
-            List<Map<String, Object>> items = new ArrayList<>();
-            for (Post post : posts.subList(from, to)) {
-                var spec = post.getSpec();
-                List<String> tagNames = spec.getTags() == null ? List.of()
-                    : spec.getTags().stream().map(id -> names.getOrDefault(id, id)).toList();
-                items.add(Map.of(
-                    "postName", post.getMetadata().getName(),
-                    "title", spec.getTitle() == null ? "" : spec.getTitle(),
-                    "tags", tagNames,
-                    "published", post.isPublished(),
-                    "createdAt", post.getMetadata().getCreationTimestamp() == null
-                        ? "" : post.getMetadata().getCreationTimestamp().toString()
-                ));
-            }
-            return ServerResponse.ok().bodyValue(Map.of(
-                "page", page, "size", size, "total", total, "items", items));
+                List<Map<String, Object>> items = new ArrayList<>();
+                for (Post post : posts) {
+                    var spec = post.getSpec();
+                    List<String> tagNames = spec.getTags() == null ? List.of()
+                        : spec.getTags().stream().map(id -> names.getOrDefault(id, id)).toList();
+                    items.add(Map.of(
+                        "postName", post.getMetadata().getName(),
+                        "title", spec.getTitle() == null ? "" : spec.getTitle(),
+                        "tags", tagNames,
+                        "published", post.isPublished(),
+                        "createdAt", post.getMetadata().getCreationTimestamp() == null
+                            ? "" : post.getMetadata().getCreationTimestamp().toString()
+                    ));
+                }
+                return ServerResponse.ok().bodyValue(Map.of(
+                    "page", page, "size", size, "total", result.getTotal(), "items", items));
+            });
         });
     }
 
