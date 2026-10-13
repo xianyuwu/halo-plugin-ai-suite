@@ -108,6 +108,7 @@ class TagGenerationServiceTest {
         var service = new TagGenerationService(client, mock(PostContentService.class),
             mock(LlmClient.class), mock(AIProperties.class));
         Post post = post("post-a", "文章", java.util.List.of("tag-halo"));
+        Post persistedPost = post("post-a", "文章", java.util.List.of("tag-halo"));
         Tag halo = tag("tag-halo", "Halo");
         RuntimeException updateFailure = new RuntimeException("post update failed");
         when(client.fetch(Post.class, "post-a")).thenReturn(Mono.just(post));
@@ -118,7 +119,10 @@ class TagGenerationServiceTest {
             return Mono.just(created);
         });
         when(client.update(any(Post.class))).thenReturn(Mono.error(updateFailure));
-        when(client.list(eq(Post.class), any(), isNull())).thenReturn(Flux.empty());
+        when(client.list(eq(Post.class), any(), isNull())).thenAnswer(call -> {
+            java.util.function.Predicate<Post> filter = call.getArgument(1);
+            return Flux.just(persistedPost).filter(filter);
+        });
         when(client.delete(any(Tag.class))).thenReturn(Mono.empty());
 
         assertThatThrownBy(() -> service.apply("post-a", java.util.List.of("AI 写作")).block())
@@ -135,6 +139,8 @@ class TagGenerationServiceTest {
         var service = new TagGenerationService(client, mock(PostContentService.class),
             mock(LlmClient.class), mock(AIProperties.class));
         Post post = post("post-a", "文章", java.util.List.of());
+        Post unrelatedPost = post("post-b", "其他文章", java.util.List.of());
+        Post persistedPost = post("post-a", "文章", java.util.List.of("tag-new"));
         RuntimeException responseFailure = new RuntimeException("response lost");
         when(client.fetch(Post.class, "post-a")).thenReturn(Mono.just(post));
         when(client.list(eq(Tag.class), any(), isNull())).thenReturn(Flux.empty());
@@ -144,7 +150,10 @@ class TagGenerationServiceTest {
             return Mono.just(created);
         });
         when(client.update(any(Post.class))).thenReturn(Mono.error(responseFailure));
-        when(client.list(eq(Post.class), any(), isNull())).thenReturn(Flux.just(post));
+        when(client.list(eq(Post.class), any(), isNull())).thenAnswer(call -> {
+            java.util.function.Predicate<Post> filter = call.getArgument(1);
+            return Flux.just(unrelatedPost, persistedPost).filter(filter);
+        });
 
         assertThatThrownBy(() -> service.apply("post-a", java.util.List.of("AI 写作")).block())
             .isSameAs(responseFailure);
