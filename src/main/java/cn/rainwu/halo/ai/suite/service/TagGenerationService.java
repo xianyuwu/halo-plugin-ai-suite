@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -26,6 +27,7 @@ import run.halo.app.extension.ReactiveExtensionClient;
 /** Generates tag suggestions without changing a post, then applies selected names on request. */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TagGenerationService {
     private static final int MAX_CONTENT_LENGTH = 6000;
     private static final int MAX_TAGS = 8;
@@ -116,51 +118,75 @@ public class TagGenerationService {
         if (selected.isEmpty() || selected.size() != selectedNames.size()) {
             return Mono.error(new IllegalArgumentException("标签名称无效或重复"));
         }
-        return extensionClient.fetch(Post.class, postName)
-            .switchIfEmpty(Mono.error(new IllegalArgumentException("文章不存在")))
-            .flatMap(post -> {
-                if (post.isDeleted() || post.getSpec() == null) {
-                    return Mono.error(new IllegalArgumentException("文章不可用"));
-                }
-                return extensionClient.list(Tag.class, tag -> true, null).collectList()
-                    .flatMap(tags -> {
-                        Map<String, Tag> existing = indexTags(tags);
-                        return Flux.fromIterable(selected)
-                            .concatMap(name -> {
-                                Tag match = existing.get(key(name));
-                                if (match != null) return Mono.just(match);
-                                Tag tag = new Tag();
-                                Metadata metadata = new Metadata();
-                                metadata.setGenerateName("tag-");
-                                tag.setMetadata(metadata);
-                                Tag.TagSpec spec = new Tag.TagSpec();
-                                spec.setDisplayName(name);
-                                spec.setSlug("ai-" + UUID.randomUUID().toString().substring(0, 12));
-                                tag.setSpec(spec);
-                                return extensionClient.create(tag);
-                            })
-                            .collectList()
-                            .flatMap(selectedTags -> extensionClient.fetch(Post.class, postName)
-                                .switchIfEmpty(Mono.error(new IllegalArgumentException("文章不存在")))
-                                .flatMap(latest -> {
-                                    List<String> names = selectedTags.stream()
-                                        .map(tag -> tag.getMetadata().getName()).toList();
-                                    List<String> current = latest.getSpec().getTags();
-                                    int before = current == null ? 0 : new LinkedHashSet<>(current).size();
-                                    List<String> merged = mergeTagIds(current, names);
-                                    Map<String, Tag> byId = new LinkedHashMap<>();
-                                    tags.forEach(tag -> byId.put(tag.getMetadata().getName(), tag));
-                                    selectedTags.forEach(tag -> byId.put(tag.getMetadata().getName(), tag));
-                                    List<Tag> tagResources = merged.stream()
-                                        .map(byId::get).filter(java.util.Objects::nonNull).toList();
-                                    latest.getSpec().setTags(merged);
-                                    return extensionClient.update(latest)
-                                        .map(updated -> new ApplyResult(
-                                            tagDisplayNames(updated, tags, selected, names),
-                                            merged.size() - before, tagResources));
-                                }));
+        return Mono.defer(() -> {
+            List<Tag> createdTags = new ArrayList<>();
+            return extensionClient.fetch(Post.class, postName)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("文章不存在")))
+                .flatMap(post -> {
+                    if (post.isDeleted() || post.getSpec() == null) {
+                        return Mono.error(new IllegalArgumentException("文章不可用"));
+                    }
+                    return extensionClient.list(Tag.class, tag -> true, null).collectList()
+                        .flatMap(tags -> {
+                            Map<String, Tag> existing = indexTags(tags);
+                            return Flux.fromIterable(selected)
+                                .concatMap(name -> {
+                                    Tag match = existing.get(key(name));
+                                    if (match != null) return Mono.just(match);
+                                    Tag tag = new Tag();
+                                    Metadata metadata = new Metadata();
+                                    metadata.setGenerateName("tag-");
+                                    tag.setMetadata(metadata);
+                                    Tag.TagSpec spec = new Tag.TagSpec();
+                                    spec.setDisplayName(name);
+                                    spec.setSlug("ai-" + UUID.randomUUID().toString().substring(0, 12));
+                                    tag.setSpec(spec);
+                                    return extensionClient.create(tag).doOnNext(createdTags::add);
+                                })
+                                .collectList()
+                                .flatMap(selectedTags -> extensionClient.fetch(Post.class, postName)
+                                    .switchIfEmpty(Mono.error(new IllegalArgumentException("文章不存在")))
+                                    .flatMap(latest -> {
+                                        List<String> names = selectedTags.stream()
+                                            .map(tag -> tag.getMetadata().getName()).toList();
+                                        List<String> current = latest.getSpec().getTags();
+                                        int before = current == null ? 0 : new LinkedHashSet<>(current).size();
+                                        List<String> merged = mergeTagIds(current, names);
+                                        Map<String, Tag> byId = new LinkedHashMap<>();
+                                        tags.forEach(tag -> byId.put(tag.getMetadata().getName(), tag));
+                                        selectedTags.forEach(tag -> byId.put(tag.getMetadata().getName(), tag));
+                                        List<Tag> tagResources = merged.stream()
+                                            .map(byId::get).filter(java.util.Objects::nonNull).toList();
+                                        latest.getSpec().setTags(merged);
+                                        return extensionClient.update(latest)
+                                            .map(updated -> new ApplyResult(
+                                                tagDisplayNames(updated, tags, selected, names),
+                                                merged.size() - before, tagResources));
+                                    }));
+                        });
+                })
+                .onErrorResume(error -> cleanupCreatedTags(createdTags)
+                    .then(Mono.error(error)));
+        });
+    }
+
+    /** Only remove tags created by this apply call and still unused after a failure. */
+    private Mono<Void> cleanupCreatedTags(List<Tag> createdTags) {
+        return Flux.fromIterable(createdTags)
+            .concatMap(tag -> {
+                String tagId = tag.getMetadata().getName();
+                return extensionClient.list(Post.class,
+                        post -> post.getSpec() != null && post.getSpec().getTags() != null
+                            && post.getSpec().getTags().contains(tagId), null)
+                    .hasElements()
+                    .flatMap(referenced -> referenced
+                        ? Mono.<Void>empty() : extensionClient.delete(tag).then())
+                    .onErrorResume(cleanupError -> {
+                        log.warn("清理未关联的 AI 标签失败: tag={}", tagId, cleanupError);
+                        return Mono.empty();
                     });
-            });
+            })
+            .then();
     }
 
     private static Map<String, Tag> indexTags(List<Tag> tags) {
