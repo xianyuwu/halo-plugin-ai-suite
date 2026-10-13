@@ -17,6 +17,7 @@ public final class UsageScenario {
     public static final String KEYWORD_EXTRACT = "keyword_extract";
     public static final String MINDMAP_GENERATE = "mindmap_generate";
     public static final String SUMMARY_GENERATE = "summary_generate";
+    public static final String TAG_GENERATE = "tag_generate";
     public static final String WRITING_ASSIST = "writing_assist";
     public static final String EVALUATION_ANSWER = "evaluation_answer";
     public static final String EVALUATION_JUDGE = "evaluation_judge";

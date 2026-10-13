@@ -22,13 +22,13 @@
       <!-- 左列：配置 -->
       <div class="ai-section-block">
         <!-- 写作模型配置 -->
-        <SectionCard title="写作模型" :icon-component="RiRobotLine" headerTitle="模型配置" headerDesc="选择写作辅助使用的 AI Foundation 语言模型，留空则复用「模型配置」页的对话模型">
+        <SectionCard title="写作模型" :icon-component="RiRobotLine" headerTitle="模型配置" headerDesc="选择写作辅助使用的 AI Foundation 语言模型，留空则复用内容创作默认模型">
           <div class="ai-card-body">
             <div class="ai-form-grid" style="margin-top: 16px;">
               <div class="ai-form-field">
                 <label class="ai-field-label">写作模型</label>
                 <select class="ai-input ai-select" v-model="form.writingModel" :disabled="saving || modelOptionsLoading">
-                  <option value="">复用模型配置页的对话模型</option>
+                  <option value="">复用内容创作默认模型</option>
                   <option v-for="option in languageOptions" :key="option.name" :value="option.name">
                     {{ modelOptionLabel(option) }}
                   </option>
@@ -37,6 +37,7 @@
                   </option>
                 </select>
                 <span class="ai-helper-text">{{ writingModelHint }}</span>
+                <span class="ai-helper-text">{{ writingModelDescription(form.writingModel) }}</span>
               </div>
               <div class="ai-form-field">
                 <label class="ai-field-label">最大输出 Token</label>
@@ -97,7 +98,7 @@
 
       <!-- 右列：使用说明 -->
       <div class="ai-section-block">
-        <SectionCard title="使用说明" :icon-component="RiBookOpenLine" headerTitle="如何使用写作辅助" headerDesc="在 Halo 文章编辑器中使用 AI 写作辅助功能">
+        <SectionCard class="ai-guide-card" title="使用说明" :icon-component="RiBookOpenLine" headerTitle="如何使用写作辅助" headerDesc="在 Halo 文章编辑器中使用 AI 写作辅助功能">
           <div class="ai-card-body">
             <div class="ai-guide">
               <div class="ai-guide-section">
@@ -142,11 +143,13 @@ import { Toast , VButton, VSpace} from "@halo-dev/components";
 import { saveGroup, loadGroup } from "../utils/config";
 import SectionCard from "../components/SectionCard.vue";
 import { setWritingEnabled } from "../extensions/ai-writing/writing-enabled";
+import { useContentModel } from "../composables/useContentModel";
 import RiRobotLine from "~icons/ri/robot-line";
 import RiListCheck3 from "~icons/ri/list-check-3";
 import RiBookOpenLine from "~icons/ri/book-open-line";
 
 const AI_FOUNDATION_API = "/apis/console.api.aifoundation.halo.run/v1alpha1";
+const { load: loadContentModel, writingModelDescription } = useContentModel();
 
 interface ModelOption {
   name: string;
@@ -225,7 +228,7 @@ const unknownSelectedModel = computed(() => !!form.writingModel && !selectedWrit
 
 const writingModelHint = computed(() => {
   if (modelOptionsError.value) return modelOptionsError.value;
-  if (!form.writingModel) return "留空时复用模型配置页的对话模型";
+  if (!form.writingModel) return "留空时复用「模型配置 → 内容创作模型」；单独指定只影响写作辅助";
   if (!selectedWritingModel.value) return "当前保存的模型未出现在可用列表中，请检查 AI Foundation 配置";
   const modelId = selectedWritingModel.value.modelId ? `供应商模型 ID：${selectedWritingModel.value.modelId}` : "";
   const features = selectedWritingModel.value.features?.length ? `能力：${selectedWritingModel.value.features.join(", ")}` : "";
@@ -278,7 +281,7 @@ async function autoSave() {
 }
 
 onMounted(async () => {
-  await Promise.all([loadGroup("writing", form), loadLanguageOptions()]);
+  await Promise.all([loadGroup("writing", form), loadLanguageOptions(), loadContentModel()]);
   // 同步总开关到模块级 ref
   setWritingEnabled(form.enabled);
 });

@@ -1,5 +1,6 @@
 import { definePlugin } from "@halo-dev/console-shared";
 import { markRaw } from "vue";
+import { VDropdownItem } from "@halo-dev/components";
 import AiSuiteMenuIcon from "./components/AiSuiteMenuIcon.vue";
 import "./styles/index.css";
 
@@ -13,6 +14,7 @@ import ChatView from "./views/ChatView.vue";
 import WidgetView from "./views/WidgetView.vue";
 import KnowledgeView from "./views/KnowledgeView.vue";
 import ExcerptView from "./views/ExcerptView.vue";
+import TagsView from "./views/TagsView.vue";
 import WritingView from "./views/WritingView.vue";
 import UsageView from "./views/UsageView.vue";
 import SearchView from "./views/SearchView.vue";
@@ -25,12 +27,14 @@ import IntentRouteAiCreateView from "./views/IntentRouteAiCreateView.vue";
 import { AiWritingExtension } from "./extensions/ai-writing";
 import { disposeOutline } from "./extensions/ai-writing/outline-state";
 import { getWritingEnabled } from "./extensions/ai-writing/writing-enabled";
+import { disposeTagModal, openTagModal } from "./extensions/post-tags/tag-modal-state";
 
 export default definePlugin({
   components: {},
   deactivated: () => {
     // 清理全局大纲 modal (chat composer / bubble menu 已在 editor onDestroy 清理)
     disposeOutline();
+    disposeTagModal();
   },
   routes: [
     {
@@ -127,6 +131,12 @@ export default definePlugin({
             meta: { title: "AI 摘要", desc: "AI 自动生成文章摘要，写入 excerpt 字段用于 SEO 和社交分享" },
           },
           {
+            path: "tags",
+            name: "AISuiteTags",
+            component: TagsView,
+            meta: { title: "AI 标签", desc: "为文章生成标签建议，选择后应用到文章" },
+          },
+          {
             path: "writing",
             name: "AISuiteWriting",
             component: WritingView,
@@ -167,6 +177,39 @@ export default definePlugin({
     },
   ],
   extensionPoints: {
+    "post:list-item:operation:create": (post) => [
+      {
+        priority: 21,
+        component: markRaw(VDropdownItem),
+        label: "生成 AI 标签",
+        permissions: [],
+        action: (clickedPost) => {
+          const item = clickedPost ?? post.value;
+          const postName = item.post.metadata.name;
+          if (!postName) return;
+          openTagModal({
+            postName,
+            title: item.post.spec.title || "无标题文章",
+            currentTags: item.tags.map(tag => tag.spec.displayName),
+            onApplied: result => {
+              const updated = {
+                ...item,
+                tags: result.tagResources as typeof item.tags,
+                post: {
+                  ...item.post,
+                  spec: {
+                    ...item.post.spec,
+                    tags: result.tagResources.map(tag => tag.metadata.name),
+                  },
+                },
+              };
+              Object.assign(item, updated);
+              post.value = updated;
+            },
+          });
+        },
+      },
+    ],
     // Halo 文章编辑器 Tiptap 扩展点 — 在编辑器工具栏 + 选区气泡菜单
     // 提供"AI 写作辅助"入口，唤起 AIDialog 弹层
     // 读 getWritingEnabled().value 动态决定是否挂载：用户在写作辅助页关掉总开关后，

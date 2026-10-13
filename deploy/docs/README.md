@@ -41,3 +41,5 @@ pnpm --dir docs build
 `build:version` 会读取 `gradle.properties`，同时把新版本自动登记到 `docs/versions.json`。`/opt/ai-suite-docs-versions` 通过只读卷挂载到文档容器，重建最新版容器不会删除历史文档。历史目录只发布一次，不要对已有版本重复同步或使用 `--delete`。
 
 0.3.6 的历史快照已从 `v0.3.6` 源码按 `/versions/0.3.6/` 基础路径构建并归档。切换根站到 0.4.x 前，先验证 [0.3.6 历史文档](https://ai-suite-docs.rainwu.cn/versions/0.3.6/) 及其中的资源可访问；不要直接复制当前根站静态文件到历史目录，因为根站构建中的绝对路径会在版本切换后指向错误资源。
+
+0.4.2 沿用现有 0.4.x 文档根站：只构建并更新根路径，不运行 `build:version`，不新增 `/versions/0.4.2/` 或改动 `docs/versions.json`。更新根站时仍须保留已发布的历史版本目录。

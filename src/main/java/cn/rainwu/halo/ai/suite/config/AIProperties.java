@@ -154,6 +154,9 @@ public class AIProperties {
         JsonNode aiFoundation = node.path("aiFoundation");
         c.setAiFoundationChatModelName(textVal(aiFoundation, "chatModelName",
             textVal(node, "aiFoundationChatModelName", "")));
+        c.setAiFoundationContentModelName(textVal(node, "aiFoundationContentModelName", ""));
+        c.setAiFoundationExcerptModelName(textVal(node, "aiFoundationExcerptModelName", ""));
+        c.setAiFoundationTagModelName(textVal(node, "aiFoundationTagModelName", ""));
         c.setAiFoundationEmbeddingModelName(textVal(aiFoundation, "embeddingModelName",
             textVal(node, "aiFoundationEmbeddingModelName", "")));
         c.setAiFoundationRerankModelName(textVal(aiFoundation, "rerankModelName",
@@ -398,6 +401,12 @@ public class AIProperties {
         private boolean rerankEnabled;
         private boolean queryRewriteEnabled;
         private String aiFoundationChatModelName;
+        /** 内容创作默认语言模型；留空时复用对话模型。 */
+        private String aiFoundationContentModelName;
+        /** AI 摘要专用模型；留空时复用内容创作默认模型。 */
+        private String aiFoundationExcerptModelName;
+        /** AI 标签专用模型；留空时复用内容创作默认模型。 */
+        private String aiFoundationTagModelName;
         private String aiFoundationEmbeddingModelName;
         private String aiFoundationRerankModelName;
         private String aiFoundationQueryRewriteModelName;
@@ -407,6 +416,24 @@ public class AIProperties {
         @JsonIgnore
         public String getEffectiveChatModel() {
             return aiFoundationChatModelName;
+        }
+
+        @JsonIgnore
+        public String getEffectiveContentModel() {
+            return aiFoundationContentModelName == null || aiFoundationContentModelName.isBlank()
+                ? getEffectiveChatModel() : aiFoundationContentModelName;
+        }
+
+        @JsonIgnore
+        public String getEffectiveExcerptModel() {
+            return aiFoundationExcerptModelName == null || aiFoundationExcerptModelName.isBlank()
+                ? getEffectiveContentModel() : aiFoundationExcerptModelName;
+        }
+
+        @JsonIgnore
+        public String getEffectiveTagModel() {
+            return aiFoundationTagModelName == null || aiFoundationTagModelName.isBlank()
+                ? getEffectiveContentModel() : aiFoundationTagModelName;
         }
 
         @JsonIgnore
@@ -561,7 +588,7 @@ public class AIProperties {
     public static class WritingConfig {
         /** AI 写作辅助总开关：false 时编辑器内的 AI 大纲按钮和选区气泡菜单全部不可用 */
         private boolean enabled;
-        /** AI Foundation 写作模型资源名，留空复用对话模型 */
+        /** AI Foundation 写作模型资源名，留空复用内容创作默认模型 */
         private String writingModel;
         /** 大纲生成温度 */
         private float outlineTemperature;

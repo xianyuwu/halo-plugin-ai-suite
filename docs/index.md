@@ -4,6 +4,8 @@
 
 这里是 AI 智能套件的完整文档入口。根目录的 `README.md` 用于介绍产品和帮助第一次安装；本目录负责操作手册、生产运维、系统架构、API 和二次开发。
 
+> 当前文档适用于 0.4.2，包含 AI 标签和内容创作模型配置。相关内容创作页面截图已更新；其他页面的部分截图摄于较早版本，界面细节可能与当前界面不同。功能与操作步骤以对应手册正文为准。
+
 [![AI 智能套件系统架构](../assets/readme/system-architecture.svg)](/readme/system-architecture.svg)
 
 ## 按你的目标开始
@@ -18,6 +20,7 @@
 | 理解整个系统 | [系统架构](architecture/overview.md) |
 | 核对当前版本能力 | [当前版本能力清单](reference/current-version.md) |
 | 配置深度思考 | [深度思考与推理过程](user-guide/reasoning-mode.md) |
+| 为文章生成标签 | [AI 标签](user-guide/ai-tags.md) |
 | 制作交互宠物 | [交互宠物与 AI 宠物制作](user-guide/interactive-pets.md) |
 | 查询所有配置默认值 | [配置参考](reference/configuration-reference.md) |
 | 对接流式接口 | [SSE 协议](api/sse-protocol.md) |
@@ -44,6 +47,7 @@
 - [索引中心](user-guide/knowledge-index.md)
 - [AI 脑图](user-guide/mindmap.md)
 - [AI 摘要](user-guide/excerpt.md)
+- [AI 标签](user-guide/ai-tags.md)
 - [编辑器 AI 写作辅助](user-guide/writing-assistant.md)
 - [意图路由使用手册](user-guide/intent-routing.md)
 - [RAG 效果评测](user-guide/evaluation.md)

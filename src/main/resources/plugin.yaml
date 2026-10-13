@@ -3,7 +3,7 @@ kind: Plugin
 metadata:
   name: ai-suite
 spec:
-  version: "0.4.1"
+  version: "0.4.2"
   enabled: true
   requires: ">=2.26.0"
   author:
@@ -14,7 +14,7 @@ spec:
   repo: https://github.com/xianyuwu/halo-plugin-ai-suite
   issues: https://github.com/xianyuwu/halo-plugin-ai-suite/issues
   displayName: "AI智能套件"
-  description: "为 Halo 博客提供 AI 智能问答、文档智能编辑、AI 摘要等功能，基于 Halo AI Foundation 统一管理模型能力"
+  description: "为 Halo 博客提供 AI 智能问答、写作辅助、AI 摘要与 AI 标签等功能，基于 Halo AI Foundation 统一管理模型能力"
   configMapName: ai-suite-configmap
   pluginDependencies:
     ai-foundation: ">=1.1.1"

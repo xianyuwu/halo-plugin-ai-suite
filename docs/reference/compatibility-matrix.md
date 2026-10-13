@@ -2,7 +2,7 @@
 
 | 组件 | 当前要求 | 说明 |
 | --- | --- | --- |
-| AI 智能套件 | 0.4.1（0.4.x） | 当前修复版本；运行要求与 0.4.0 相同 |
+| AI 智能套件 | 0.4.2 | 0.4.2 增加 AI 标签与内容创作模型配置；运行要求未调整 |
 | Halo | 2.26.0+ | `plugin.yaml` 声明 `>=2.26.0`；已在 2.26.1 验证 |
 | Halo AI Foundation | 1.1.1+ | 必需，公开 API 以 `compileOnly` 接入；已在 1.1.1 验证 |
 | Java | 21 | 构建与本地运行要求 |
@@ -15,7 +15,7 @@
 
 - 语言模型、Embedding、Rerank 和结构化/流式输出由 Halo AI Foundation 统一适配。
 - AI 智能套件只保存业务使用的 AI Foundation 模型资源名和生成参数。
-- 字段为空时使用 AI Foundation 的默认模型；查询改写和写作模型为空时复用语言模型。
+- 对话和 Embedding 模型字段为空时使用 AI Foundation 对应的默认模型；查询改写为空时复用对话模型。0.4.2 中摘要、标签和写作模型为空时，先复用内容创作默认模型，再逐级回退到对话模型与 AI Foundation 默认语言模型。
 - 不同厂商对 usage、SSE、JSON 输出和 Rerank 支持可能不同，必须先在 AI Foundation 和 AI 智能套件后台连接测试中验证。
 - 推理模型可能返回结构化 reasoning 字段，也可能在文本中输出 `<think>` / `<reasoning>`；插件会统一解析，并在关闭深度思考时过滤意外透传内容。
 - 显式推理参数被供应商拒绝时会自动降级重试，因此“请求成功”不等于模型一定提供了可展示的推理过程。
@@ -33,6 +33,7 @@
 | AI 搜索能力 | 依赖 AI Foundation | 插件 Lucene 索引、AI Foundation 语言模型 | 关键词结果和 AI 综合回答都由本插件接口提供，不依赖 Halo 官方搜索插件的检索能力。 |
 | AI 搜索入口 | 访客使用时条件必需 | 默认安装并启用 Halo 官方搜索插件；若主题或自定义代码已经提供兼容搜索入口，可替代官方插件 | 未提供入口时接口和快捷键仍可能可用，但普通访客看不到搜索框，不能视为完整启用访客搜索。 |
 | AI 摘要 | 依赖 AI Foundation | Halo 摘要扩展点、AI Foundation 语言模型 | 自动摘要接入 Halo `ExcerptGenerator` 扩展点，批量摘要直接写入文章摘要字段。 |
+| AI 标签（0.4.2 起） | 依赖 AI Foundation | Halo `Post`、`Tag`、文章正文服务、AI Foundation 语言模型 | 生成建议不修改文章；人工确认后新建缺失标签并关联文章。文章列表弹窗依赖 Halo Console 的文章操作扩展点。 |
 | 编辑器 AI 写作 | 依赖 AI Foundation | Halo Console 编辑器扩展点、AI Foundation 语言/写作模型 | 只支持 Halo 当前编辑器扩展点。 |
 | 文章 AI 脑图 | 依赖 AI Foundation | Halo 文章内容、前台 Widget 注入、AI Foundation 语言模型 | 不依赖具体主题插件；极端自定义主题需验证文章上下文识别。 |
 | 意图路由 | 部分能力依赖 AI Foundation | Halo `Post` / `Tag` / `Category` / `Counter`；LLM 兜底和含 LLM 的处理器需要 AI Foundation 语言模型 | 标签、分类、关键词、时间和浏览量等确定性 Pipeline 可直接返回结构化卡片；热门排序使用 Halo 核心 Counter 数据。 |

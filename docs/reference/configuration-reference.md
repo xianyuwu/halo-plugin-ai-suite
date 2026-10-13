@@ -3,6 +3,8 @@
 > 事实来源：`AIProperties.java` 当前默认值  
 > 适用版本：AI 智能套件 0.4.x
 
+> AI 标签及三项内容创作模型字段从 0.4.2 开始提供。
+
 ## 配置存储
 
 [![配置与密钥存储](../diagrams/exported/config-storage.svg)](/diagrams/exported/config-storage.svg)
@@ -14,6 +16,9 @@ ConfigMap 的每个 `data.<group>` 是一段 JSON 字符串。AI 智能套件不
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
 | `aiFoundationChatModelName` | 空 | AI Foundation 语言模型资源名；为空使用默认语言模型 |
+| `aiFoundationContentModelName` | 空 | 内容创作默认语言模型资源名；为空复用对话模型 |
+| `aiFoundationExcerptModelName` | 空 | AI 摘要专用语言模型资源名；为空复用内容创作默认模型 |
+| `aiFoundationTagModelName` | 空 | AI 标签专用语言模型资源名；为空复用内容创作默认模型 |
 | `aiFoundationEmbeddingModelName` | 空 | AI Foundation Embedding 模型资源名；为空使用默认嵌入模型 |
 | `embeddingDimensions` | `1024` | 期望的索引向量维度；固定维度模型使用原生输出，可变维度模型在原生维度不同时才显式请求该值；变更后需全量重建 |
 | `rerankEnabled` | `false` | 是否启用 Rerank 模型能力 |
@@ -22,6 +27,10 @@ ConfigMap 的每个 `data.<group>` 是一段 JSON 字符串。AI 智能套件不
 | `aiFoundationQueryRewriteModelName` | 空 | AI Foundation 查询改写模型资源名；为空复用语言模型 |
 
 模型能力开关表示服务是否可用；检索增强页中的管线开关决定一次 RAG 请求是否实际调用它。
+
+内容创作模型的回退顺序为“功能单独指定 → 内容创作默认模型 → 对话模型 → AI Foundation 默认语言模型”。写作辅助的独立模型字段位于 `writing.writingModel`；AI 摘要和 AI 标签的独立模型字段位于 `models`。更改这些语言模型不会要求重建文章索引。
+
+[![内容创作模型回退关系](../diagrams/exported/content-model-routing.svg)](/diagrams/exported/content-model-routing.svg)
 
 ## 切片配置 `chunking`
 
@@ -120,7 +129,7 @@ ConfigMap 的每个 `data.<group>` 是一段 JSON 字符串。AI 智能套件不
 | 字段 | 默认值 | 说明 |
 | --- | ---: | --- |
 | `enabled` | `true` | 编辑器 AI 功能总开关 |
-| `writingModel` | 空 | AI Foundation 写作模型资源名；为空复用语言模型 |
+| `writingModel` | 空 | AI Foundation 写作模型资源名；为空复用内容创作默认模型 |
 | `outlineTemperature` | `0.3` | 大纲温度 |
 | `outlineSections` | `6` | 顶层章节数量 |
 | `outlineDepth` | `1` | 大纲深度，合法范围 1～3 |
@@ -172,6 +181,7 @@ ConfigMap 的每个 `data.<group>` 是一段 JSON 字符串。AI 智能套件不
 | 变更 | 是否需要重建索引 |
 | --- | --- |
 | Chat 模型、Prompt、温度 | 否 |
+| 内容创作默认模型、摘要/标签/写作独立模型 | 否 |
 | Embedding 模型或维度 | 是，全量重建 |
 | 切片大小、重叠、分隔规则 | 是，重建受影响文章 |
 | 检索 Top-K、Top-N、阈值 | 否 |

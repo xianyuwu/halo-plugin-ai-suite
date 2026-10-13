@@ -103,8 +103,18 @@ public class LlmClient {
                                      float temperature, int maxTokens,
                                      Map<String, Object> responseFormat,
                                      String scenario) {
-        return reasoningMode().flatMap(reasoningMode -> aiFoundationClient.chat(model, messages,
+        return reasoningMode().flatMap(reasoningMode -> chatInternal(model, messages,
             temperature, maxTokens, responseFormat, scenario, reasoningMode));
+    }
+
+    public Mono<String> chatInternal(String model,
+                                     List<Map<String, String>> messages,
+                                     float temperature, int maxTokens,
+                                     Map<String, Object> responseFormat,
+                                     String scenario,
+                                     String reasoningMode) {
+        return aiFoundationClient.chat(model, messages, temperature, maxTokens,
+            responseFormat, scenario, reasoningMode);
     }
 
     public Flux<String> chatStreamInternal(String model,

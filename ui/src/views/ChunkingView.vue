@@ -60,7 +60,7 @@
           </div>
         </SectionCard>
 
-        <SectionCard title="优化建议" :icon-component="RiLightbulbLine" headerTitle="使用指南" headerDesc="切片参数配置的注意事项与最佳实践">
+        <SectionCard class="ai-guide-card" title="优化建议" :icon-component="RiLightbulbLine" headerTitle="使用指南" headerDesc="切片参数配置的注意事项与最佳实践">
           <div class="ai-card-body">
             <ul class="ai-tips-list">
               <li>切片大小建议在 300-800 字符之间，过长会降低检索精度</li>
@@ -152,12 +152,6 @@ onMounted(async () => {
 .ai-excerpt-cols > :deep(.ai-section-block) {
   flex: 1;
   min-width: 0;
-}
-
-.ai-excerpt-cols > :deep(.ai-section-block:last-child) .ai-section-card {
-  background: #f8fafc;
-  border-color: #e2e8f0;
-  box-shadow: none;
 }
 
 /* ===== Tips 列表 ===== */

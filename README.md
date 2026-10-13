@@ -4,13 +4,13 @@
 
 **把 Halo 博客变成一个能回答、会检索、可辅助创作，也懂内容运营的 AI 知识站。**
 
-面向 Halo 2.26+ 的一体化 AI 插件，提供 RAG 智能问答、AI 搜索、写作辅助、摘要、脑图、效果评测、意图路由与运营智能体。基于 Halo AI Foundation 统一管理模型能力，内置 Lucene 混合检索，无需额外部署向量数据库。
+面向 Halo 2.26+ 的一体化 AI 插件，提供 RAG 智能问答、AI 搜索、写作辅助、摘要、AI 标签、脑图、效果评测、意图路由与运营智能体。基于 Halo AI Foundation 统一管理模型能力，内置 Lucene 混合检索，无需额外部署向量数据库。
 
 [![Halo](https://img.shields.io/badge/Halo-%E2%89%A52.26.0-1e87f0?logo=halo&logoColor=white)](https://halo.run)
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Lucene](https://img.shields.io/badge/Lucene-10.5.0-0a6f3a)](https://lucene.apache.org/)
-[![Version](https://img.shields.io/badge/version-0.4.1-blue)](src/main/resources/plugin.yaml)
+[![Version](https://img.shields.io/badge/version-0.4.2-blue)](src/main/resources/plugin.yaml)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
 [快速开始](#快速开始) · [功能全景](#功能全景) · [完整文档](https://ai-suite-docs.rainwu.cn) · [工作原理](#工作原理) · [开发指南](#开发指南)
@@ -26,6 +26,8 @@
 - 在线文档：[AI 智能套件文档中心](https://ai-suite-docs.rainwu.cn)
 - 文档源码：[docs/](docs/)
 
+> 当前版本为 0.4.2，包含 AI 标签、文章列表生成弹窗及内容创作模型分配。使用旧版安装包的站点请核对插件版本与[更新日志](CHANGELOG.md)。
+
 ## 它解决什么问题
 
 博客通常不缺内容，缺的是让内容被重新发现、准确回答和持续复用的能力。AI 智能套件围绕文章从生产到消费的完整链路工作：
@@ -33,7 +35,7 @@
 - **访客找答案**：基于站内文章进行多轮问答，回答附带原文引用；支持访客按次开启深度思考并折叠查看推理过程。
 - **搜索更直接**：在关键词结果之外，先给出一段可追溯的 AI 综合回答。
 - **作者写得更快**：在 Halo 编辑器内完成润色、续写、扩写、简化、翻译和大纲生成。
-- **内容更易理解**：自动生成文章摘要与可交互脑图。
+- **内容更易理解**：自动生成文章摘要、推荐文章标签与可交互脑图。
 - **运营有依据**：从真实访客问题中发现内容缺口，形成选题、大纲和旧文优化建议。
 - **高频问题走捷径**：用可配置的意图路由处理“最新文章”“热门内容”“某标签文章”等确定性请求，并可用自然语言生成、检查和模拟路由草稿。
 
@@ -44,7 +46,7 @@
 | 面向访客 | 面向作者与运营者 |
 | --- | --- |
 | **RAG 智能问答**：全站文章多轮对话、深度思考、流式输出、引用溯源 | **写作辅助**：润色、续写、扩写、简化、译英，多轮追加要求并一键应用 |
-| **AI 搜索**：搜索页生成综合回答，并保留关键词结果 | **AI 摘要**：单篇或批量生成 Halo 文章摘要 |
+| **AI 搜索**：搜索页生成综合回答，并保留关键词结果 | **AI 摘要与标签**：生成文章摘要；推荐标签并在确认后应用 |
 | **文章脑图**：自动生成并缓存可交互思维导图 | **索引中心**：全量/单篇重建，查看切片、关键词与索引状态 |
 | **问答反馈**：点赞、点踩结果进入后台分析 | **效果评测**：维护评测集，检查检索命中、回答质量与引用效果 |
 | **意图路由**：确定性问题进入可编排 Pipeline，响应更稳定 | **运营智能体**：分析访客需求与文章覆盖，产出可执行的内容建议 |
@@ -67,7 +69,7 @@
 
 ## 实际界面
 
-以下截图来自 `dev.rainwu.cn` 测试环境，展示当前版本的真实运行效果。站点内容、统计数字和界面细节会随数据与版本变化。
+内容创作相关截图来自当前本地开发环境，其余部分截图来自较早版本的 `dev.rainwu.cn` 测试环境。站点内容、统计数字和界面细节会随数据与版本变化；AI 标签的操作步骤以[用户手册](docs/user-guide/ai-tags.md)为准。
 
 ### 访客端
 
@@ -112,10 +114,15 @@
 | [![对话与外观配置及实时预览](assets/readme/screenshots/console-chat.png)](assets/readme/screenshots/console-chat.png) | [![AI 脑图配置与管理页面](assets/readme/screenshots/console-mindmap.jpg)](assets/readme/screenshots/console-mindmap.jpg) |
 | 配置问答规则、快捷问题、访客浮窗并实时预览 | 设置生成参数、独立主题，并管理文章脑图 |
 
-| AI 摘要 | 写作辅助 |
+| AI 摘要 | AI 标签 |
 | --- | --- |
-| [![AI 摘要配置与文章管理](assets/readme/screenshots/console-excerpt.jpg)](assets/readme/screenshots/console-excerpt.jpg) | [![编辑器 AI 写作辅助配置页面](assets/readme/screenshots/console-writing.jpg)](assets/readme/screenshots/console-writing.jpg) |
-| 配置摘要生成参数并批量管理文章摘要 | 配置编辑器 AI 动作、写作模型与大纲生成 |
+| [![AI 摘要配置与文章管理](assets/readme/screenshots/console-excerpt.jpg)](assets/readme/screenshots/console-excerpt.jpg) | [![AI 标签配置与文章管理](assets/readme/screenshots/console-tags.jpg)](assets/readme/screenshots/console-tags.jpg) |
+| 配置摘要生成参数并批量管理文章摘要 | 为文章生成候选标签，确认后应用到文章 |
+
+| 写作辅助 | 内容创作默认模型 |
+| --- | --- |
+| [![编辑器 AI 写作辅助配置页面](assets/readme/screenshots/console-writing.jpg)](assets/readme/screenshots/console-writing.jpg) | [![内容创作默认模型配置](assets/readme/screenshots/console-models-content.jpg)](assets/readme/screenshots/console-models-content.jpg) |
+| 配置编辑器 AI 动作、写作模型与大纲生成 | 为 AI 摘要、AI 标签和写作辅助设置默认模型 |
 
 | 问答记录 | 用量统计 |
 | --- | --- |
@@ -156,7 +163,7 @@ JAVA_HOME=/path/to/jdk21 ./gradlew build
 进入「AI 智能套件 → 模型配置」：
 
 1. 先在 Halo AI Foundation 中配置模型供应商、密钥和默认模型。
-2. 在 AI 智能套件中选择或填写 Chat、Embedding、Rerank、Query Rewrite 等 AI Foundation 模型资源名。
+2. 在 AI 智能套件中选择或填写对话、Embedding、Rerank、Query Rewrite 等 AI Foundation 模型资源名；内容创作默认模型可由 AI 摘要、AI 标签和写作辅助分别覆盖。
 3. 分别执行连通性测试，确认配置可用。测试在后台执行；查询中断时优先点击“继续查询”，避免重复调用。
 4. 确认 Embedding 模型向量维度后，进入「索引中心」重建索引。
 
@@ -205,7 +212,7 @@ location / {
 
 ### 系统全景架构
 
-主图采用“体验入口 → API 与权限边界 → 业务能力 → AI 编排核心 → 共享基础能力 → 数据与知识”的阅读路径，并单独展示 Halo AI Foundation 到外部模型能力的调用边界。蓝色表示业务调用，紫色表示模型调用，绿色表示数据流；具体类级调用继续由下方专项图展开。
+主图展示体验入口、API 权限、业务能力、访客问答的意图与 RAG 编排，以及共享能力和数据层。摘要、标签等内容生成通过所选语言模型调用 Halo AI Foundation，不经过访客问答的 RAG 管线。蓝色表示业务调用，紫色表示模型调用，绿色表示数据流；具体类级调用继续由下方专项图展开。
 
 [![AI 智能套件系统全景架构](assets/readme/system-architecture.svg)](assets/readme/system-architecture.svg)
 
@@ -218,7 +225,7 @@ location / {
 | Console 与编辑器 | Vue 管理页面、`AiWritingExtension`、Console 系列 Endpoint |
 | AI 编排核心 | `ChatService`、`IntentDetector`、`PipelineExecutor`、`RAGPipeline`、`AiFoundationClient`、`LlmClient` |
 | 检索与索引 | `DocumentChunker`、`HybridRetriever`、`LuceneIndexService`、`PostIndexReconciler` |
-| 内容与运营 | `WritingService`、`SummaryService`、`MindMapService`、`EvaluationService`、`ContentGapAgentService` |
+| 内容与运营 | `WritingService`、`SummaryService`、`TagGenerationService`、`MindMapService`、`EvaluationService`、`ContentGapAgentService` |
 | 安全与观测 | `LimitGuard`、`VisitorRateLimiter`、`UsageTracker`、`ChatLogger`、`PipelineTrace`、`TraceCache` |
 | Halo 数据 | Post / Tag / Category / Counter、ConfigMap、自定义 Extension、AI Foundation 模型配置 |
 
@@ -252,13 +259,14 @@ location / {
 
 | Console 页面 | 主要用途 |
 | --- | --- |
-| 模型配置 | Chat、Embedding、Rerank、Query Rewrite 模型与连通性测试 |
+| 模型配置 | 对话、Embedding、Rerank、Query Rewrite 模型与连通性测试；内容创作默认模型 |
 | 切片设置 | 切片大小、重叠、标题/句子边界与自动关键词 |
 | 索引中心 | 索引重建、文章状态、切片与关键词检查 |
 | 检索策略 / 检索增强 | BM25/向量混合检索、Top-K、阈值、HyDE、Rerank、跨语言 |
 | 对话与外观 | 系统提示词、历史轮数、访客开关与浮窗样式 |
 | AI 搜索 / AI 脑图 / AI 摘要 | 各前台与内容生成功能的开关和参数 |
-| 写作辅助 | 编辑器写作模型、大纲深度与输入限制 |
+| AI 标签 | 在独立页面或文章列表操作菜单中生成候选标签，人工选择后应用；可单独指定标签模型 |
+| 写作辅助 | 编辑器写作模型、大纲深度与输入限制；可单独指定写作模型 |
 | 意图路由 | 触发规则、Pipeline、优先级与输出模板 |
 | 效果评测 | 评测数据集、运行记录和质量问题定位 |
 | 运营智能体 | 内容缺口、选题、大纲与旧文更新建议 |
@@ -266,9 +274,12 @@ location / {
 
 “对话与外观”还负责深度思考策略和结构化快捷问题。快捷问题可以直接绑定已启用的意图路由，避免依赖文案模糊匹配。
 
-## 0.3.4 文档重点
+## 0.4.x 文档重点
 
 - [当前版本能力清单](docs/reference/current-version.md)
+- [AI 标签使用手册](docs/user-guide/ai-tags.md)
+- [AI 摘要使用手册](docs/user-guide/excerpt.md)
+- [模型配置与回退关系](docs/reference/configuration-reference.md#模型配置-models)
 - [深度思考与推理过程](docs/user-guide/reasoning-mode.md)
 - [AI 创建与管理意图路由](docs/user-guide/intent-routing.md)
 - [Public API 与 v1alpha2 兼容入口](docs/api/public-api.md)

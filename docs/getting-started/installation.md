@@ -40,7 +40,7 @@ JAVA_HOME=~/jdk21/contents/Contents/Home ./gradlew build
 构建产物位于：
 
 ```text
-build/libs/plugin-ai-suite-0.4.0.jar
+build/libs/plugin-ai-suite-<当前构建版本>.jar
 ```
 
 本项目开发环境不使用 Docker，也不要运行 `./gradlew haloServer`。
@@ -74,6 +74,7 @@ curl -u YOUR_ADMIN_USERNAME \
 - Embedding 模型资源名，留空使用 AI Foundation 默认嵌入模型。
 - Rerank 模型资源名，留空使用 AI Foundation 默认 Rerank 模型。
 - 查询改写模型资源名，留空复用语言模型。
+- 0.4.2 可选择内容创作默认模型；AI 摘要、AI 标签和写作辅助可在各自页面单独指定。
 
 点击连通性测试。成功只代表模型接口可调用，不代表 RAG 已经可用。
 

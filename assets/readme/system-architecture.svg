@@ -36,7 +36,7 @@
   <text x="64" y="213" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700" letter-spacing="2">体验入口</text>
   <g filter="url(#shadow)" font-family="Inter, PingFang SC, sans-serif">
     <rect x="64" y="230" width="340" height="92" rx="18" fill="#0F2942" stroke="#0EA5E9" stroke-opacity=".65"/><rect x="82" y="249" width="46" height="46" rx="13" fill="#0EA5E9" fill-opacity=".17"/><path d="M94 260h22v17h-13l-6 6v-6h-3z" stroke="#7DD3FC" stroke-width="2"/><text x="146" y="263" fill="#F0F9FF" font-size="19" font-weight="700">Halo 主题前台</text><text x="146" y="288" fill="#7DD3FC" font-size="14">智能问答 · AI 搜索 · 文章脑图</text>
-    <rect x="430" y="230" width="340" height="92" rx="18" fill="#171E4A" stroke="#6366F1" stroke-opacity=".7"/><rect x="448" y="249" width="46" height="46" rx="13" fill="#6366F1" fill-opacity=".2"/><path d="M459 261h24v19h-24zM459 266h24" stroke="#A5B4FC" stroke-width="2"/><text x="512" y="263" fill="#EEF2FF" font-size="19" font-weight="700">Halo Console</text><text x="512" y="288" fill="#A5B4FC" font-size="14">配置 · 索引 · 评测 · 运营管理</text>
+    <rect x="430" y="230" width="340" height="92" rx="18" fill="#171E4A" stroke="#6366F1" stroke-opacity=".7"/><rect x="448" y="249" width="46" height="46" rx="13" fill="#6366F1" fill-opacity=".2"/><path d="M459 261h24v19h-24zM459 266h24" stroke="#A5B4FC" stroke-width="2"/><text x="512" y="263" fill="#EEF2FF" font-size="19" font-weight="700">Halo Console</text><text x="512" y="288" fill="#A5B4FC" font-size="14">模型配置 · 内容创作 · 运营管理</text>
     <rect x="796" y="230" width="340" height="92" rx="18" fill="#281744" stroke="#A855F7" stroke-opacity=".65"/><rect x="814" y="249" width="46" height="46" rx="13" fill="#A855F7" fill-opacity=".18"/><path d="M826 278l18-18M825 263h7M838 276h7" stroke="#D8B4FE" stroke-width="2"/><text x="878" y="263" fill="#FAF5FF" font-size="19" font-weight="700">Tiptap 编辑器</text><text x="878" y="288" fill="#D8B4FE" font-size="14">多轮写作辅助 · 大纲生成</text>
   </g>
   <path d="M279 174V228M608 174V228M950 174V228" stroke="#60A5FA" stroke-width="2" marker-end="url(#blueArrow)"/>
@@ -51,19 +51,21 @@
   <g font-family="Inter, PingFang SC, sans-serif">
     <rect x="94" y="414" width="314" height="70" rx="16" fill="#0B3148" stroke="#38BDF8" stroke-opacity=".55"/><text x="116" y="443" fill="#E0F2FE" font-size="16" font-weight="700">公开 API</text><text x="116" y="466" fill="#7DD3FC" font-size="13">匿名授权 · POST · SSE 流式响应</text>
     <rect x="442" y="414" width="314" height="70" rx="16" fill="#1E2355" stroke="#818CF8" stroke-opacity=".6"/><text x="464" y="443" fill="#EEF2FF" font-size="16" font-weight="700">Console API</text><text x="464" y="466" fill="#A5B4FC" font-size="13">管理员 RBAC · 配置与业务管理</text>
-    <rect x="790" y="414" width="314" height="70" rx="16" fill="#3B1753" stroke="#C084FC" stroke-opacity=".58"/><text x="812" y="443" fill="#FAF5FF" font-size="16" font-weight="700">编辑器扩展点</text><text x="812" y="466" fill="#D8B4FE" font-size="13">Tiptap Extension · 当前用户权限</text>
+    <rect x="790" y="414" width="314" height="70" rx="16" fill="#3B1753" stroke="#C084FC" stroke-opacity=".58"/><text x="812" y="443" fill="#FAF5FF" font-size="16" font-weight="700">Console 扩展点</text><text x="812" y="466" fill="#D8B4FE" font-size="13">文章操作菜单 · Tiptap 写作</text>
   </g>
 
   <!-- 业务能力 -->
   <text x="94" y="516" fill="#A5B4FC" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700" letter-spacing="2">业务能力</text>
   <g font-family="Inter, PingFang SC, sans-serif">
     <rect x="94" y="530" width="314" height="82" rx="18" fill="#082F49" fill-opacity=".7" stroke="#38BDF8" stroke-opacity=".55"/><text x="116" y="560" fill="#E0F2FE" font-size="18" font-weight="700">访客智能</text><text x="116" y="588" fill="#7DD3FC" font-size="14">RAG 问答 · AI 搜索 · 引用 · 反馈</text>
-    <rect x="442" y="530" width="314" height="82" rx="18" fill="#1E1B4B" fill-opacity=".78" stroke="#818CF8" stroke-opacity=".6"/><text x="464" y="560" fill="#EEF2FF" font-size="18" font-weight="700">内容智能</text><text x="464" y="588" fill="#A5B4FC" font-size="14">写作辅助 · AI 摘要 · 脑图 · 大纲</text>
+    <rect x="442" y="530" width="314" height="82" rx="18" fill="#1E1B4B" fill-opacity=".78" stroke="#818CF8" stroke-opacity=".6"/><text x="464" y="560" fill="#EEF2FF" font-size="18" font-weight="700">内容智能</text><text x="464" y="588" fill="#A5B4FC" font-size="14">写作 · 摘要 · AI 标签 · 脑图</text>
     <rect x="790" y="530" width="314" height="82" rx="18" fill="#3B1753" fill-opacity=".58" stroke="#C084FC" stroke-opacity=".58"/><text x="812" y="560" fill="#FAF5FF" font-size="18" font-weight="700">运营智能</text><text x="812" y="588" fill="#D8B4FE" font-size="14">内容缺口 · 效果评测 · 日志 · 用量</text>
   </g>
 
   <!-- 双路径编排 -->
-  <path d="M251 612V630M599 612V630M947 612V630" stroke="#A78BFA" stroke-width="2" marker-end="url(#purpleArrow)"/>
+  <path d="M251 612V630" stroke="#A78BFA" stroke-width="2" marker-end="url(#purpleArrow)"/>
+  <path d="M756 566H775V500H1168V365H1208" stroke="#A78BFA" stroke-width="2" fill="none" marker-end="url(#purpleArrow)"/>
+  <text x="792" y="495" fill="#D8B4FE" font-family="Inter, PingFang SC, sans-serif" font-size="12">内容生成使用所选语言模型</text>
   <g filter="url(#shadow)" font-family="Inter, PingFang SC, sans-serif">
     <rect x="94" y="632" width="1010" height="150" rx="22" fill="url(#core)"/>
     <text x="120" y="662" fill="#C7D2FE" font-size="12" font-weight="750" letter-spacing="2">AI 编排核心 · 意图与 RAG 双路径</text>
@@ -89,10 +91,12 @@
   <text x="1210" y="266" fill="#C4B5FD" font-family="Inter, PingFang SC, sans-serif" font-size="12" font-weight="700" letter-spacing="2">模型能力与供应商</text>
   <g font-family="Inter, PingFang SC, sans-serif" filter="url(#shadow)">
     <rect x="1210" y="288" width="296" height="110" rx="18" fill="#0F172A" stroke="#818CF8"/><text x="1234" y="322" fill="#F5F3FF" font-size="17" font-weight="700">Halo AI Foundation</text><text x="1234" y="349" fill="#A5B4FC" font-size="13">必需插件依赖 · 统一模型能力网关</text><text x="1234" y="373" fill="#A5B4FC" font-size="13">供应商、密钥与默认模型管理</text>
-    <rect x="1210" y="438" width="296" height="104" rx="18" fill="#251B4B" stroke="#8B5CF6" stroke-opacity=".6"/><circle cx="1244" cy="475" r="17" fill="#8B5CF6" fill-opacity=".2"/><path d="M1237 475h14M1244 468v14" stroke="#C4B5FD" stroke-width="2"/><text x="1273" y="474" fill="#F5F3FF" font-size="17" font-weight="700">对话模型（Chat）</text><text x="1273" y="500" fill="#C4B5FD" font-size="13">回答 · 改写 · HyDE · 内容生成</text>
+    <rect x="1210" y="438" width="296" height="104" rx="18" fill="#251B4B" stroke="#8B5CF6" stroke-opacity=".6"/><circle cx="1244" cy="475" r="17" fill="#8B5CF6" fill-opacity=".2"/><path d="M1237 475h14M1244 468v14" stroke="#C4B5FD" stroke-width="2"/><text x="1273" y="474" fill="#F5F3FF" font-size="17" font-weight="700">语言模型（Chat）</text><text x="1273" y="500" fill="#C4B5FD" font-size="13">对话 · 内容创作 · 查询改写</text>
     <rect x="1210" y="566" width="296" height="104" rx="18" fill="#132D40" stroke="#0EA5E9" stroke-opacity=".55"/><circle cx="1244" cy="603" r="17" fill="#0EA5E9" fill-opacity=".18"/><path d="M1236 603h16M1240 597v12M1248 597v12" stroke="#7DD3FC" stroke-width="2"/><text x="1273" y="602" fill="#F0F9FF" font-size="17" font-weight="700">向量模型（Embedding）</text><text x="1273" y="628" fill="#7DD3FC" font-size="13">文章向量 · 查询向量</text>
     <rect x="1210" y="694" width="296" height="104" rx="18" fill="#34203A" stroke="#D946EF" stroke-opacity=".5"/><circle cx="1244" cy="731" r="17" fill="#D946EF" fill-opacity=".17"/><path d="M1237 737l5-7 5 3 5-9" stroke="#F0ABFC" stroke-width="2"/><text x="1273" y="730" fill="#FDF4FF" font-size="17" font-weight="700">重排序模型（Rerank）</text><text x="1273" y="756" fill="#F0ABFC" font-size="13">候选文档语义精排</text>
   </g>
+  <text x="1220" y="835" fill="#D8B4FE" font-family="Inter, PingFang SC, sans-serif" font-size="12">内容创作可单独选择语言模型</text>
+  <text x="1220" y="858" fill="#94A3B8" font-family="Inter, PingFang SC, sans-serif" font-size="12">留空时逐级复用已有配置</text>
   <path d="M1104 707H1152V343H1208" stroke="#A78BFA" stroke-width="2.5" marker-end="url(#purpleArrow)"/>
   <path d="M1210 343H1192V746" stroke="#A78BFA" stroke-opacity=".68" stroke-width="1.8"/>
   <path d="M1192 490H1208" stroke="#A78BFA" stroke-opacity=".68" stroke-width="1.8" marker-end="url(#purpleArrow)"/>

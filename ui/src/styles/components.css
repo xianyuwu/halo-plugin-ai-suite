@@ -117,7 +117,16 @@
   overflow: hidden;
 }
 
+/* All usage and guidance cards share the same quiet surface. */
+.ai-guide-card .ai-section-card {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  box-shadow: none;
+}
+
 .ai-card-header {
+  width: 100%;
+  min-width: 0;
   padding: 12px 18px;
   border-bottom: 1px solid #e5e7eb;
   display: flex;

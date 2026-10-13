@@ -63,6 +63,7 @@ import RiSearchLine from "~icons/ri/search-line";
 import RiSparkling2Line from "~icons/ri/sparkling-2-line";
 import RiChatSmileLine from "~icons/ri/chat-smile-line";
 import RiFileTextLine from "~icons/ri/file-text-line";
+import RiPriceTag3Line from "~icons/ri/price-tag-3-line";
 import RiQuillPenLine from "~icons/ri/quill-pen-line";
 import RiBarChartLine from "~icons/ri/bar-chart-line";
 import RiMessage2Line from "~icons/ri/message-2-line";
@@ -117,6 +118,7 @@ const itemGroups = [
     label: "内容创作",
     items: [
       { name: "AISuiteExcerpt", icon: markRaw(RiFileTextLine), label: "AI 摘要" },
+      { name: "AISuiteTags", icon: markRaw(RiPriceTag3Line), label: "AI 标签" },
       { name: "AISuiteWriting", icon: markRaw(RiQuillPenLine), label: "写作辅助" },
     ],
   },
