@@ -1,6 +1,4 @@
-# 0.4.2 Release Notes 草稿
-
-> 本文供创建 GitHub Release 时复核和使用；0.4.2 尚未发布。
+# 0.4.2 Release Notes
 
 ## 新增
 

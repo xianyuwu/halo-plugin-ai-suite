@@ -4,7 +4,7 @@
 
 AI 摘要通过 Halo 摘要扩展点或后台批量操作生成文章摘要。
 
-待发布的 0.4.2 可在 AI 摘要页展开“模型设置（可选）”，为摘要单独指定 AI Foundation 语言模型。留空时依次复用内容创作默认模型、对话模型和 AI Foundation 默认语言模型。这项独立模型配置尚未包含在已发布的 0.4.1 JAR 中。
+从 0.4.2 起，可在 AI 摘要页展开“模型设置（可选）”，为摘要单独指定 AI Foundation 语言模型。留空时依次复用内容创作默认模型、对话模型和 AI Foundation 默认语言模型。
 
 ![AI 摘要管理](../../assets/readme/screenshots/console-excerpt.jpg)
 

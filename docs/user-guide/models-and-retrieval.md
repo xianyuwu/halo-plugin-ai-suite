@@ -16,7 +16,7 @@
 | 检索策略 | keyword/vector/hybrid、候选数和阈值 | 保存后对新请求生效 |
 | 检索增强 | Rewrite、HyDE、Rerank、跨语言 | 增加效果、延迟和费用 |
 
-待发布的 0.4.2 中，内容创作默认模型由 AI 摘要、AI 标签和写作辅助复用；三个功能也可分别指定模型。详见[配置参考](../reference/configuration-reference.md#模型配置-models)。这部分尚未包含在已发布的 0.4.1 JAR 中。
+从 0.4.2 起，内容创作默认模型由 AI 摘要、AI 标签和写作辅助复用；三个功能也可分别指定模型。详见[配置参考](../reference/configuration-reference.md#模型配置-models)。
 
 ![内容创作默认模型](../../assets/readme/screenshots/console-models-content.jpg)
 
