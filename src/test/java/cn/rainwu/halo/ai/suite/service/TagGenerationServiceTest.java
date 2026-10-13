@@ -1,6 +1,7 @@
 package cn.rainwu.halo.ai.suite.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -99,6 +100,93 @@ class TagGenerationServiceTest {
         verify(client).create(argThat((Tag created) ->
             "AI 写作".equals(created.getSpec().getDisplayName())));
         verify(client).update(post);
+    }
+
+    @Test
+    void removesNewTagWhenPostUpdateFails() {
+        var client = mock(ReactiveExtensionClient.class);
+        var service = new TagGenerationService(client, mock(PostContentService.class),
+            mock(LlmClient.class), mock(AIProperties.class));
+        Post post = post("post-a", "文章", java.util.List.of("tag-halo"));
+        Post persistedPost = post("post-a", "文章", java.util.List.of("tag-halo"));
+        Tag halo = tag("tag-halo", "Halo");
+        RuntimeException updateFailure = new RuntimeException("post update failed");
+        when(client.fetch(Post.class, "post-a")).thenReturn(Mono.just(post));
+        when(client.list(eq(Tag.class), any(), isNull())).thenReturn(Flux.just(halo));
+        when(client.create(any(Tag.class))).thenAnswer(call -> {
+            Tag created = call.getArgument(0);
+            created.getMetadata().setName("tag-new");
+            return Mono.just(created);
+        });
+        when(client.update(any(Post.class))).thenReturn(Mono.error(updateFailure));
+        when(client.list(eq(Post.class), any(), isNull())).thenAnswer(call -> {
+            java.util.function.Predicate<Post> filter = call.getArgument(1);
+            return Flux.just(persistedPost).filter(filter);
+        });
+        when(client.delete(any(Tag.class))).thenReturn(Mono.empty());
+
+        assertThatThrownBy(() -> service.apply("post-a", java.util.List.of("AI 写作")).block())
+            .isSameAs(updateFailure);
+
+        verify(client).delete(argThat((Tag created) ->
+            "tag-new".equals(created.getMetadata().getName())));
+        verify(client, never()).delete(halo);
+    }
+
+    @Test
+    void preservesNewTagIfPostUpdateMayHaveSucceeded() {
+        var client = mock(ReactiveExtensionClient.class);
+        var service = new TagGenerationService(client, mock(PostContentService.class),
+            mock(LlmClient.class), mock(AIProperties.class));
+        Post post = post("post-a", "文章", java.util.List.of());
+        Post unrelatedPost = post("post-b", "其他文章", java.util.List.of());
+        Post persistedPost = post("post-a", "文章", java.util.List.of("tag-new"));
+        RuntimeException responseFailure = new RuntimeException("response lost");
+        when(client.fetch(Post.class, "post-a")).thenReturn(Mono.just(post));
+        when(client.list(eq(Tag.class), any(), isNull())).thenReturn(Flux.empty());
+        when(client.create(any(Tag.class))).thenAnswer(call -> {
+            Tag created = call.getArgument(0);
+            created.getMetadata().setName("tag-new");
+            return Mono.just(created);
+        });
+        when(client.update(any(Post.class))).thenReturn(Mono.error(responseFailure));
+        when(client.list(eq(Post.class), any(), isNull())).thenAnswer(call -> {
+            java.util.function.Predicate<Post> filter = call.getArgument(1);
+            return Flux.just(unrelatedPost, persistedPost).filter(filter);
+        });
+
+        assertThatThrownBy(() -> service.apply("post-a", java.util.List.of("AI 写作")).block())
+            .isSameAs(responseFailure);
+
+        verify(client, never()).delete(any(Tag.class));
+    }
+
+    @Test
+    void removesAlreadyCreatedTagWhenLaterTagCreationFails() {
+        var client = mock(ReactiveExtensionClient.class);
+        var service = new TagGenerationService(client, mock(PostContentService.class),
+            mock(LlmClient.class), mock(AIProperties.class));
+        Post post = post("post-a", "文章", java.util.List.of());
+        RuntimeException createFailure = new RuntimeException("second tag failed");
+        when(client.fetch(Post.class, "post-a")).thenReturn(Mono.just(post));
+        when(client.list(eq(Tag.class), any(), isNull())).thenReturn(Flux.empty());
+        when(client.create(any(Tag.class))).thenAnswer(call -> {
+            Tag created = call.getArgument(0);
+            if ("第二个".equals(created.getSpec().getDisplayName())) {
+                return Mono.error(createFailure);
+            }
+            created.getMetadata().setName("tag-first");
+            return Mono.just(created);
+        });
+        when(client.list(eq(Post.class), any(), isNull())).thenReturn(Flux.empty());
+        when(client.delete(any(Tag.class))).thenReturn(Mono.empty());
+
+        assertThatThrownBy(() -> service.apply("post-a", java.util.List.of("第一个", "第二个")).block())
+            .isSameAs(createFailure);
+
+        verify(client).delete(argThat((Tag created) ->
+            "tag-first".equals(created.getMetadata().getName())));
+        verify(client, never()).update(any(Post.class));
     }
 
     @Test
