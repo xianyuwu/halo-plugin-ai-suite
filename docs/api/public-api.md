@@ -108,7 +108,7 @@ curl -X POST \
 { "keyword": "Halo 插件开发" }
 ```
 
-关键词最多 500 字符。正常响应为 citations、JSON token 和 `[DONE]`，不发送 `logId`。生成中断或达到模型输出长度上限时会先发送 `event:error`，再发送 `[DONE]`；客户端应将已有正文标记为可能不完整。
+关键词最多 500 字符。正常响应为 citations、JSON token 和 `[DONE]`，不发送 `logId`。生成中断、达到模型输出长度上限或模型明确异常结束时会先发送 `event:error`，再发送 `[DONE]`；客户端应将已有正文标记为可能不完整。
 
 ## GET `/mindmap`
 

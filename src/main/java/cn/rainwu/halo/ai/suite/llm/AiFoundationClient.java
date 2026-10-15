@@ -365,9 +365,15 @@ public class AiFoundationClient {
             return stream.textStream().concatWith(stream.result()
                 .doOnNext(result -> {
                     recordChatUsage(usageModel, scenario, result, messages, content.toString());
-                    if (UsageScenario.SEARCH_ANSWER.equals(scenario)
-                        && result.getFinishReason() == FinishReason.LENGTH) {
-                        throw new IllegalStateException("AI 搜索回答达到模型输出长度上限");
+                    if (UsageScenario.SEARCH_ANSWER.equals(scenario)) {
+                        FinishReason reason = result.getFinishReason();
+                        if (reason == FinishReason.LENGTH) {
+                            throw new IllegalStateException("AI 搜索回答达到模型输出长度上限");
+                        }
+                        if (reason == FinishReason.CONTENT_FILTER || reason == FinishReason.ERROR
+                            || reason == FinishReason.TOOL_CALLS) {
+                            throw new IllegalStateException("AI 搜索回答异常结束: " + reason);
+                        }
                     }
                 })
                 .then(Mono.empty()));
