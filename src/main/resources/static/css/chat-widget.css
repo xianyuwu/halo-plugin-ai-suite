@@ -1694,6 +1694,18 @@
   transition: color 0.12s;
 }
 .ai-search-clear:hover { color: var(--ai-chat-text, #333); }
+.ai-search-submit {
+  flex-shrink: 0;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: var(--ai-chat-color, #7C3BED);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ai-search-submit:hover { filter: brightness(1.1); }
+.ai-search-submit:focus-visible { outline: 2px solid var(--ai-chat-color, #7C3BED); outline-offset: 2px; }
 /* 关闭按钮 — 桌面端低调（移动端在下方 media query 里放大，确保可触摸退出全屏弹窗） */
 .ai-search-close {
   width: 28px;
@@ -1843,6 +1855,7 @@
 .ai-search-ai-error {
   color: #e74c3c;
   font-size: 13px;
+  margin-top: 8px;
 }
 .ai-search-ai-cites {
   margin-top: 10px;

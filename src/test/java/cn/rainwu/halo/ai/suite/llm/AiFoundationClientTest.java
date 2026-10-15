@@ -17,6 +17,7 @@ import reactor.core.publisher.Mono;
 import run.halo.aifoundation.AiModelService;
 import run.halo.aifoundation.chat.GenerateTextRequest;
 import run.halo.aifoundation.chat.GenerateTextResult;
+import run.halo.aifoundation.chat.FinishReason;
 import run.halo.aifoundation.chat.LanguageModel;
 import run.halo.aifoundation.embedding.EmbeddingModel;
 import run.halo.aifoundation.embedding.EmbeddingRequest;
@@ -47,6 +48,22 @@ class AiFoundationClientTest {
             .2f, 128, null, "test", "default").collectList().block()).containsExactly("hello", " world");
         verify(usageTracker).recordUsage("ai-foundation-default-language", "chat", "test", 7L, 9L, false, 0);
         verify(model).streamText(any(GenerateTextRequest.class));
+    }
+
+    @Test
+    void searchAnswerReportsModelLengthLimitInsteadOfCompletingPartialText() {
+        var model = streamingLanguageModel();
+        var stream = mock(run.halo.aifoundation.chat.StreamTextResult.class);
+        when(model.streamText(any(GenerateTextRequest.class))).thenReturn(stream);
+        when(stream.textStream()).thenReturn(reactor.core.publisher.Flux.just("未写完的回答"));
+        when(stream.result()).thenReturn(Mono.just(GenerateTextResult.builder()
+            .text("未写完的回答")
+            .finishReason(FinishReason.LENGTH)
+            .build()));
+
+        assertThatThrownBy(() -> client.chatStream("", List.of(Map.of("role", "user", "content", "问题")),
+            .2f, 128, null, UsageScenario.SEARCH_ANSWER, "default").collectList().block())
+            .hasMessageContaining("输出长度上限");
     }
 
     @Test

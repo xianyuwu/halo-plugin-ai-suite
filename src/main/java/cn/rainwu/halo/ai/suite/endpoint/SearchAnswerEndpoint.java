@@ -121,7 +121,7 @@ public class SearchAnswerEndpoint implements CustomEndpoint {
                     .concatWith(doneFrame)
                     .onErrorResume(e -> {
                         log.error("[SearchAnswerEndpoint] 流式中断: {}", e.getMessage());
-                        return simpleErrorStream("AI 搜索暂不可用");
+                        return interruptedStream();
                     });
 
                 return ServerResponse.ok()
@@ -132,8 +132,19 @@ public class SearchAnswerEndpoint implements CustomEndpoint {
                 log.error("[SearchAnswerEndpoint] 搜索回答失败: {}", e.getMessage());
                 return ServerResponse.ok()
                     .contentType(MediaType.TEXT_EVENT_STREAM)
-                    .body(simpleErrorStream("AI 搜索暂不可用"), ServerSentEvent.class);
+                    .body(interruptedStream(), ServerSentEvent.class);
             });
+    }
+
+    /** 保留已有正文时，客户端仍能区分错误终止与正常 [DONE]。 */
+    private Flux<ServerSentEvent<String>> interruptedStream() {
+        return Flux.just(
+            ServerSentEvent.<String>builder()
+                .event("error")
+                .data(wrapToken("AI 回答中断，以上内容可能不完整，请重试"))
+                .build(),
+            ServerSentEvent.<String>builder().data("[DONE]").build()
+        );
     }
 
     /** 单条错误 token + [DONE] 兜底流 */
