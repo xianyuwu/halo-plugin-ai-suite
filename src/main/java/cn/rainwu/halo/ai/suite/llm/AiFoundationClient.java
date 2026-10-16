@@ -16,6 +16,7 @@ import reactor.core.publisher.Mono;
 import run.halo.aifoundation.AiModelService;
 import run.halo.aifoundation.chat.GenerateTextRequest;
 import run.halo.aifoundation.chat.GenerateTextResult;
+import run.halo.aifoundation.chat.FinishReason;
 import run.halo.aifoundation.chat.LanguageModel;
 import run.halo.aifoundation.chat.LanguageModelUsage;
 import run.halo.aifoundation.chat.ReasoningOptions;
@@ -362,8 +363,19 @@ public class AiFoundationClient {
             StreamTextResult stream = model.streamText(generateTextRequest(messages, temperature,
                 maxTokens, responseFormat, reasoningMode));
             return stream.textStream().concatWith(stream.result()
-                .doOnNext(result -> recordChatUsage(usageModel, scenario, result, messages,
-                    content.toString()))
+                .doOnNext(result -> {
+                    recordChatUsage(usageModel, scenario, result, messages, content.toString());
+                    if (UsageScenario.SEARCH_ANSWER.equals(scenario)) {
+                        FinishReason reason = result.getFinishReason();
+                        if (reason == FinishReason.LENGTH) {
+                            throw new IllegalStateException("AI 搜索回答达到模型输出长度上限");
+                        }
+                        if (reason == FinishReason.CONTENT_FILTER || reason == FinishReason.ERROR
+                            || reason == FinishReason.TOOL_CALLS) {
+                            throw new IllegalStateException("AI 搜索回答异常结束: " + reason);
+                        }
+                    }
+                })
                 .then(Mono.empty()));
         });
     }

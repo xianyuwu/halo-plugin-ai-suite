@@ -139,6 +139,7 @@
                       >
                         &times;
                       </button>
+                      <button class="ai-search-submit" type="button" @click="runSearchDebug">搜索</button>
                       <kbd class="ai-search-kbd">Esc</kbd>
                     </div>
 
@@ -806,7 +807,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 48px;
+  flex: 0 0 56px;
+  box-sizing: border-box;
   padding: 0 14px;
   border-bottom: 1px solid var(--ai-chat-border, rgba(0, 0, 0, 0.06));
   box-shadow: none;
@@ -853,6 +855,19 @@ onBeforeUnmount(() => {
   transition: color 0.12s;
 }
 .ai-search-clear:hover { color: var(--ai-chat-text, #333); }
+.ai-search-submit {
+  flex-shrink: 0;
+  min-width: 72px;
+  height: 36px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 8px;
+  background: var(--ai-chat-color, #7C3BED);
+  color: #fff;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
 .ai-search-kbd {
   font-size: 12px;
   padding: 2px 6px;
@@ -866,7 +881,8 @@ onBeforeUnmount(() => {
   line-height: 1.4;
 }
 .ai-search-results {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   padding: 0;
 }
