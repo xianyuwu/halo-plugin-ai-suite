@@ -45,6 +45,9 @@ public class PublicSearchEndpoint implements CustomEndpoint {
     private static final int SEARCH_TOP_K = 50;   // Lucene 初始召回数
     private static final String POST_SEARCH_TYPE = "post.content.halo.run";
     private static final Pattern HIGHLIGHT = Pattern.compile("(?is)<mark>(.*?)</mark>");
+    private static final Pattern SCRIPT_OR_STYLE = Pattern.compile(
+        "(?is)<(script|style)\\b[^>]*>.*?</\\1\\s*>");
+    private static final Pattern OTHER_HTML_TAG = Pattern.compile("(?is)<(?!/?mark>)[^>]+>");
     private static final List<String> QUESTION_WORDS = List.of(
         "什么", "哪些", "怎么", "如何", "为什么", "多少", "几天", "有没有", "哪里", "哪儿", "是否");
 
@@ -182,7 +185,10 @@ public class PublicSearchEndpoint implements CustomEndpoint {
 
     private String safeHaloSnippet(String value) {
         if (value == null) return "";
-        String escaped = HtmlUtils.htmlEscape(HtmlUtils.htmlUnescape(value));
+        String decoded = HtmlUtils.htmlUnescape(value);
+        String plain = SCRIPT_OR_STYLE.matcher(decoded).replaceAll(" ");
+        plain = OTHER_HTML_TAG.matcher(plain).replaceAll(" ").replaceAll("\\s+", " ").trim();
+        String escaped = HtmlUtils.htmlEscape(plain);
         return escaped.replace("&lt;mark&gt;", "<mark>")
             .replace("&lt;/mark&gt;", "</mark>");
     }

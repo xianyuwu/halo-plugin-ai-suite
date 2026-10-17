@@ -59,7 +59,7 @@ class PublicSearchEndpointTest {
             .jsonPath("$.articles[0].title").isEqualTo("DeepSeek <One>")
             .jsonPath("$.articles[0].url").isEqualTo("/archives/post-one")
             .jsonPath("$.articles[0].snippet")
-            .isEqualTo("About <mark>DeepSeek</mark> &lt;script&gt;alert(1)&lt;/script&gt;");
+            .isEqualTo("About <mark>DeepSeek</mark>");
 
         ArgumentCaptor<SearchOption> options = ArgumentCaptor.forClass(SearchOption.class);
         verify(searchService).search(options.capture());
@@ -108,6 +108,22 @@ class PublicSearchEndpointTest {
             .jsonPath("$.questionMode").isEqualTo(true)
             .jsonPath("$.articles[0].postId").isEqualTo("first")
             .jsonPath("$.articles[1].postId").isEqualTo("second");
+    }
+
+    @Test
+    void removesArticleMarkupButKeepsHighlightedText() {
+        enableSearch(10);
+        HaloDocument post = post("travel", "海南游记");
+        post.setContent("&lt;p&gt;这片&lt;mark&gt;海滩&lt;/mark&gt;很美&lt;/p&gt;"
+            + "<img src=\"photo.jpg\" alt=\"photo\">"
+            + "<script>alert(1)</script><style>body{display:none}</style>");
+        SearchResult result = new SearchResult();
+        result.setHits(List.of(post));
+        when(searchService.search(any())).thenReturn(Mono.just(result));
+
+        client.get().uri("/search/halo-results?keyword=海南游记")
+            .exchange().expectStatus().isOk().expectBody()
+            .jsonPath("$.articles[0].snippet").isEqualTo("这片<mark>海滩</mark>很美");
     }
 
     @Test
