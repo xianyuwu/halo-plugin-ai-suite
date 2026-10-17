@@ -1918,6 +1918,24 @@
   border-left: 2px solid transparent;
   transition: background 0.15s, transform 0.15s, border-color 0.15s, padding-left 0.15s;
 }
+.ai-search-kw-item[hidden] {
+  display: none;
+}
+.ai-search-kw-expand {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--ai-chat-border, #e0d6ff);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ai-chat-text-accent, #7C3BED);
+  cursor: pointer;
+  font: inherit;
+}
+.ai-search-kw-expand:hover {
+  background: var(--ai-chat-bg-bubble-ai, rgba(124, 59, 237, 0.08));
+}
 .ai-search-kw-item:hover {
   background: var(--ai-chat-bg-bubble-ai, rgba(124, 59, 237, 0.08));
   border-left-color: var(--ai-chat-color, #7C3BED);

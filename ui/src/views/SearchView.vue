@@ -167,13 +167,13 @@
 
                       <div class="ai-search-kw-section" v-show="debugError || previewArticles.length || (debugRan && !debugResultsLoading)">
                         <div class="ai-search-kw-header">
-                          📄 搜索结果 <span class="ai-search-kw-count">({{ previewArticles.length || normalizedResultCount }})</span>
+                          📄 {{ debugRan && debugQuestionMode ? '可能相关的文章' : '搜索结果' }} <span class="ai-search-kw-count">({{ previewArticles.length || normalizedResultCount }})</span>
                         </div>
                         <div v-if="debugError" class="ai-search-ai-error">{{ debugError }}</div>
                         <div v-else-if="debugRan && !debugResultsLoading && !previewArticles.length" class="ai-search-empty">没有找到匹配文章。</div>
                         <div v-else class="ai-search-kw-list">
                           <a
-                            v-for="article in previewArticles"
+                            v-for="article in visiblePreviewArticles"
                             :key="article.postId || article.title"
                             class="ai-search-kw-item"
                             :href="article.url || '#'"
@@ -183,6 +183,13 @@
                             <div class="ai-search-kw-snippet" v-html="sanitizeSnippet(article.snippet || '')"></div>
                           </a>
                         </div>
+                        <button
+                          v-if="debugRan && debugQuestionMode && previewArticles.length > 5"
+                          class="ai-search-kw-expand"
+                          type="button"
+                          :aria-expanded="debugExpanded"
+                          @click="debugExpanded = !debugExpanded"
+                        >{{ debugExpanded ? '收起文章' : `查看全部 ${previewArticles.length} 篇文章` }}</button>
                       </div>
 
                       <div
@@ -245,6 +252,8 @@ const saveMsg = ref("");
 const saveOk = ref(false);
 const debugKeyword = ref("");
 const debugArticles = ref<SearchArticle[]>([]);
+const debugQuestionMode = ref(false);
+const debugExpanded = ref(false);
 const debugCitations = ref<SearchCitation[]>([]);
 const debugAnswer = ref("");
 const debugError = ref("");
@@ -327,6 +336,10 @@ const previewArticles = computed<SearchArticle[]>(() => {
     { postId: "demo-2", title: "AI 助手配置实践", snippet: "结果项保持紧凑，方便访客快速扫描。" },
   ];
 });
+const visiblePreviewArticles = computed(() =>
+  debugRan.value && debugQuestionMode.value && !debugExpanded.value
+    ? previewArticles.value.slice(0, 5) : previewArticles.value
+);
 
 const previewCitations = computed<SearchCitation[]>(() => {
   if (debugRan.value) return debugCitations.value;
@@ -398,6 +411,8 @@ function clearPreviewSearch() {
   debugAbortController = null;
   debugKeyword.value = "";
   debugArticles.value = [];
+  debugQuestionMode.value = false;
+  debugExpanded.value = false;
   debugCitations.value = [];
   debugAnswer.value = "";
   debugError.value = "";
@@ -451,6 +466,8 @@ async function runSearchDebug() {
   debugRan.value = true;
   debugError.value = "";
   debugArticles.value = [];
+  debugQuestionMode.value = false;
+  debugExpanded.value = false;
   debugCitations.value = [];
   debugAnswer.value = "";
   debugElapsed.value = 0;
@@ -482,7 +499,10 @@ async function loadDebugResults(keyword: string, signal: AbortSignal) {
     const resp = await fetch(`/apis/api.ai-suite.halo.run/v1alpha1/search/halo-results?keyword=${encodeURIComponent(keyword)}`, { signal });
     if (!resp.ok) throw new Error("关键词搜索请求失败");
     const data = await resp.json();
-    debugArticles.value = Array.isArray(data.articles) ? data.articles : [];
+    if (!signal.aborted) {
+      debugArticles.value = Array.isArray(data.articles) ? data.articles : [];
+      debugQuestionMode.value = data.questionMode === true;
+    }
   } finally {
     if (!signal.aborted) debugResultsLoading.value = false;
   }
@@ -1030,6 +1050,20 @@ onBeforeUnmount(() => {
   position: relative;
   border-left: 2px solid transparent;
   transition: background 0.15s, transform 0.15s, border-color 0.15s, padding-left 0.15s;
+}
+.ai-search-kw-expand {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--ai-chat-border, #e0d6ff);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ai-chat-text-accent, #7C3BED);
+  cursor: pointer;
+  font: inherit;
+}
+.ai-search-kw-expand:hover {
+  background: var(--ai-chat-bg-bubble-ai, rgba(124, 59, 237, 0.08));
 }
 .ai-search-kw-item:hover {
   background: var(--ai-chat-bg-bubble-ai, rgba(124, 59, 237, 0.08));

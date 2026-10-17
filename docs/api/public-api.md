@@ -96,13 +96,16 @@ curl -X POST \
       "score": 0.0
     }
   ],
-  "source": "halo"
+  "source": "halo",
+  "questionMode": false
 }
 ```
 
 优先使用 Halo 核心搜索引擎，只返回公开、已发布且未回收的文章；引擎不可用时回退本插件 Lucene 索引，`source` 为 `lucene`。`total` 表示当前返回的文章条数，最多为后台配置的 `resultCount`，不代表全站命中总数。Halo 原生结果没有逐条分数，原生来源的 `score` 为 `0`；回退来源保留原 Lucene 分数。
 
 `snippet` 只允许受控的 `<mark>` 高亮；外部调用方仍应按自身渲染策略清洗 HTML。
+
+`questionMode` 标记长问句。长问句仍由 Halo 搜索召回文章，接口仅根据 Halo 返回的标题和摘要高亮对候选文章做轻量排序；没有高亮或分数相同的文章保留 Halo 原有顺序。回退到插件 Lucene 时保留其排序。访客弹框在该模式下先显示前 5 篇，其余文章可展开；接口仍返回配置数量以内的全部文章。这是关键词相关性调整，不保证语义匹配。
 
 ## POST `/search/answer`
 

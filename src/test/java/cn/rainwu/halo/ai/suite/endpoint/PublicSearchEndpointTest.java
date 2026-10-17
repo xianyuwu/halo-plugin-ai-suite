@@ -52,6 +52,7 @@ class PublicSearchEndpointTest {
             .expectStatus().isOk()
             .expectBody()
             .jsonPath("$.source").isEqualTo("halo")
+            .jsonPath("$.questionMode").isEqualTo(false)
             .jsonPath("$.total").isEqualTo(1)
             .jsonPath("$.articles.length()").isEqualTo(1)
             .jsonPath("$.articles[0].postId").isEqualTo("post-one")
@@ -72,6 +73,41 @@ class PublicSearchEndpointTest {
         assertThat(option.getHighlightPreTag()).isEqualTo("<mark>");
         assertThat(option.getHighlightPostTag()).isEqualTo("</mark>");
         verifyNoInteractions(luceneIndexService);
+    }
+
+    @Test
+    void questionReranksHaloCandidatesAndKeepsAllArticles() {
+        enableSearch(10);
+        HaloDocument incidental = post("crypto", "国密算法");
+        incidental.setDescription("<mark>中国</mark>密码技术");
+        HaloDocument travel = post("travel", "海南自驾游");
+        travel.setContent("分享<mark>好玩儿的地方</mark>");
+        SearchResult result = new SearchResult();
+        result.setHits(List.of(incidental, travel));
+        when(searchService.search(any())).thenReturn(Mono.just(result));
+
+        client.get().uri(builder -> builder.path("/search/halo-results")
+                .queryParam("keyword", "中国有哪些好玩儿的地方？").build())
+            .exchange().expectStatus().isOk().expectBody()
+            .jsonPath("$.questionMode").isEqualTo(true)
+            .jsonPath("$.total").isEqualTo(2)
+            .jsonPath("$.articles[0].postId").isEqualTo("travel")
+            .jsonPath("$.articles[1].postId").isEqualTo("crypto");
+    }
+
+    @Test
+    void questionWithoutHighlightsKeepsHaloOrder() {
+        enableSearch(10);
+        SearchResult result = new SearchResult();
+        result.setHits(List.of(post("first", "第一篇"), post("second", "第二篇")));
+        when(searchService.search(any())).thenReturn(Mono.just(result));
+
+        client.get().uri(builder -> builder.path("/search/halo-results")
+                .queryParam("keyword", "作者在海南玩了几天").build())
+            .exchange().expectStatus().isOk().expectBody()
+            .jsonPath("$.questionMode").isEqualTo(true)
+            .jsonPath("$.articles[0].postId").isEqualTo("first")
+            .jsonPath("$.articles[1].postId").isEqualTo("second");
     }
 
     @Test

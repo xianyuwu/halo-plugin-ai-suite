@@ -23,6 +23,8 @@ import run.halo.app.search.SearchOption;
 import run.halo.app.search.SearchService;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -42,6 +44,9 @@ public class PublicSearchEndpoint implements CustomEndpoint {
 
     private static final int SEARCH_TOP_K = 50;   // Lucene 初始召回数
     private static final String POST_SEARCH_TYPE = "post.content.halo.run";
+    private static final Pattern HIGHLIGHT = Pattern.compile("(?is)<mark>(.*?)</mark>");
+    private static final List<String> QUESTION_WORDS = List.of(
+        "什么", "哪些", "怎么", "如何", "为什么", "多少", "几天", "有没有", "哪里", "哪儿", "是否");
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
@@ -62,30 +67,32 @@ public class PublicSearchEndpoint implements CustomEndpoint {
      */
     private Mono<ServerResponse> handleSearchResults(ServerRequest request) {
         String keyword = request.queryParam("keyword").orElse("").trim();
+        boolean questionMode = isQuestion(keyword);
         if (keyword.isEmpty()) {
-            return ServerResponse.ok().bodyValue(emptyResult("lucene"));
+            return ServerResponse.ok().bodyValue(withQuestionMode(emptyResult("lucene"), false));
         }
 
         return aiProperties.getSearchConfig().flatMap(searchConfig -> {
             // 前置校验: 后台关闭搜索功能时返回空结果, 防止绕过前端隐藏直调 API
             if (searchConfig == null || !searchConfig.isEnabled()) {
-                return ServerResponse.ok().bodyValue(emptyResult("disabled"));
+                return ServerResponse.ok().bodyValue(withQuestionMode(emptyResult("disabled"), questionMode));
             }
             int resultCount = Math.max(1, Math.min(30, searchConfig.getResultCount()));
-            return searchByHalo(keyword, resultCount)
+            return searchByHalo(keyword, resultCount, questionMode)
                 .onErrorResume(e -> {
                     log.warn("[PublicSearchEndpoint] Halo 搜索不可用，回退插件索引: {}", e.getMessage());
                     return searchByPluginLucene(keyword, resultCount);
                 })
-                .flatMap(result -> ServerResponse.ok().bodyValue(result))
+                .flatMap(result -> ServerResponse.ok().bodyValue(withQuestionMode(result, questionMode)))
                 .onErrorResume(e -> {
                     log.error("[PublicSearchEndpoint] 搜索失败", e);
-                    return ServerResponse.ok().bodyValue(emptyResult("error"));
+                    return ServerResponse.ok().bodyValue(withQuestionMode(emptyResult("error"), questionMode));
                 });
         });
     }
 
-    private Mono<Map<String, Object>> searchByHalo(String keyword, int resultCount) {
+    private Mono<Map<String, Object>> searchByHalo(String keyword, int resultCount,
+                                                   boolean questionMode) {
         SearchOption option = new SearchOption();
         option.setKeyword(keyword);
         option.setLimit(resultCount);
@@ -97,11 +104,15 @@ public class PublicSearchEndpoint implements CustomEndpoint {
         option.setHighlightPostTag("</mark>");
 
         return searchService.search(option).map(result -> {
-            List<Map<String, Object>> articles = Optional.ofNullable(result.getHits())
+            List<HaloDocument> hits = Optional.ofNullable(result.getHits())
                 .orElse(List.of()).stream()
                 .filter(this::isPublicPost)
-                .map(this::buildHaloArticle)
-                .toList();
+                .collect(Collectors.toCollection(ArrayList::new));
+            // 只在问句中调整已召回文章的顺序；同分保留 Halo 引擎的原有排序。
+            if (questionMode) {
+                hits.sort(Comparator.comparingInt(this::questionRelevance).reversed());
+            }
+            List<Map<String, Object>> articles = hits.stream().map(this::buildHaloArticle).toList();
             Map<String, Object> response = new LinkedHashMap<>();
             // 现有弹框显示的是当前条数，保持 total 的原有含义。
             response.put("total", articles.size());
@@ -109,6 +120,34 @@ public class PublicSearchEndpoint implements CustomEndpoint {
             response.put("source", "halo");
             return response;
         });
+    }
+
+    private boolean isQuestion(String keyword) {
+        return keyword.length() >= 8 && (keyword.contains("?") || keyword.contains("？")
+            || QUESTION_WORDS.stream().anyMatch(keyword::contains));
+    }
+
+    private int questionRelevance(HaloDocument hit) {
+        // Halo 的高亮片段反映其实际命中的词；限制长度，避免一段长正文盖过标题。
+        return 4 * Math.min(longestHighlight(hit.getTitle()), 12)
+            + Math.min(Math.max(longestHighlight(hit.getDescription()),
+                longestHighlight(hit.getContent())), 5);
+    }
+
+    private int longestHighlight(String value) {
+        if (value == null) return 0;
+        Matcher matcher = HIGHLIGHT.matcher(value);
+        int longest = 0;
+        while (matcher.find()) {
+            String text = HtmlUtils.htmlUnescape(matcher.group(1).replaceAll("<[^>]+>", ""));
+            longest = Math.max(longest, text.codePointCount(0, text.length()));
+        }
+        return longest;
+    }
+
+    private Map<String, Object> withQuestionMode(Map<String, Object> result, boolean questionMode) {
+        result.put("questionMode", questionMode);
+        return result;
     }
 
     private boolean isPublicPost(HaloDocument hit) {

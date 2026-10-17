@@ -2091,8 +2091,9 @@
         '</div>' +
         // 关键词结果区
         '<div class="ai-search-kw-section" style="display:none">' +
-          '<div class="ai-search-kw-header">📄 搜索结果 <span class="ai-search-kw-count"></span></div>' +
+          '<div class="ai-search-kw-header">📄 <span class="ai-search-kw-label">搜索结果</span> <span class="ai-search-kw-count"></span></div>' +
           '<div class="ai-search-kw-list"></div>' +
+          '<button class="ai-search-kw-expand" type="button" style="display:none"></button>' +
         '</div>' +
         // 空状态
         '<div class="ai-search-empty">输入问题，按回车或点击搜索</div>' +
@@ -2120,6 +2121,14 @@
     var kwList = modal.querySelector(".ai-search-kw-list");
     kwList.addEventListener("click", function (e) {
       if (e.target.closest(".ai-search-kw-item")) closeSearchModal();
+    });
+    modal.querySelector(".ai-search-kw-expand").addEventListener("click", function () {
+      var button = this;
+      var expanded = button.getAttribute("aria-expanded") === "true";
+      var rows = kwList.querySelectorAll(".ai-search-kw-item");
+      for (var i = 5; i < rows.length; i++) rows[i].hidden = expanded;
+      button.setAttribute("aria-expanded", String(!expanded));
+      button.textContent = expanded ? "查看全部 " + rows.length + " 篇文章" : "收起文章";
     });
 
     // 清空按钮
@@ -2173,6 +2182,7 @@
     aiSection.querySelector(".ai-search-ai-body").innerHTML = "";
     kwSection.style.display = "none";
     kwSection.querySelector(".ai-search-kw-list").innerHTML = "";
+    kwSection.querySelector(".ai-search-kw-expand").style.display = "none";
     empty.style.display = "";
     empty.textContent = "输入问题，按回车或点击搜索";
   }
@@ -2192,6 +2202,8 @@
     var kwSection = modal.querySelector(".ai-search-kw-section");
     var kwList = modal.querySelector(".ai-search-kw-list");
     var kwCount = modal.querySelector(".ai-search-kw-count");
+    var kwLabel = modal.querySelector(".ai-search-kw-label");
+    var expandBtn = modal.querySelector(".ai-search-kw-expand");
     var empty = modal.querySelector(".ai-search-empty");
 
     // 隐藏空状态，按配置显示区域
@@ -2204,6 +2216,7 @@
     aiBody._content = "";
     aiBody._citations = null;
     kwList.innerHTML = "";
+    expandBtn.style.display = "none";
 
     // 1) AI 流式回答（按配置决定是否请求）
     if (showAi) {
@@ -2297,6 +2310,7 @@
       }
       kwSection.style.display = "";
       kwCount.textContent = "(" + data.total + ")";
+      kwLabel.textContent = data.questionMode ? "可能相关的文章" : "搜索结果";
 
       var html = "";
       for (var i = 0; i < data.articles.length; i++) {
@@ -2307,6 +2321,12 @@
         '</a>';
       }
       kwList.innerHTML = html;
+      var compact = data.questionMode && data.articles.length > 5;
+      var rows = kwList.querySelectorAll(".ai-search-kw-item");
+      for (var j = 5; j < rows.length; j++) rows[j].hidden = compact;
+      expandBtn.style.display = compact ? "" : "none";
+      expandBtn.setAttribute("aria-expanded", "false");
+      expandBtn.textContent = "查看全部 " + data.articles.length + " 篇文章";
     }).catch(function (e) {
       if (e.name === "AbortError" || !isCurrent()) return;
       kwSection.style.display = "none";
