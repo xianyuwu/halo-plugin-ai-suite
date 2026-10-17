@@ -13,7 +13,7 @@
 | POST | `/chat` | 非流式访客问答 |
 | POST | `/chat/feedback` | 提交点赞/点踩 |
 | GET | `/widget-config` | 读取访客浮窗配置 |
-| GET | `/search/halo-results` | 插件 Lucene 关键词结果 |
+| GET | `/search/halo-results` | Halo 核心搜索优先的站内文章结果 |
 | POST | `/search/answer` | SSE AI 搜索回答 |
 | GET | `/mindmap` | 读取文章脑图缓存 |
 
@@ -93,12 +93,14 @@ curl -X POST \
       "title": "文章标题",
       "url": "/archives/example",
       "snippet": "包含 <mark>关键词</mark> 的摘要",
-      "score": 1.23
+      "score": 0.0
     }
   ],
-  "source": "lucene"
+  "source": "halo"
 }
 ```
+
+优先使用 Halo 核心搜索引擎，只返回公开、已发布且未回收的文章；引擎不可用时回退本插件 Lucene 索引，`source` 为 `lucene`。`total` 表示当前返回的文章条数，最多为后台配置的 `resultCount`，不代表全站命中总数。Halo 原生结果没有逐条分数，原生来源的 `score` 为 `0`；回退来源保留原 Lucene 分数。
 
 `snippet` 只允许受控的 `<mark>` 高亮；外部调用方仍应按自身渲染策略清洗 HTML。
 

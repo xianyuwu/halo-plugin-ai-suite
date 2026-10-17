@@ -3,6 +3,7 @@ package cn.rainwu.halo.ai.suite.endpoint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.HtmlUtils;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerRequest;
@@ -17,6 +18,9 @@ import run.halo.app.core.extension.content.Post;
 import run.halo.app.core.extension.endpoint.CustomEndpoint;
 import run.halo.app.extension.GroupVersion;
 import run.halo.app.extension.ReactiveExtensionClient;
+import run.halo.app.search.HaloDocument;
+import run.halo.app.search.SearchOption;
+import run.halo.app.search.SearchService;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,8 +28,7 @@ import java.util.stream.Collectors;
 /**
  * 公开搜索结果 API — 返回结构化 JSON，供搜索弹框的「传统搜索结果」区域使用。
  *
- * <p>数据来源：直接走插件自己的 Lucene 索引（与 RAG 共用的分片索引），
- * 不依赖 Halo 核心 SearchService / 官方搜索插件。
+ * <p>优先使用 Halo 核心搜索引擎；引擎不可用时回退插件自己的 Lucene 分片索引。
  */
 @Slf4j
 @Component
@@ -35,8 +38,10 @@ public class PublicSearchEndpoint implements CustomEndpoint {
     private final LuceneIndexService luceneIndexService;
     private final ReactiveExtensionClient extensionClient;
     private final AIProperties aiProperties;
+    private final SearchService searchService;
 
     private static final int SEARCH_TOP_K = 50;   // Lucene 初始召回数
+    private static final String POST_SEARCH_TYPE = "post.content.halo.run";
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
@@ -53,7 +58,7 @@ public class PublicSearchEndpoint implements CustomEndpoint {
     /**
      * GET /search/halo-results?keyword=xxx — 返回 JSON 搜索结果
      *
-     * 直接走插件 Lucene 索引（与 RAG 共用），不调用 Halo 核心 SearchService。
+     * 保留访客端协议，优先返回 Halo 核心搜索的文章结果。
      */
     private Mono<ServerResponse> handleSearchResults(ServerRequest request) {
         String keyword = request.queryParam("keyword").orElse("").trim();
@@ -67,13 +72,80 @@ public class PublicSearchEndpoint implements CustomEndpoint {
                 return ServerResponse.ok().bodyValue(emptyResult("disabled"));
             }
             int resultCount = Math.max(1, Math.min(30, searchConfig.getResultCount()));
-            return searchByPluginLucene(keyword, resultCount)
+            return searchByHalo(keyword, resultCount)
+                .onErrorResume(e -> {
+                    log.warn("[PublicSearchEndpoint] Halo 搜索不可用，回退插件索引: {}", e.getMessage());
+                    return searchByPluginLucene(keyword, resultCount);
+                })
                 .flatMap(result -> ServerResponse.ok().bodyValue(result))
                 .onErrorResume(e -> {
                     log.error("[PublicSearchEndpoint] 搜索失败", e);
                     return ServerResponse.ok().bodyValue(emptyResult("error"));
                 });
         });
+    }
+
+    private Mono<Map<String, Object>> searchByHalo(String keyword, int resultCount) {
+        SearchOption option = new SearchOption();
+        option.setKeyword(keyword);
+        option.setLimit(resultCount);
+        option.setFilterExposed(true);
+        option.setFilterPublished(true);
+        option.setFilterRecycled(false);
+        option.setIncludeTypes(List.of(POST_SEARCH_TYPE));
+        option.setHighlightPreTag("<mark>");
+        option.setHighlightPostTag("</mark>");
+
+        return searchService.search(option).map(result -> {
+            List<Map<String, Object>> articles = Optional.ofNullable(result.getHits())
+                .orElse(List.of()).stream()
+                .filter(this::isPublicPost)
+                .map(this::buildHaloArticle)
+                .toList();
+            Map<String, Object> response = new LinkedHashMap<>();
+            // 现有弹框显示的是当前条数，保持 total 的原有含义。
+            response.put("total", articles.size());
+            response.put("articles", articles);
+            response.put("source", "halo");
+            return response;
+        });
+    }
+
+    private boolean isPublicPost(HaloDocument hit) {
+        return hit != null && POST_SEARCH_TYPE.equals(hit.getType())
+            && hit.isExposed() && hit.isPublished() && !hit.isRecycled();
+    }
+
+    private Map<String, Object> buildHaloArticle(HaloDocument hit) {
+        Map<String, Object> article = new LinkedHashMap<>();
+        article.put("postId", hit.getMetadataName());
+        article.put("title", plainHaloTitle(hit.getTitle()));
+        article.put("url", resolveFullUrl(hit.getPermalink()));
+        article.put("snippet", safeHaloSnippet(selectHaloSnippet(hit)));
+        // Halo SearchResult 不提供每条命中的分数；列表顺序已由搜索引擎排好。
+        article.put("score", 0.0);
+        return article;
+    }
+
+    private String selectHaloSnippet(HaloDocument hit) {
+        String description = hit.getDescription();
+        String content = hit.getContent();
+        if (description != null && description.contains("<mark>")) return description;
+        if (content != null && content.contains("<mark>")) return content;
+        if (description != null && !description.isBlank()) return description;
+        return content;
+    }
+
+    private String plainHaloTitle(String value) {
+        if (value == null) return "";
+        return HtmlUtils.htmlUnescape(value.replace("<mark>", "").replace("</mark>", ""));
+    }
+
+    private String safeHaloSnippet(String value) {
+        if (value == null) return "";
+        String escaped = HtmlUtils.htmlEscape(HtmlUtils.htmlUnescape(value));
+        return escaped.replace("&lt;mark&gt;", "<mark>")
+            .replace("&lt;/mark&gt;", "</mark>");
     }
 
     private Mono<Map<String, Object>> searchByPluginLucene(String keyword, int resultCount) {

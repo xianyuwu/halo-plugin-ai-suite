@@ -1689,7 +1689,18 @@
   }
 
   function sanitizeSnippet(html) {
-    return escapeHtml(String(html || ""))
+    // 接口片段已经转义过正文；先还原一层实体，再统一转义，避免显示 &gt; 等字面量。
+    var decoded = String(html || "").replace(/&(amp|lt|gt|quot|#39);/gi, function (entity) {
+      switch (entity.toLowerCase()) {
+        case "&amp;": return "&";
+        case "&lt;": return "<";
+        case "&gt;": return ">";
+        case "&quot;": return '"';
+        case "&#39;": return "'";
+        default: return entity;
+      }
+    });
+    return escapeHtml(decoded)
       .replace(/&lt;mark&gt;/gi, "<mark>")
       .replace(/&lt;\/mark&gt;/gi, "</mark>");
   }
