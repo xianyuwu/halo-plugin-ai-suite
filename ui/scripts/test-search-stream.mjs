@@ -53,7 +53,15 @@ const input = { value: '', focus: () => {}, addEventListener: (name, fn) => { ha
 const clear = { style: {}, addEventListener: (name, fn) => { handlers['clear:' + name] = fn; } };
 const submit = { addEventListener: (name, fn) => { handlers['submit:' + name] = fn; } };
 const close = { addEventListener: () => {} };
-const keywordList = { addEventListener: () => {} };
+const rows = Array.from({ length: 7 }, () => ({ hidden: false }));
+const keywordList = { addEventListener: () => {}, querySelectorAll: () => rows };
+const expand = {
+  textContent: '',
+  getAttribute: name => name === 'aria-expanded' ? expand.expanded : null,
+  setAttribute: (name, value) => { if (name === 'aria-expanded') expand.expanded = value; },
+  addEventListener: (name, fn) => { handlers['expand:' + name] = fn; },
+  expanded: 'false',
+};
 const modal = {
   innerHTML: '',
   setAttribute: () => {},
@@ -63,6 +71,7 @@ const modal = {
     '.ai-search-submit': submit,
     '.ai-search-close': close,
     '.ai-search-kw-list': keywordList,
+    '.ai-search-kw-expand': expand,
   })[selector],
 };
 const overlay = { appendChild: () => {}, setAttribute: () => {}, addEventListener: () => {}, contains: () => true };
@@ -98,4 +107,11 @@ assert.equal(prevented, true);
 assert.deepEqual(searches, ['作者在海南玩了几天？']);
 handlers['submit:click']();
 assert.equal(searches.length, 2);
-console.log('PASS: typing and IME confirmation make zero requests; Enter and search button submit explicitly.');
+rows.slice(5).forEach(row => { row.hidden = true; });
+handlers['expand:click'].call(expand);
+assert.equal(expand.expanded, 'true');
+assert.ok(rows.every(row => !row.hidden));
+handlers['expand:click'].call(expand);
+assert.equal(expand.expanded, 'false');
+assert.ok(rows.slice(5).every(row => row.hidden));
+console.log('PASS: explicit search, IME handling, and article expansion/collapse.');
