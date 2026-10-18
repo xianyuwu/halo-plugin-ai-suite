@@ -96,6 +96,26 @@ class PublicSearchEndpointTest {
     }
 
     @Test
+    void severalTitleMatchesOutrankOneLongGenericTerm() {
+        enableSearch(10);
+        HaloDocument calico = post("calico", "如何在<mark>Kubernetes</mark>中配置Calico路由反射器");
+        calico.setDescription("<mark>Kubernetes</mark>网络教程");
+        HaloDocument deployment = post("deployment",
+            "通过yaml<mark>在原生</mark>k8s上<mark>部署</mark><mark>Halo</mark>开源<mark>博客</mark>系统");
+        deployment.setDescription("<mark>在原生</mark><mark>Kubernetes</mark>上<mark>部署</mark>Halo博客");
+        SearchResult result = new SearchResult();
+        result.setHits(List.of(calico, deployment));
+        when(searchService.search(any())).thenReturn(Mono.just(result));
+
+        client.get().uri(builder -> builder.path("/search/halo-results")
+                .queryParam("keyword", "Halo博客在原生Kubernetes上怎么部署？").build())
+            .exchange().expectStatus().isOk().expectBody()
+            .jsonPath("$.questionMode").isEqualTo(true)
+            .jsonPath("$.articles[0].postId").isEqualTo("deployment")
+            .jsonPath("$.articles[1].postId").isEqualTo("calico");
+    }
+
+    @Test
     void questionWithoutHighlightsKeepsHaloOrder() {
         enableSearch(10);
         SearchResult result = new SearchResult();

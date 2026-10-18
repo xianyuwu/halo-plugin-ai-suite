@@ -165,21 +165,26 @@ public class PublicSearchEndpoint implements CustomEndpoint {
     }
 
     private int questionRelevance(HaloDocument hit) {
-        // Halo 的高亮片段反映其实际命中的词；限制长度，避免一段长正文盖过标题。
-        return 4 * Math.min(longestHighlight(hit.getTitle()), 12)
-            + Math.min(Math.max(longestHighlight(hit.getDescription()),
-                longestHighlight(hit.getContent())), 5);
+        // 多个不同的标题命中比一个较长的通用词更能说明文章覆盖了问句主题。
+        // 各片段和字段均设上限，避免重复高亮或长正文盖过标题。
+        return 4 * highlightCoverage(hit.getTitle(), 20)
+            + Math.max(highlightCoverage(hit.getDescription(), 8),
+                highlightCoverage(hit.getContent(), 8));
     }
 
-    private int longestHighlight(String value) {
+    private int highlightCoverage(String value, int fieldLimit) {
         if (value == null) return 0;
         Matcher matcher = HIGHLIGHT.matcher(value);
-        int longest = 0;
+        Set<String> distinct = new HashSet<>();
+        int coverage = 0;
         while (matcher.find()) {
-            String text = HtmlUtils.htmlUnescape(matcher.group(1).replaceAll("<[^>]+>", ""));
-            longest = Math.max(longest, text.codePointCount(0, text.length()));
+            String text = HtmlUtils.htmlUnescape(matcher.group(1).replaceAll("<[^>]+>", ""))
+                .trim().toLowerCase(Locale.ROOT);
+            if (!text.isEmpty() && distinct.add(text)) {
+                coverage += Math.min(text.codePointCount(0, text.length()), 5);
+            }
         }
-        return longest;
+        return Math.min(coverage, fieldLimit);
     }
 
     private Map<String, Object> withQuestionMode(Map<String, Object> result, boolean questionMode) {
