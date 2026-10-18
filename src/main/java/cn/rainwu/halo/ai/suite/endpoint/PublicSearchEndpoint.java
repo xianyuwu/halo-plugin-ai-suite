@@ -52,7 +52,8 @@ public class PublicSearchEndpoint implements CustomEndpoint {
         "什么", "哪些", "怎么", "如何", "为什么", "多少", "几天", "有没有", "哪里", "哪儿", "是否");
     private static final List<String> GENERIC_HIGHLIGHT_WORDS = List.of(
         "有没有", "怎么", "如何", "哪些", "什么", "多少", "几天", "哪天", "哪里", "哪儿",
-        "作者", "博客", "文章", "去过", "今天", "现在", "中国", "地方", "计算", "网站");
+        "作者", "博客", "文章", "去过", "今天", "现在", "中国", "地方", "计算", "网站",
+        "里有", "没有");
     private static final List<String> CURRENT_TIME_WORDS = List.of("今天", "现在", "明天", "实时", "当前");
     private static final List<String> CURRENT_FACT_WORDS = List.of("天气", "气温", "温度", "股价", "汇率");
 

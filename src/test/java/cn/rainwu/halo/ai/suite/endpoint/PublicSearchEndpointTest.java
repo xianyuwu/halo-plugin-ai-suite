@@ -149,6 +149,23 @@ class PublicSearchEndpointTest {
     }
 
     @Test
+    void splitQuestionFillerDoesNotMakeUnrelatedHitsClear() {
+        enableSearch(10);
+        HaloDocument first = post("blog", "<mark>博客</mark>搭建");
+        HaloDocument second = post("travel", "旅行日记");
+        second.setContent("这<mark>里有</mark>风景，却<mark>没有</mark>量子计算内容");
+        SearchResult result = new SearchResult();
+        result.setHits(List.of(first, second));
+        when(searchService.search(any())).thenReturn(Mono.just(result));
+
+        client.get().uri(builder -> builder.path("/search/halo-results")
+                .queryParam("keyword", "博客里有没有写量子计算？").build())
+            .exchange().expectStatus().isOk().expectBody()
+            .jsonPath("$.clearMatch").isEqualTo(false)
+            .jsonPath("$.total").isEqualTo(2);
+    }
+
+    @Test
     void specificQuestionHighlightIsClear() {
         enableSearch(10);
         HaloDocument travel = post("travel", "海南自驾游");
