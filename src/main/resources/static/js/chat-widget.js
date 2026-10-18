@@ -2071,12 +2071,10 @@
     modal.innerHTML =
       // 搜索输入区
       '<div class="ai-search-input-wrap">' +
-        '<svg class="ai-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>' +
         '<input class="ai-search-input" type="text" placeholder="输入问题，按回车搜索" autofocus />' +
         '<button class="ai-search-clear" title="清空" style="display:none">&times;</button>' +
         '<button class="ai-search-submit" type="button" title="搜索" aria-label="搜索">' +
-          '<span class="ai-search-submit-label">搜索</span>' +
-          '<svg class="ai-search-submit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>' +
+          '<svg class="ai-search-submit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>' +
         '</button>' +
         '<span class="ai-search-action-divider" aria-hidden="true"></span>' +
         '<button class="ai-search-close" type="button" title="关闭" aria-label="关闭搜索">' +
