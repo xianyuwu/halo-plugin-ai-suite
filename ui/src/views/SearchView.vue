@@ -133,10 +133,11 @@
                         v-if="debugKeyword"
                         class="ai-search-clear"
                         type="button"
-                        title="清空"
+                        title="清空输入"
+                        aria-label="清空输入"
                         @click="clearPreviewSearch"
                       >
-                        &times;
+                        清空
                       </button>
                       <button class="ai-search-submit" type="button" title="搜索" aria-label="搜索" @click="runSearchDebug">
                         <svg class="ai-search-submit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
@@ -866,18 +867,24 @@ onBeforeUnmount(() => {
   border: none;
   background: transparent;
   color: var(--ai-chat-text-muted, #999);
-  font-size: 16px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
+  width: 40px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: color 0.12s;
+  transition: color 0.12s, background-color 0.12s;
 }
-.ai-search-clear:hover { color: var(--ai-chat-text, #333); }
+.ai-search-clear:hover {
+  color: var(--ai-chat-text, #333);
+  background: rgba(var(--ai-search-color-rgb, 124, 59, 237), 0.08);
+}
+.ai-search-clear:focus-visible { outline: 2px solid var(--ai-chat-color, #7C3BED); outline-offset: 2px; }
 .ai-search-submit {
   display: inline-flex;
   align-items: center;
