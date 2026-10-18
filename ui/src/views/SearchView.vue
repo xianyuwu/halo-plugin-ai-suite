@@ -139,7 +139,11 @@
                       >
                         &times;
                       </button>
-                      <button class="ai-search-submit" type="button" @click="runSearchDebug">搜索</button>
+                      <button class="ai-search-submit" type="button" title="搜索" aria-label="搜索" @click="runSearchDebug">
+                        <span class="ai-search-submit-label">搜索</span>
+                        <svg class="ai-search-submit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6" /></svg>
+                      </button>
+                      <span class="ai-search-action-divider" aria-hidden="true"></span>
                       <kbd class="ai-search-kbd">Esc</kbd>
                     </div>
 
@@ -881,18 +885,34 @@ onBeforeUnmount(() => {
 }
 .ai-search-clear:hover { color: var(--ai-chat-text, #333); }
 .ai-search-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   flex-shrink: 0;
-  min-width: 72px;
+  min-width: 78px;
   height: 36px;
-  padding: 0 14px;
-  border: none;
-  border-radius: 8px;
-  background: var(--ai-chat-color, #7C3BED);
-  color: #fff;
-  font-size: 13px;
+  padding: 0 12px;
+  border: 1px solid rgba(var(--ai-search-color-rgb, 124, 59, 237), 0.34);
+  border-radius: 10px;
+  background: rgba(var(--ai-search-color-rgb, 124, 59, 237), 0.14);
+  color: var(--ai-chat-text, #1a1a1a);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
   cursor: pointer;
+  transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }
+.ai-search-submit-icon { width: 15px; height: 15px; display: block; flex-shrink: 0; color: var(--ai-chat-color, #7C3BED); }
+.ai-search-submit:hover {
+  background: rgba(var(--ai-search-color-rgb, 124, 59, 237), 0.24);
+  border-color: rgba(var(--ai-search-color-rgb, 124, 59, 237), 0.56);
+  box-shadow: 0 2px 10px rgba(var(--ai-search-color-rgb, 124, 59, 237), 0.12);
+}
+.ai-search-submit:active { transform: translateY(1px); }
+.ai-search-submit:focus-visible { outline: 2px solid var(--ai-chat-color, #7C3BED); outline-offset: 2px; }
+.ai-search-action-divider { width: 1px; height: 20px; flex: 0 0 1px; background: var(--ai-chat-border, rgba(0, 0, 0, 0.12)); margin: 0 -2px; }
 .ai-search-kbd {
   font-size: 12px;
   padding: 2px 6px;
@@ -1450,6 +1470,24 @@ onBeforeUnmount(() => {
   }
   .ai-search-kbd {
     display: none;
+  }
+  .ai-search-input-wrap {
+    gap: 8px;
+    padding: 0 10px;
+  }
+  .ai-search-submit {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    padding: 0;
+  }
+  .ai-search-submit-label,
+  .ai-search-action-divider {
+    display: none;
+  }
+  .ai-search-submit-icon {
+    width: 18px;
+    height: 18px;
   }
   .search-preview-meta {
     font-size: 11px;
