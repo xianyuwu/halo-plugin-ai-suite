@@ -106,8 +106,57 @@ class PublicSearchEndpointTest {
                 .queryParam("keyword", "作者在海南玩了几天").build())
             .exchange().expectStatus().isOk().expectBody()
             .jsonPath("$.questionMode").isEqualTo(true)
+            .jsonPath("$.clearMatch").isEqualTo(false)
             .jsonPath("$.articles[0].postId").isEqualTo("first")
             .jsonPath("$.articles[1].postId").isEqualTo("second");
+    }
+
+    @Test
+    void weakQuestionCandidatesRemainAvailableButAreMarkedUnclear() {
+        enableSearch(10);
+        HaloDocument incidental = post("math", "数学笔记");
+        incidental.setContent("<mark>博客</mark>中的<mark>计算</mark>示例");
+        SearchResult result = new SearchResult();
+        result.setHits(List.of(incidental));
+        when(searchService.search(any())).thenReturn(Mono.just(result));
+
+        client.get().uri(builder -> builder.path("/search/halo-results")
+                .queryParam("keyword", "博客里有没有写量子计算？").build())
+            .exchange().expectStatus().isOk().expectBody()
+            .jsonPath("$.clearMatch").isEqualTo(false)
+            .jsonPath("$.total").isEqualTo(1)
+            .jsonPath("$.articles[0].postId").isEqualTo("math");
+    }
+
+    @Test
+    void specificQuestionHighlightIsClear() {
+        enableSearch(10);
+        HaloDocument travel = post("travel", "海南自驾游");
+        travel.setContent("去过<mark>好玩儿的地方</mark>");
+        SearchResult result = new SearchResult();
+        result.setHits(List.of(travel));
+        when(searchService.search(any())).thenReturn(Mono.just(result));
+
+        client.get().uri(builder -> builder.path("/search/halo-results")
+                .queryParam("keyword", "中国有哪些好玩儿的地方？").build())
+            .exchange().expectStatus().isOk().expectBody()
+            .jsonPath("$.clearMatch").isEqualTo(true);
+    }
+
+    @Test
+    void historicalArticleDoesNotAnswerCurrentWeather() {
+        enableSearch(10);
+        HaloDocument travel = post("travel", "北京旅行天气");
+        travel.setContent("<mark>北京今天天气</mark>不错");
+        SearchResult result = new SearchResult();
+        result.setHits(List.of(travel));
+        when(searchService.search(any())).thenReturn(Mono.just(result));
+
+        client.get().uri(builder -> builder.path("/search/halo-results")
+                .queryParam("keyword", "今天北京天气怎么样？").build())
+            .exchange().expectStatus().isOk().expectBody()
+            .jsonPath("$.clearMatch").isEqualTo(false)
+            .jsonPath("$.total").isEqualTo(1);
     }
 
     @Test

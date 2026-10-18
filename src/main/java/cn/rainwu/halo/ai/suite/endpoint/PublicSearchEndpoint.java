@@ -50,6 +50,11 @@ public class PublicSearchEndpoint implements CustomEndpoint {
     private static final Pattern OTHER_HTML_TAG = Pattern.compile("(?is)<(?!/?mark>)[^>]+>");
     private static final List<String> QUESTION_WORDS = List.of(
         "什么", "哪些", "怎么", "如何", "为什么", "多少", "几天", "有没有", "哪里", "哪儿", "是否");
+    private static final List<String> GENERIC_HIGHLIGHT_WORDS = List.of(
+        "有没有", "怎么", "如何", "哪些", "什么", "多少", "几天", "哪天", "哪里", "哪儿",
+        "作者", "博客", "文章", "去过", "今天", "现在", "中国", "地方", "计算", "网站");
+    private static final List<String> CURRENT_TIME_WORDS = List.of("今天", "现在", "明天", "实时", "当前");
+    private static final List<String> CURRENT_FACT_WORDS = List.of("天气", "气温", "温度", "股价", "汇率");
 
     @Override
     public RouterFunction<ServerResponse> endpoint() {
@@ -121,8 +126,37 @@ public class PublicSearchEndpoint implements CustomEndpoint {
             response.put("total", articles.size());
             response.put("articles", articles);
             response.put("source", "halo");
+            response.put("clearMatch", !questionMode || hasClearQuestionMatch(keyword, hits));
             return response;
         });
+    }
+
+    private boolean hasClearQuestionMatch(String keyword, List<HaloDocument> hits) {
+        // 历史文章不能证明今天的天气或实时数值；宽泛结果仍返回给访客按需查看。
+        if (CURRENT_TIME_WORDS.stream().anyMatch(keyword::contains)
+            && CURRENT_FACT_WORDS.stream().anyMatch(keyword::contains)) return false;
+
+        Set<String> meaningful = new HashSet<>();
+        for (HaloDocument hit : hits.stream().limit(5).toList()) {
+            collectMeaningfulHighlights(hit.getTitle(), meaningful);
+            collectMeaningfulHighlights(hit.getDescription(), meaningful);
+            collectMeaningfulHighlights(hit.getContent(), meaningful);
+            if (meaningful.stream().anyMatch(word -> word.codePointCount(0, word.length()) >= 3)
+                || meaningful.size() >= 2) return true;
+        }
+        return false;
+    }
+
+    private void collectMeaningfulHighlights(String value, Set<String> words) {
+        if (value == null) return;
+        Matcher matcher = HIGHLIGHT.matcher(value);
+        while (matcher.find()) {
+            String word = HtmlUtils.htmlUnescape(matcher.group(1).replaceAll("<[^>]+>", ""))
+                .toLowerCase(Locale.ROOT).trim();
+            for (String generic : GENERIC_HIGHLIGHT_WORDS) word = word.replace(generic, "");
+            word = word.replaceAll("[\\p{P}\\s]+", "");
+            if (word.codePointCount(0, word.length()) >= 2) words.add(word);
+        }
     }
 
     private boolean isQuestion(String keyword) {

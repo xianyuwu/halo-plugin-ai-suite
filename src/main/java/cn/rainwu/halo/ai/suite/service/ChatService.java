@@ -91,12 +91,18 @@ public class ChatService {
         return ragPipeline.retrieve(keyword, List.of())
             .timeout(RAG_OVERALL_TIMEOUT)
             .onErrorResume(e -> {
-                log.warn("[ChatService] 搜索 RAG 检索超时或失败，跳过: {}", e.getMessage());
-                return Mono.just(RAGPipeline.RAGContext.empty());
+                log.warn("[ChatService] 搜索 RAG 检索超时或失败: {}", e.getMessage());
+                return Mono.just(new RAGContext("", List.of(), true,
+                    "站内检索暂时失败，请稍后重试。"));
             })
             .flatMap(ragContext -> extractCitations(ragContext).map(citations -> {
                 if (ragContext.noMatch() && ragContext.fixedReply() != null) {
                     return new ChatResponse(Flux.just(ragContext.fixedReply()), citations, null);
+                }
+                if (ragContext.documents().isEmpty()) {
+                    return new ChatResponse(Flux.just(
+                        "没有检索到足够的站内依据。请查看下方文章，或换个问法再试。"),
+                        citations, null);
                 }
 
                 Flux<String> stream = aiProperties.getModelConfig()

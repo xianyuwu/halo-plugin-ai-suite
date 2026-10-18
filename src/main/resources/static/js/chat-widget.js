@@ -2125,10 +2125,13 @@
     modal.querySelector(".ai-search-kw-expand").addEventListener("click", function () {
       var button = this;
       var expanded = button.getAttribute("aria-expanded") === "true";
+      var weakMatch = button.getAttribute("data-weak-match") === "true";
       var rows = kwList.querySelectorAll(".ai-search-kw-item");
-      for (var i = 5; i < rows.length; i++) rows[i].hidden = expanded;
+      for (var i = weakMatch ? 0 : 5; i < rows.length; i++) rows[i].hidden = expanded;
       button.setAttribute("aria-expanded", String(!expanded));
-      button.textContent = expanded ? "查看全部 " + rows.length + " 篇文章" : "收起文章";
+      button.textContent = expanded
+        ? (weakMatch ? "查看宽泛结果（" + rows.length + "）" : "查看全部 " + rows.length + " 篇文章")
+        : "收起文章";
     });
 
     // 清空按钮
@@ -2309,8 +2312,10 @@
         return;
       }
       kwSection.style.display = "";
-      kwCount.textContent = "(" + data.total + ")";
-      kwLabel.textContent = data.questionMode ? "可能相关的文章" : "搜索结果";
+      var weakMatch = data.questionMode && data.clearMatch === false;
+      kwCount.textContent = weakMatch ? "" : "(" + data.total + ")";
+      kwLabel.textContent = weakMatch ? "未找到明确相关文章"
+        : (data.questionMode ? "可能相关的文章" : "搜索结果");
 
       var html = "";
       for (var i = 0; i < data.articles.length; i++) {
@@ -2323,10 +2328,12 @@
       kwList.innerHTML = html;
       var compact = data.questionMode && data.articles.length > 5;
       var rows = kwList.querySelectorAll(".ai-search-kw-item");
-      for (var j = 5; j < rows.length; j++) rows[j].hidden = compact;
-      expandBtn.style.display = compact ? "" : "none";
+      for (var j = 0; j < rows.length; j++) rows[j].hidden = weakMatch || (compact && j >= 5);
+      expandBtn.style.display = weakMatch || compact ? "" : "none";
+      expandBtn.setAttribute("data-weak-match", String(weakMatch));
       expandBtn.setAttribute("aria-expanded", "false");
-      expandBtn.textContent = "查看全部 " + data.articles.length + " 篇文章";
+      expandBtn.textContent = weakMatch ? "查看宽泛结果（" + data.articles.length + "）"
+        : "查看全部 " + data.articles.length + " 篇文章";
     }).catch(function (e) {
       if (e.name === "AbortError" || !isCurrent()) return;
       kwSection.style.display = "none";

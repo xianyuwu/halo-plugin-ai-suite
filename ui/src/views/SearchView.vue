@@ -167,7 +167,7 @@
 
                       <div class="ai-search-kw-section" v-show="debugError || previewArticles.length || (debugRan && !debugResultsLoading)">
                         <div class="ai-search-kw-header">
-                          📄 {{ debugRan && debugQuestionMode ? '可能相关的文章' : '搜索结果' }} <span class="ai-search-kw-count">({{ previewArticles.length || normalizedResultCount }})</span>
+                          📄 {{ debugRan && debugWeakMatch ? '未找到明确相关文章' : (debugRan && debugQuestionMode ? '可能相关的文章' : '搜索结果') }} <span v-if="!debugWeakMatch" class="ai-search-kw-count">({{ previewArticles.length || normalizedResultCount }})</span>
                         </div>
                         <div v-if="debugError" class="ai-search-ai-error">{{ debugError }}</div>
                         <div v-else-if="debugRan && !debugResultsLoading && !previewArticles.length" class="ai-search-empty">没有找到匹配文章。</div>
@@ -184,12 +184,12 @@
                           </a>
                         </div>
                         <button
-                          v-if="debugRan && debugQuestionMode && previewArticles.length > 5"
+                          v-if="debugRan && previewArticles.length && (debugWeakMatch || (debugQuestionMode && previewArticles.length > 5))"
                           class="ai-search-kw-expand"
                           type="button"
                           :aria-expanded="debugExpanded"
                           @click="debugExpanded = !debugExpanded"
-                        >{{ debugExpanded ? '收起文章' : `查看全部 ${previewArticles.length} 篇文章` }}</button>
+                        >{{ debugExpanded ? '收起文章' : (debugWeakMatch ? `查看宽泛结果（${previewArticles.length}）` : `查看全部 ${previewArticles.length} 篇文章`) }}</button>
                       </div>
 
                       <div
@@ -253,6 +253,7 @@ const saveOk = ref(false);
 const debugKeyword = ref("");
 const debugArticles = ref<SearchArticle[]>([]);
 const debugQuestionMode = ref(false);
+const debugWeakMatch = ref(false);
 const debugExpanded = ref(false);
 const debugCitations = ref<SearchCitation[]>([]);
 const debugAnswer = ref("");
@@ -337,8 +338,9 @@ const previewArticles = computed<SearchArticle[]>(() => {
   ];
 });
 const visiblePreviewArticles = computed(() =>
-  debugRan.value && debugQuestionMode.value && !debugExpanded.value
-    ? previewArticles.value.slice(0, 5) : previewArticles.value
+  debugRan.value && !debugExpanded.value
+    ? (debugWeakMatch.value ? [] : (debugQuestionMode.value ? previewArticles.value.slice(0, 5) : previewArticles.value))
+    : previewArticles.value
 );
 
 const previewCitations = computed<SearchCitation[]>(() => {
@@ -412,6 +414,7 @@ function clearPreviewSearch() {
   debugKeyword.value = "";
   debugArticles.value = [];
   debugQuestionMode.value = false;
+  debugWeakMatch.value = false;
   debugExpanded.value = false;
   debugCitations.value = [];
   debugAnswer.value = "";
@@ -467,6 +470,7 @@ async function runSearchDebug() {
   debugError.value = "";
   debugArticles.value = [];
   debugQuestionMode.value = false;
+  debugWeakMatch.value = false;
   debugExpanded.value = false;
   debugCitations.value = [];
   debugAnswer.value = "";
@@ -502,6 +506,7 @@ async function loadDebugResults(keyword: string, signal: AbortSignal) {
     if (!signal.aborted) {
       debugArticles.value = Array.isArray(data.articles) ? data.articles : [];
       debugQuestionMode.value = data.questionMode === true;
+      debugWeakMatch.value = debugQuestionMode.value && data.clearMatch === false;
     }
   } finally {
     if (!signal.aborted) debugResultsLoading.value = false;
