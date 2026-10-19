@@ -28,6 +28,8 @@
 4. 完成全量索引并建立一组可验证问题。
 5. 只有基础结果稳定后，再逐项开启增强能力。
 
+从 0.4.4 起，Chat、查询改写、Rerank 与图像模型的连通性测试无需提供 Embedding 维度；Embedding 测试继续使用页面上配置的维度。测试任务成功创建后仍需等待最终结果，HTTP 202 本身不代表模型已连通。
+
 ## 切片怎样调
 
 ![切片设置](../../assets/readme/screenshots/console-chunking.jpg)
