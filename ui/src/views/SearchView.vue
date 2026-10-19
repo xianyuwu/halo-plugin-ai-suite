@@ -121,7 +121,6 @@
                 <div class="ai-search-preview-overlay" :data-theme="previewThemeValue">
                   <div class="ai-search-modal" :data-theme="previewThemeValue">
                     <div class="ai-search-input-wrap">
-                      <RiSearchLine class="ai-search-icon" />
                       <input
                         v-model.trim="debugKeyword"
                         class="ai-search-input"
@@ -134,12 +133,19 @@
                         v-if="debugKeyword"
                         class="ai-search-clear"
                         type="button"
-                        title="清空"
+                        title="清空输入"
+                        aria-label="清空输入"
                         @click="clearPreviewSearch"
                       >
-                        &times;
+                        清空
                       </button>
-                      <kbd class="ai-search-kbd">Esc</kbd>
+                      <button class="ai-search-submit" type="button" title="搜索" aria-label="搜索" @click="runSearchDebug">
+                        <svg class="ai-search-submit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
+                      </button>
+                      <span class="ai-search-action-divider" aria-hidden="true"></span>
+                      <span class="ai-search-close" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                      </span>
                     </div>
 
                     <div class="ai-search-results">
@@ -166,13 +172,13 @@
 
                       <div class="ai-search-kw-section" v-show="debugError || previewArticles.length || (debugRan && !debugResultsLoading)">
                         <div class="ai-search-kw-header">
-                          📄 搜索结果 <span class="ai-search-kw-count">({{ previewArticles.length || normalizedResultCount }})</span>
+                          📄 {{ debugRan && debugWeakMatch ? '未找到明确相关文章' : (debugRan && debugQuestionMode ? '可能相关的文章' : '搜索结果') }} <span v-if="!debugWeakMatch" class="ai-search-kw-count">({{ previewArticles.length || normalizedResultCount }})</span>
                         </div>
                         <div v-if="debugError" class="ai-search-ai-error">{{ debugError }}</div>
                         <div v-else-if="debugRan && !debugResultsLoading && !previewArticles.length" class="ai-search-empty">没有找到匹配文章。</div>
                         <div v-else class="ai-search-kw-list">
                           <a
-                            v-for="article in previewArticles"
+                            v-for="article in visiblePreviewArticles"
                             :key="article.postId || article.title"
                             class="ai-search-kw-item"
                             :href="article.url || '#'"
@@ -182,6 +188,13 @@
                             <div class="ai-search-kw-snippet" v-html="sanitizeSnippet(article.snippet || '')"></div>
                           </a>
                         </div>
+                        <button
+                          v-if="debugRan && previewArticles.length && (debugWeakMatch || (debugQuestionMode && previewArticles.length > 5))"
+                          class="ai-search-kw-expand"
+                          type="button"
+                          :aria-expanded="debugExpanded"
+                          @click="debugExpanded = !debugExpanded"
+                        >{{ debugExpanded ? '收起文章' : (debugWeakMatch ? `查看宽泛结果（${previewArticles.length}）` : `查看全部 ${previewArticles.length} 篇文章`) }}</button>
                       </div>
 
                       <div
@@ -244,6 +257,9 @@ const saveMsg = ref("");
 const saveOk = ref(false);
 const debugKeyword = ref("");
 const debugArticles = ref<SearchArticle[]>([]);
+const debugQuestionMode = ref(false);
+const debugWeakMatch = ref(false);
+const debugExpanded = ref(false);
 const debugCitations = ref<SearchCitation[]>([]);
 const debugAnswer = ref("");
 const debugError = ref("");
@@ -326,6 +342,11 @@ const previewArticles = computed<SearchArticle[]>(() => {
     { postId: "demo-2", title: "AI 助手配置实践", snippet: "结果项保持紧凑，方便访客快速扫描。" },
   ];
 });
+const visiblePreviewArticles = computed(() =>
+  debugRan.value && !debugExpanded.value
+    ? (debugWeakMatch.value ? [] : (debugQuestionMode.value ? previewArticles.value.slice(0, 5) : previewArticles.value))
+    : previewArticles.value
+);
 
 const previewCitations = computed<SearchCitation[]>(() => {
   if (debugRan.value) return debugCitations.value;
@@ -397,6 +418,9 @@ function clearPreviewSearch() {
   debugAbortController = null;
   debugKeyword.value = "";
   debugArticles.value = [];
+  debugQuestionMode.value = false;
+  debugWeakMatch.value = false;
+  debugExpanded.value = false;
   debugCitations.value = [];
   debugAnswer.value = "";
   debugError.value = "";
@@ -450,6 +474,9 @@ async function runSearchDebug() {
   debugRan.value = true;
   debugError.value = "";
   debugArticles.value = [];
+  debugQuestionMode.value = false;
+  debugWeakMatch.value = false;
+  debugExpanded.value = false;
   debugCitations.value = [];
   debugAnswer.value = "";
   debugElapsed.value = 0;
@@ -481,7 +508,11 @@ async function loadDebugResults(keyword: string, signal: AbortSignal) {
     const resp = await fetch(`/apis/api.ai-suite.halo.run/v1alpha1/search/halo-results?keyword=${encodeURIComponent(keyword)}`, { signal });
     if (!resp.ok) throw new Error("关键词搜索请求失败");
     const data = await resp.json();
-    debugArticles.value = Array.isArray(data.articles) ? data.articles : [];
+    if (!signal.aborted) {
+      debugArticles.value = Array.isArray(data.articles) ? data.articles : [];
+      debugQuestionMode.value = data.questionMode === true;
+      debugWeakMatch.value = debugQuestionMode.value && data.clearMatch === false;
+    }
   } finally {
     if (!signal.aborted) debugResultsLoading.value = false;
   }
@@ -806,7 +837,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 48px;
+  flex: 0 0 56px;
+  box-sizing: border-box;
   padding: 0 14px;
   border-bottom: 1px solid var(--ai-chat-border, rgba(0, 0, 0, 0.06));
   box-shadow: none;
@@ -817,12 +849,6 @@ onBeforeUnmount(() => {
   box-shadow:
     inset 0 -1.5px 0 0 var(--ai-chat-color, #7C3BED),
     0 6px 20px -8px var(--ai-chat-color, #7C3BED);
-}
-.ai-search-icon {
-  width: 24px;
-  height: 24px;
-  color: var(--ai-chat-color, #7C3BED);
-  flex-shrink: 0;
 }
 .ai-search-input {
   flex: 1;
@@ -841,32 +867,61 @@ onBeforeUnmount(() => {
   border: none;
   background: transparent;
   color: var(--ai-chat-text-muted, #999);
-  font-size: 16px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
+  width: 40px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: color 0.12s;
+  transition: color 0.12s, background-color 0.12s;
 }
-.ai-search-clear:hover { color: var(--ai-chat-text, #333); }
-.ai-search-kbd {
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid var(--ai-chat-border, #d1d5db);
-  background: var(--ai-chat-bg-window, #fff);
-  color: var(--ai-chat-text-muted, #6b7280);
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.06);
+.ai-search-clear:hover {
+  color: var(--ai-chat-text, #333);
+  background: rgba(var(--ai-search-color-rgb, 124, 59, 237), 0.08);
+}
+.ai-search-clear:focus-visible { outline: 2px solid var(--ai-chat-color, #7C3BED); outline-offset: 2px; }
+.ai-search-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  line-height: 1.4;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(var(--ai-search-color-rgb, 124, 59, 237), 0.16);
+  color: var(--ai-chat-color, #7C3BED);
+  cursor: pointer;
+  transition: background-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }
+.ai-search-submit-icon { width: 20px; height: 20px; display: block; }
+.ai-search-submit:hover {
+  background: rgba(var(--ai-search-color-rgb, 124, 59, 237), 0.28);
+  box-shadow: 0 2px 12px rgba(var(--ai-search-color-rgb, 124, 59, 237), 0.14);
+}
+.ai-search-submit:active { transform: translateY(1px); }
+.ai-search-submit:focus-visible { outline: 2px solid var(--ai-chat-color, #7C3BED); outline-offset: 2px; }
+.ai-search-action-divider { width: 1px; height: 20px; flex: 0 0 1px; background: var(--ai-chat-border, rgba(0, 0, 0, 0.12)); margin: 0 -2px; }
+.ai-search-close {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--ai-chat-text-muted, #6b7280);
+}
+.ai-search-close svg { width: 18px; height: 18px; display: block; }
 .ai-search-results {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   padding: 0;
 }
@@ -1014,6 +1069,20 @@ onBeforeUnmount(() => {
   position: relative;
   border-left: 2px solid transparent;
   transition: background 0.15s, transform 0.15s, border-color 0.15s, padding-left 0.15s;
+}
+.ai-search-kw-expand {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--ai-chat-border, #e0d6ff);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ai-chat-text-accent, #7C3BED);
+  cursor: pointer;
+  font: inherit;
+}
+.ai-search-kw-expand:hover {
+  background: var(--ai-chat-bg-bubble-ai, rgba(124, 59, 237, 0.08));
 }
 .ai-search-kw-item:hover {
   background: var(--ai-chat-bg-bubble-ai, rgba(124, 59, 237, 0.08));
@@ -1393,9 +1462,16 @@ onBeforeUnmount(() => {
     max-height: calc(100% - 40px);
     border-radius: 14px;
   }
-  .ai-search-kbd {
-    display: none;
+  .ai-search-input-wrap {
+    gap: 8px;
+    padding: 0 10px;
   }
+  .ai-search-close {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+  .ai-search-close svg { width: 22px; height: 22px; }
   .search-preview-meta {
     font-size: 11px;
   }

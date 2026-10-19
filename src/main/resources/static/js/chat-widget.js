@@ -960,7 +960,9 @@
    *   onStructuredResult(result) —— event:structured_result 触发
    *   onToken(text)          —— 普通 token 事件触发, 入参是单 token 字符串
    *                            (若是 {"content":"..."} 包装, 会自动解包取 content)
-   *   onDone()               —— 收到 [DONE] 或正常 EOF 时触发一次
+   *   onDone()               —— 收到 [DONE] 时触发一次
+   *   onIncomplete()         —— 未收到 [DONE] 就遇到 EOF；未提供时沿用 onDone
+   *   onErrorFrame(message)  —— 服务端 event:error 事件
    *   onError(err)           —— 流读出错时触发
    *
    * 之所以抽这个函数, 是为了让 streamChat 和搜索结果页 AI 卡片共用同一套
@@ -976,6 +978,8 @@
     var onReasoningEnd = callbacks.onReasoningEnd || function () {};
     var onLogId = callbacks.onLogId || function () {};
     var onDone = callbacks.onDone || function () {};
+    var onIncomplete = callbacks.onIncomplete || onDone;
+    var onErrorFrame = callbacks.onErrorFrame || onToken;
     var onError = callbacks.onError || function () {};
 
     var reader = response.body.getReader();
@@ -983,10 +987,11 @@
     var buffer = "";
     var finished = false;
 
-    function finishOnce() {
+    function finishOnce(complete) {
       if (finished) return;
       finished = true;
-      onDone();
+      if (complete) onDone();
+      else onIncomplete();
       // [DONE] 是应用层终止标记，不再等待底层连接如何关闭。
       // 预览 iframe 中连接关闭偶尔会被报告为读取异常，必须在此前停止读取。
       try {
@@ -1002,7 +1007,7 @@
       reader.read().then(function (result) {
         if (finished) return;
         if (result.done) {
-          finishOnce();
+          finishOnce(false);
           return;
         }
         buffer += decoder.decode(result.value, { stream: true });
@@ -1043,8 +1048,15 @@
             }
           } else if (eventType === "reasoning_end") {
             onReasoningEnd();
+          } else if (eventType === "error") {
+            try {
+              var errorData = JSON.parse(eventData);
+              onErrorFrame(errorData.content || "AI 回答中断");
+            } catch (e) {
+              onErrorFrame(eventData);
+            }
           } else if (eventData === "[DONE]") {
-            finishOnce();
+            finishOnce(true);
             return;
           } else {
             try {
@@ -1677,7 +1689,18 @@
   }
 
   function sanitizeSnippet(html) {
-    return escapeHtml(String(html || ""))
+    // 接口片段已经转义过正文；先还原一层实体，再统一转义，避免显示 &gt; 等字面量。
+    var decoded = String(html || "").replace(/&(amp|lt|gt|quot|#39);/gi, function (entity) {
+      switch (entity.toLowerCase()) {
+        case "&amp;": return "&";
+        case "&lt;": return "<";
+        case "&gt;": return ">";
+        case "&quot;": return '"';
+        case "&#39;": return "'";
+        default: return entity;
+      }
+    });
+    return escapeHtml(decoded)
       .replace(/&lt;mark&gt;/gi, "<mark>")
       .replace(/&lt;\/mark&gt;/gi, "</mark>");
   }
@@ -2026,6 +2049,7 @@
 
   var searchModal = null;     // 当前弹框 DOM 引用
   var searchAbort = null;     // AbortController，关闭时取消请求
+  var searchRequestId = 0;    // 旧请求的回调不得写入新问题的结果
 
   /** 打开搜索弹框 */
   function openSearchModal() {
@@ -2047,9 +2071,12 @@
     modal.innerHTML =
       // 搜索输入区
       '<div class="ai-search-input-wrap">' +
-        '<svg class="ai-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>' +
-        '<input class="ai-search-input" type="text" placeholder="搜索文章..." autofocus />' +
-        '<button class="ai-search-clear" title="清空" style="display:none">&times;</button>' +
+        '<input class="ai-search-input" type="text" placeholder="输入问题，按回车搜索" autofocus />' +
+        '<button class="ai-search-clear" type="button" title="清空输入" aria-label="清空输入" style="display:none">清空</button>' +
+        '<button class="ai-search-submit" type="button" title="搜索" aria-label="搜索">' +
+          '<svg class="ai-search-submit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>' +
+        '</button>' +
+        '<span class="ai-search-action-divider" aria-hidden="true"></span>' +
         '<button class="ai-search-close" type="button" title="关闭" aria-label="关闭搜索">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>' +
         '</button>' +
@@ -2066,11 +2093,12 @@
         '</div>' +
         // 关键词结果区
         '<div class="ai-search-kw-section" style="display:none">' +
-          '<div class="ai-search-kw-header">📄 搜索结果 <span class="ai-search-kw-count"></span></div>' +
+          '<div class="ai-search-kw-header">📄 <span class="ai-search-kw-label">搜索结果</span> <span class="ai-search-kw-count"></span></div>' +
           '<div class="ai-search-kw-list"></div>' +
+          '<button class="ai-search-kw-expand" type="button" style="display:none"></button>' +
         '</div>' +
         // 空状态
-        '<div class="ai-search-empty">输入关键词开始搜索</div>' +
+        '<div class="ai-search-empty">输入问题，按回车或点击搜索</div>' +
       '</div>';
 
     overlay.appendChild(modal);
@@ -2096,6 +2124,17 @@
     kwList.addEventListener("click", function (e) {
       if (e.target.closest(".ai-search-kw-item")) closeSearchModal();
     });
+    modal.querySelector(".ai-search-kw-expand").addEventListener("click", function () {
+      var button = this;
+      var expanded = button.getAttribute("aria-expanded") === "true";
+      var weakMatch = button.getAttribute("data-weak-match") === "true";
+      var rows = kwList.querySelectorAll(".ai-search-kw-item");
+      for (var i = weakMatch ? 0 : 5; i < rows.length; i++) rows[i].hidden = expanded;
+      button.setAttribute("aria-expanded", String(!expanded));
+      button.textContent = expanded
+        ? (weakMatch ? "查看宽泛结果（" + rows.length + "）" : "查看全部 " + rows.length + " 篇文章")
+        : "收起文章";
+    });
 
     // 清空按钮
     clearBtn.addEventListener("click", function () {
@@ -2105,27 +2144,25 @@
       resetSearchResults(modal);
     });
 
-    // 输入监听（防抖 300ms）
-    var debounceTimer = null;
+    // 输入过程只清理旧结果。中文输入法组词时不发起模型请求。
     input.addEventListener("input", function () {
       var val = input.value.trim();
       clearBtn.style.display = val ? "" : "none";
-      if (debounceTimer) clearTimeout(debounceTimer);
-      if (!val) {
-        resetSearchResults(modal);
-        return;
-      }
-      debounceTimer = setTimeout(function () { doSearch(val, modal, theme); }, 300);
+      resetSearchResults(modal);
     });
 
-    // 回车立即搜索（跳过防抖）
+    // 回车确认搜索；输入法的候选词回车不能触发搜索。
     input.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") {
+      if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) {
         e.preventDefault();
-        if (debounceTimer) clearTimeout(debounceTimer);
         var val = input.value.trim();
         if (val) doSearch(val, modal, theme);
       }
+    });
+    modal.querySelector(".ai-search-submit").addEventListener("click", function () {
+      var val = input.value.trim();
+      if (val) doSearch(val, modal, theme);
+      else input.focus();
     });
   }
 
@@ -2133,6 +2170,7 @@
   function closeSearchModal() {
     if (!searchModal) return;
     // 取消未完成的请求
+    searchRequestId++;
     if (searchAbort) { searchAbort.abort(); searchAbort = null; }
     searchModal.remove();
     searchModal = null;
@@ -2140,6 +2178,8 @@
 
   /** 重置搜索结果区域 */
   function resetSearchResults(modal) {
+    searchRequestId++;
+    if (searchAbort) { searchAbort.abort(); searchAbort = null; }
     var aiSection = modal.querySelector(".ai-search-ai-section");
     var kwSection = modal.querySelector(".ai-search-kw-section");
     var empty = modal.querySelector(".ai-search-empty");
@@ -2147,15 +2187,19 @@
     aiSection.querySelector(".ai-search-ai-body").innerHTML = "";
     kwSection.style.display = "none";
     kwSection.querySelector(".ai-search-kw-list").innerHTML = "";
+    kwSection.querySelector(".ai-search-kw-expand").style.display = "none";
     empty.style.display = "";
-    empty.textContent = "输入关键词开始搜索";
+    empty.textContent = "输入问题，按回车或点击搜索";
   }
 
   /** 并行搜索：AI 流式回答 + 关键词结果 */
   function doSearch(keyword, modal, theme) {
     // 取消上一次请求
     if (searchAbort) searchAbort.abort();
-    searchAbort = new AbortController();
+    var controller = new AbortController();
+    searchAbort = controller;
+    var requestId = ++searchRequestId;
+    function isCurrent() { return requestId === searchRequestId && searchModal && searchModal.contains(modal); }
 
     var apiBase = (config && config.apiBase) || "/apis/api.ai-suite.halo.run/v1alpha1";
     var aiSection = modal.querySelector(".ai-search-ai-section");
@@ -2163,6 +2207,8 @@
     var kwSection = modal.querySelector(".ai-search-kw-section");
     var kwList = modal.querySelector(".ai-search-kw-list");
     var kwCount = modal.querySelector(".ai-search-kw-count");
+    var kwLabel = modal.querySelector(".ai-search-kw-label");
+    var expandBtn = modal.querySelector(".ai-search-kw-expand");
     var empty = modal.querySelector(".ai-search-empty");
 
     // 隐藏空状态，按配置显示区域
@@ -2171,7 +2217,11 @@
     aiSection.style.display = showAi ? "" : "none";
     kwSection.style.display = "none"; // 有结果后再显示
     aiBody.innerHTML = showAi ? '<div class="ai-search-ai-loading">AI 正在思考...</div>' : "";
+    aiBody._started = false;
+    aiBody._content = "";
+    aiBody._citations = null;
     kwList.innerHTML = "";
+    expandBtn.style.display = "none";
 
     // 1) AI 流式回答（按配置决定是否请求）
     if (showAi) {
@@ -2182,20 +2232,33 @@
         "Accept": "text/event-stream"
       },
       body: JSON.stringify({ keyword: keyword }),
-      signal: searchAbort.signal
+      signal: controller.signal
     }).then(function (res) {
+      if (!isCurrent()) return;
       if (!res.ok) throw new Error("HTTP " + res.status);
-      var loadingEl = aiBody.querySelector(".ai-search-ai-loading");
-      if (loadingEl) loadingEl.remove();
+      var failed = false;
+      function showFailure(message) {
+        if (!isCurrent() || failed) return;
+        failed = true;
+        var loadingEl = aiBody.querySelector(".ai-search-ai-loading");
+        if (loadingEl) loadingEl.remove();
+        if (!aiBody._content) aiBody.innerHTML = "";
+        aiBody.insertAdjacentHTML("beforeend", '<div class="ai-search-ai-error" role="status">' +
+          escapeHtml(message || "AI 回答中断，请重试") + '</div>');
+      }
 
       parseSseStream(res, {
         onCitation: function (cites) {
+          if (!isCurrent()) return;
           // 存引用，流结束后渲染
           aiBody._citations = cites;
         },
         onToken: function (token) {
+          if (!isCurrent() || failed) return;
           // 首 token 到达时清理 loading
           if (!aiBody._started) {
+            var loadingEl = aiBody.querySelector(".ai-search-ai-loading");
+            if (loadingEl) loadingEl.remove();
             aiBody._started = true;
             aiBody._content = "";
           }
@@ -2203,6 +2266,11 @@
           renderAssistant(aiBody, aiBody._content);
         },
         onDone: function () {
+          if (!isCurrent() || failed) return;
+          if (!aiBody._started) {
+            showFailure("AI 未返回回答，请重试");
+            return;
+          }
           // 追加引用来源
           var cites = aiBody._citations;
           if (cites && cites.length > 0) {
@@ -2220,30 +2288,36 @@
           aiBody._content = "";
         },
         onError: function () {
-          if (aiBody._content) {
-            renderAssistant(aiBody, aiBody._content);
-          } else {
-            aiBody.innerHTML = '<div class="ai-search-ai-error">AI 暂时不可用</div>';
-          }
+          showFailure("AI 回答中断，以上内容可能不完整，请重试");
+        },
+        onIncomplete: function () {
+          showFailure("连接提前结束，以上内容可能不完整，请重试");
+        },
+        onErrorFrame: function (message) {
+          showFailure(message || "AI 回答中断，以上内容可能不完整，请重试");
         }
       });
     }).catch(function (e) {
-      if (e.name === "AbortError") return;
-      aiBody.innerHTML = '<div class="ai-search-ai-error">AI 暂时不可用</div>';
+      if (e.name === "AbortError" || !isCurrent()) return;
+      aiBody.innerHTML = '<div class="ai-search-ai-error" role="status">AI 暂时不可用，请重试</div>';
     });
     } // end showAi
 
     // 2) 关键词搜索结果
     fetch(apiBase + "/search/halo-results?keyword=" + encodeURIComponent(keyword), {
-      signal: searchAbort.signal
+      signal: controller.signal
     }).then(function (res) { return res.json(); })
     .then(function (data) {
+      if (!isCurrent()) return;
       if (!data || !data.articles || data.articles.length === 0) {
         kwSection.style.display = "none";
         return;
       }
       kwSection.style.display = "";
-      kwCount.textContent = "(" + data.total + ")";
+      var weakMatch = data.questionMode && data.clearMatch === false;
+      kwCount.textContent = weakMatch ? "" : "(" + data.total + ")";
+      kwLabel.textContent = weakMatch ? "未找到明确相关文章"
+        : (data.questionMode ? "可能相关的文章" : "搜索结果");
 
       var html = "";
       for (var i = 0; i < data.articles.length; i++) {
@@ -2254,8 +2328,16 @@
         '</a>';
       }
       kwList.innerHTML = html;
+      var compact = data.questionMode && data.articles.length > 5;
+      var rows = kwList.querySelectorAll(".ai-search-kw-item");
+      for (var j = 0; j < rows.length; j++) rows[j].hidden = weakMatch || (compact && j >= 5);
+      expandBtn.style.display = weakMatch || compact ? "" : "none";
+      expandBtn.setAttribute("data-weak-match", String(weakMatch));
+      expandBtn.setAttribute("aria-expanded", "false");
+      expandBtn.textContent = weakMatch ? "查看宽泛结果（" + data.articles.length + "）"
+        : "查看全部 " + data.articles.length + " 篇文章";
     }).catch(function (e) {
-      if (e.name === "AbortError") return;
+      if (e.name === "AbortError" || !isCurrent()) return;
       kwSection.style.display = "none";
     });
   }

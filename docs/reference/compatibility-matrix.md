@@ -2,7 +2,7 @@
 
 | 组件 | 当前要求 | 说明 |
 | --- | --- | --- |
-| AI 智能套件 | 0.4.2 | 0.4.2 增加 AI 标签与内容创作模型配置；运行要求未调整 |
+| AI 智能套件 | 0.4.3 | 0.4.3 改进智能搜索；运行要求未调整 |
 | Halo | 2.26.0+ | `plugin.yaml` 声明 `>=2.26.0`；已在 2.26.1 验证 |
 | Halo AI Foundation | 1.1.1+ | 必需，公开 API 以 `compileOnly` 接入；已在 1.1.1 验证 |
 | Java | 21 | 构建与本地运行要求 |
@@ -30,7 +30,7 @@
 | 访客问答浮窗 | 依赖 AI Foundation | Halo `AdditionalWebFilter`、匿名 RoleTemplate、AI Foundation 语言模型 | 通过全局 WebFilter 注入，不要求主题模板改造。 |
 | 交互宠物 | 运行展示不依赖额外插件；AI 生成依赖 AI Foundation | 三款内置皮肤可直接使用；生成新宠物需配置支持参考图的图片模型 | 生图结果需审核母版透明背景和逐张表情，模型兼容性因供应商而异。 |
 | RAG 索引 | 依赖 AI Foundation | Halo `Post`、`PostContentService`、AI Foundation Embedding 模型、Halo 内置 Lucene 10.5.0 | 只索引已发布公开文章。 |
-| AI 搜索能力 | 依赖 AI Foundation | 插件 Lucene 索引、AI Foundation 语言模型 | 关键词结果和 AI 综合回答都由本插件接口提供，不依赖 Halo 官方搜索插件的检索能力。 |
+| AI 搜索能力 | 依赖 AI Foundation | Halo 核心搜索引擎、插件 Lucene 索引、AI Foundation 语言模型 | 关键词结果优先使用 Halo 核心搜索引擎，失败时回退插件索引；AI 综合回答仍由本插件 RAG 提供。搜索组件插件只提供默认访客入口。 |
 | AI 搜索入口 | 访客使用时条件必需 | 默认安装并启用 Halo 官方搜索插件；若主题或自定义代码已经提供兼容搜索入口，可替代官方插件 | 未提供入口时接口和快捷键仍可能可用，但普通访客看不到搜索框，不能视为完整启用访客搜索。 |
 | AI 摘要 | 依赖 AI Foundation | Halo 摘要扩展点、AI Foundation 语言模型 | 自动摘要接入 Halo `ExcerptGenerator` 扩展点，批量摘要直接写入文章摘要字段。 |
 | AI 标签（0.4.2 起） | 依赖 AI Foundation | Halo `Post`、`Tag`、文章正文服务、AI Foundation 语言模型 | 生成建议不修改文章；人工确认后新建缺失标签并关联文章。文章列表弹窗依赖 Halo Console 的文章操作扩展点。 |
