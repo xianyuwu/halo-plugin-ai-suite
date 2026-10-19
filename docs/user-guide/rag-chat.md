@@ -26,7 +26,7 @@
 
 “预览与调试”区域切换到“调试追踪”后，可以输入测试问题并实时查看意图识别、查询改写、向量编码、检索、去重、Rerank、上下文构建和注入结果。顶部智能诊断会标出耗时占比异常的阶段，并给出可能原因与排查建议。
 
-![对话与外观调试追踪](../../assets/readme/screenshots/console-chat-debug-trace.jpg)
+![对话行为中的调试追踪](../../assets/readme/screenshots/console-chat-debug-trace.jpg)
 
 这里适合在调整 System Prompt、检索策略或增强能力后立即验证效果；“问答记录”中的追踪调试则更适合从一条历史问题出发复现故障。状态为“跳过”通常表示对应能力未启用或没有改变结果，不应直接判定为异常。
 
