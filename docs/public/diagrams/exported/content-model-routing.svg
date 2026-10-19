@@ -1,0 +1,64 @@
+<svg width="1400" height="780" viewBox="0 0 1400 780" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="diagram-title diagram-desc" preserveAspectRatio="xMidYMid meet">
+  <title id="diagram-title">内容创作模型回退关系</title>
+  <desc id="diagram-desc">摘要、标签和写作可单独指定语言模型；留空时逐级复用</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08111F"/><stop offset=".55" stop-color="#111C35"/><stop offset="1" stop-color="#17143A"/></linearGradient>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#C7D2FE" stroke-opacity=".045"/></pattern>
+    <filter id="shadow" x="-25%" y="-30%" width="150%" height="170%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#020617" flood-opacity=".38"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#60A5FA"/></marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#34D399"/></marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#FB923C"/></marker>
+  </defs>
+  <rect width="1400" height="780" rx="28" fill="url(#bg)"/>
+  <rect width="1400" height="780" rx="28" fill="url(#grid)"/>
+  <text x="52" y="58" fill="#F8FAFC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="28" font-weight="760">内容创作模型回退关系</text>
+  <text x="52" y="88" fill="#94A3B8" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="14">摘要、标签和写作可单独指定语言模型；留空时逐级复用</text>
+  <path d="M395 204 C452.5 204,452.5 384,510 384" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)" stroke-dasharray="7 7"/>
+  <rect x="424.5" y="270" width="56" height="22" rx="11" fill="#0B1220" stroke="#60A5FA" stroke-opacity=".35"/><text x="452.5" y="285" text-anchor="middle" fill="#93C5FD" font-family="Inter, PingFang SC, sans-serif" font-size="11">留空</text>
+<path d="M700 248 C700 294,700 294,700 340" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)" stroke-dasharray="7 7"/>
+  <rect x="672" y="271" width="56" height="22" rx="11" fill="#0B1220" stroke="#60A5FA" stroke-opacity=".35"/><text x="700" y="286" text-anchor="middle" fill="#93C5FD" font-family="Inter, PingFang SC, sans-serif" font-size="11">留空</text>
+<path d="M1005 204 C947.5 204,947.5 384,890 384" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)" stroke-dasharray="7 7"/>
+  <rect x="919.5" y="270" width="56" height="22" rx="11" fill="#0B1220" stroke="#60A5FA" stroke-opacity=".35"/><text x="947.5" y="285" text-anchor="middle" fill="#93C5FD" font-family="Inter, PingFang SC, sans-serif" font-size="11">留空</text>
+<path d="M700 428 C700 451.5,700 451.5,700 475" stroke="#60A5FA" stroke-width="2.2" fill="none" marker-end="url(#arrow)" stroke-dasharray="7 7"/>
+  <rect x="672" y="428.5" width="56" height="22" rx="11" fill="#0B1220" stroke="#60A5FA" stroke-opacity=".35"/><text x="700" y="443.5" text-anchor="middle" fill="#93C5FD" font-family="Inter, PingFang SC, sans-serif" font-size="11">留空</text>
+<path d="M700 563 C700 586.5,700 586.5,700 610" stroke="#34D399" stroke-width="2.2" fill="none" marker-end="url(#arrowGreen)" stroke-dasharray="7 7"/>
+  <rect x="672" y="563.5" width="56" height="22" rx="11" fill="#0B1220" stroke="#34D399" stroke-opacity=".35"/><text x="700" y="578.5" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, sans-serif" font-size="11">留空</text>
+<g filter="url(#shadow)">
+    <rect x="75" y="160" width="320" height="88" rx="18" fill="#1E2455" stroke="#818CF8" stroke-opacity=".68"/>
+
+    <text x="235" y="202" text-anchor="middle" fill="#EEF2FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">AI 摘要模型</text>
+    <text x="235" y="228" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">单独指定时直接使用</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="540" y="160" width="320" height="88" rx="18" fill="#1E2455" stroke="#818CF8" stroke-opacity=".68"/>
+
+    <text x="700" y="202" text-anchor="middle" fill="#EEF2FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">AI 标签模型</text>
+    <text x="700" y="228" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">单独指定时直接使用</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="1005" y="160" width="320" height="88" rx="18" fill="#1E2455" stroke="#818CF8" stroke-opacity=".68"/>
+
+    <text x="1165" y="202" text-anchor="middle" fill="#EEF2FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">写作辅助模型</text>
+    <text x="1165" y="228" text-anchor="middle" fill="#A5B4FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">单独指定时直接使用</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="510" y="340" width="380" height="88" rx="18" fill="#2D1D46" stroke="#C084FC" stroke-opacity=".68"/>
+
+    <text x="700" y="382" text-anchor="middle" fill="#FAF5FF" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">内容创作默认模型</text>
+    <text x="700" y="408" text-anchor="middle" fill="#D8B4FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">模型配置页面设置，可留空</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="510" y="475" width="380" height="88" rx="18" fill="#0D2A47" stroke="#38BDF8" stroke-opacity=".68"/>
+
+    <text x="700" y="517" text-anchor="middle" fill="#E0F2FE" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">对话模型</text>
+    <text x="700" y="543" text-anchor="middle" fill="#7DD3FC" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">内容创作默认模型留空时复用</text>
+  </g>
+<g filter="url(#shadow)">
+    <rect x="510" y="610" width="380" height="88" rx="18" fill="#0B352F" stroke="#34D399" stroke-opacity=".68"/>
+
+    <text x="700" y="652" text-anchor="middle" fill="#ECFDF5" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="17" font-weight="720">AI Foundation 默认语言模型</text>
+    <text x="700" y="678" text-anchor="middle" fill="#6EE7B7" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5">对话模型也留空时使用</text>
+  </g>
+<text x="80" y="730" fill="#CBD5E1" font-family="Inter, PingFang SC, sans-serif" font-size="14">所有选择项都是 AI Foundation 的语言模型资源；仅改变生成用模型，不需要重建文章索引。</text>
+  <text x="1348" y="755" text-anchor="end" fill="#64748B" font-family="Inter, PingFang SC, sans-serif" font-size="11">AI 智能套件 · 0.4.x</text>
+</svg>

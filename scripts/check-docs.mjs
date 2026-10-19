@@ -63,6 +63,7 @@ for (const file of markdown) {
 }
 
 const svgDir = join(root, "docs/diagrams/exported");
+const publicSvgDir = join(root, "docs/public/diagrams/exported");
 for (const file of walk(svgDir, ".svg")) {
   const text = read(file);
   const label = relative(root, file);
@@ -71,6 +72,30 @@ for (const file of walk(svgDir, ".svg")) {
   if (!text.includes("<title ")) failures.push(`${label}: missing title`);
   if (!text.includes("<desc ")) failures.push(`${label}: missing description`);
   if (!text.trimEnd().endsWith("</svg>")) failures.push(`${label}: SVG is not closed`);
+}
+
+const exportedNames = readdirSync(svgDir).filter(name => name.endsWith(".svg")).sort();
+const publicNames = readdirSync(publicSvgDir).filter(name => name.endsWith(".svg")).sort();
+if (exportedNames.join("\n") !== publicNames.join("\n")) {
+  failures.push("docs/public/diagrams/exported: public SVG file list differs from exported diagrams");
+}
+for (const name of exportedNames) {
+  const publicFile = join(publicSvgDir, name);
+  if (statExists(publicFile) && read(join(svgDir, name)) !== read(publicFile)) {
+    failures.push(`docs/public/diagrams/exported/${name}: public copy is stale`);
+  }
+}
+
+const screenshotDir = join(root, "assets/readme/screenshots");
+for (const name of readdirSync(screenshotDir)) {
+  const extension = name.toLowerCase().split(".").at(-1);
+  if (extension !== "jpg" && extension !== "png") continue;
+  const signature = readFileSync(join(screenshotDir, name)).subarray(0, 8);
+  const isJpeg = signature.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]));
+  const isPng = signature.equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  if ((extension === "jpg" && !isJpeg) || (extension === "png" && !isPng)) {
+    failures.push(`assets/readme/screenshots/${name}: file content does not match its extension`);
+  }
 }
 
 const temp = mkdtempSync(join(tmpdir(), "ai-suite-docs-"));
