@@ -135,10 +135,11 @@ public class IntentDetector {
                     modelConfig.getEffectiveChatModel(),
                     messages,
                     0.0f,
-                    32,
+                    128,
                     null,
                     null,
-                    UsageScenario.INTENT_DETECT
+                    UsageScenario.INTENT_DETECT,
+                    "disabled"
                 )
                 .timeout(LLM_DETECT_TIMEOUT)
                 .map(answer -> {
