@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.server.ServerWebExchangeDecorator;
 import reactor.core.publisher.Flux;
@@ -105,5 +106,24 @@ class ConsoleModelTestJobsTest {
         client(null).post().uri("/config/test-jobs").bodyValue(request("image")).exchange().expectStatus().isUnauthorized();
         client(null).get().uri("/config/test-jobs/unknown").exchange().expectStatus().isUnauthorized();
         verifyNoInteractions(models, properties);
+    }
+
+    /**
+     * 回归：前端只有 embedding 测试才带 dimensions，其余测试的 JSON 请求体缺省该字段。
+     * Jackson 3 默认开启 FAIL_ON_NULL_FOR_PRIMITIVES，原始类型 int 会因字段缺失反序列化失败（400），
+     * 这里直接发送不含 dimensions 的原始 JSON，覆盖对象序列化测试永远触达不到的路径。
+     */
+    @Test void requestWithoutDimensionsIsAccepted() {
+        config();
+        when(models.generateImage(anyString(), anyString(), isNull(), anyString(), anyString()))
+            .thenReturn(Mono.just(GenerateImageResult.builder().images(List.of()).build()));
+        var requestId = UUID.randomUUID().toString();
+        var json = "{\"requestId\":\"" + requestId + "\",\"kind\":\"image\",\"model\":\"\"}";
+        client("admin").post().uri("/config/test-jobs")
+            .contentType(MediaType.APPLICATION_JSON).bodyValue(json).exchange()
+            .expectStatus().isAccepted().expectBody().jsonPath("$.jobId").isEqualTo(requestId);
+        await().atMost(Duration.ofSeconds(2)).until(() -> !jobs.get("admin", requestId).running());
+        client("admin").get().uri("/config/test-jobs/" + requestId).exchange()
+            .expectStatus().isOk().expectBody().jsonPath("$.job.status").isEqualTo("done");
     }
 }

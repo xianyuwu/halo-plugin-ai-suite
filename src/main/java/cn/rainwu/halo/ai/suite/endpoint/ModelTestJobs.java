@@ -34,7 +34,9 @@ final class ModelTestJobs {
         this.timeout = timeout;
     }
 
-    record TestRequest(String requestId, String kind, String model, int dimensions) {
+    // dimensions 必须是包装类型：Jackson 3 默认开启 FAIL_ON_NULL_FOR_PRIMITIVES，
+    // 前端只有 embedding 测试会带 dimensions，原始类型 int 会因字段缺失直接反序列化失败（400）
+    record TestRequest(String requestId, String kind, String model, Integer dimensions) {
         TestRequest validate() {
             if (requestId == null || !requestId.matches(
                 "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")) {
@@ -43,11 +45,12 @@ final class ModelTestJobs {
             if (kind == null || !Set.of("chat", "queryRewrite", "embedding", "rerank", "image").contains(kind)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "不支持的模型测试类型");
             }
-            if (dimensions < 0 || (model != null && model.length() > 256)) {
+            if ((dimensions != null && dimensions < 0) || (model != null && model.length() > 256)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "模型测试参数无效");
             }
+            // 缺省的 dimensions 归一化为 0，下游按「非正数即未指定」处理
             return new TestRequest(UUID.fromString(requestId).toString(), kind,
-                model == null ? "" : model.trim(), dimensions);
+                model == null ? "" : model.trim(), dimensions == null ? 0 : dimensions);
         }
     }
 

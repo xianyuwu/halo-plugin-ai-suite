@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.server.ServerWebInputException;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -517,7 +518,7 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
                 })))
             .onErrorResume(ResponseStatusException.class,
                 e -> ServerResponse.status(e.getStatusCode()).bodyValue(Map.of(
-                    "error", e.getReason() == null ? "测试请求无效" : e.getReason())));
+                    "error", testRequestErrorReason(e))));
     }
 
     private Mono<ServerResponse> getModelTest(ServerRequest request) {
@@ -570,6 +571,17 @@ public class ConsoleConfigEndpoint implements CustomEndpoint {
 
     private static boolean isBlank(String s) {
         return s == null || s.isBlank();
+    }
+
+    /**
+     * 测试接口的错误提示：请求体反序列化失败时 Spring 的 reason 是固定的英文
+     * "Failed to read HTTP message"，对用户无意义，统一换成中文提示。
+     */
+    private static String testRequestErrorReason(ResponseStatusException e) {
+        if (e instanceof ServerWebInputException) {
+            return "测试请求参数格式错误，请刷新页面后重试";
+        }
+        return e.getReason() == null ? "测试请求无效" : e.getReason();
     }
 
     // ===== 调试流式对话 SSE =====
