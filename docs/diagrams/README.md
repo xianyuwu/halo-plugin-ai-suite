@@ -6,7 +6,10 @@
 
 ```bash
 node docs/diagrams/source/render-diagrams.mjs
+cp docs/diagrams/exported/*.svg docs/public/diagrams/exported/
 ```
+
+Markdown 使用相对路径展示图片，点击放大的链接使用 `/diagrams/exported/` 公开路径；两处 SVG 必须完全一致。`node scripts/check-docs.mjs` 会检查文件清单和内容，避免线上点击后出现旧图或缺图。
 
 生成后应确认：
 

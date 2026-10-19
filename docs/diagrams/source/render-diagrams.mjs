@@ -132,7 +132,7 @@ function renderSequence(spec) {
 
 const diagrams = {
   "content-model-routing": {
-    title:"内容创作模型回退关系",subtitle:"摘要、标签和写作可单独指定语言模型；留空时逐级复用",height:780,
+    title:"内容创作模型回退关系",subtitle:"摘要、标签和写作可单独指定语言模型；留空时逐级复用",height:780,trimWhitespace:true,
     nodes:[
       {id:"excerpt",x:75,y:160,w:320,h:88,title:"AI 摘要模型",subtitle:"单独指定时直接使用",tone:"indigo"},
       {id:"tag",x:540,y:160,w:320,h:88,title:"AI 标签模型",subtitle:"单独指定时直接使用",tone:"indigo"},
@@ -336,15 +336,15 @@ const diagrams = {
     ],edges:[{from:"latest",to:"topic"},{from:"topic",to:"time1",tone:"green"},{from:"hot",to:"visit",tone:"green"},{from:"tag",to:"tagmatch"},{from:"tagmatch",to:"tagtime",tone:"green"},{from:"cat",to:"catmatch"},{from:"catmatch",to:"cattime",tone:"green"}]
   },
   "intent-example-flow": {
-    title:"意图路由示例",subtitle:"“最近有哪些 AI 文章？”从规则命中到自然语言回答",height:430,
+    title:"意图路由示例",subtitle:"“最近有哪些 AI 文章？”从规则命中到确定性导语和文章卡片",height:430,
     nodes:[
       {id:"q",x:45,y:165,w:220,h:90,title:"用户问题",subtitle:"最近有哪些 AI 文章？",tone:"blue"},
       {id:"detect",x:305,y:165,w:210,h:90,title:"触发规则",subtitle:"命中最新文章意图",tone:"indigo"},
       {id:"topic",x:555,y:165,w:210,h:90,title:"TOPIC_MATCH",subtitle:"筛出 AI 主题文章",tone:"purple"},
       {id:"sort",x:805,y:165,w:210,h:90,title:"TIME_SORT",subtitle:"发布时间倒序",tone:"orange"},
-      {id:"llm",x:1055,y:165,w:160,h:90,title:"LLM",subtitle:"组织回答",tone:"purple"},
-      {id:"answer",x:1255,y:165,w:110,h:90,title:"结果",subtitle:"文字 + 引用",tone:"green"},
-    ],edges:[{from:"q",to:"detect"},{from:"detect",to:"topic"},{from:"topic",to:"sort",tone:"orange"},{from:"sort",to:"llm"},{from:"llm",to:"answer",tone:"green"}]
+      {id:"answer",x:1055,y:165,w:310,h:90,title:"服务端确定性输出",subtitle:"导语 · 引用 · 文章卡片",tone:"green"},
+    ],edges:[{from:"q",to:"detect"},{from:"detect",to:"topic"},{from:"topic",to:"sort",tone:"orange"},{from:"sort",to:"answer",tone:"green"}],
+    notes:[{x:555,y:325,text:"仅含模型的 Pipeline 处理器会调用 LLM；输出阶段不再调用模型。",color:"#CBD5E1",size:14}]
   },
   "intent-priority": {
     title:"意图优先级设计",subtitle:"具体路由先于通用路由，宽泛兜底放在最后，避免通用规则截胡",height:500,

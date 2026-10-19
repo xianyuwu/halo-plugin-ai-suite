@@ -68,7 +68,7 @@ Pipeline 返回文章后，`ChatService` 直接构造三部分结果：
 
 前台收到 `structured_result` 后渲染为彩色文章卡片。该阶段不再调用 Chat 模型，因此不会出现模型改写标题、遗漏候选文章或凭空补充文章的问题。SSE 事件顺序与字段见 [SSE 协议](../api/sse-protocol.md)。
 
-`outputTemplate` 仍保留在 Extension、Console 表单和 API 中，用于兼容已有路由及 AI 创建草稿；0.3.2 当前的结构化卡片输出不读取它，也不会因为配置该字段而增加一次回答生成调用。真正会产生 `intent_pipeline` 用量的是 `TOPIC_MATCH`、`LLM_TITLE_FILTER` 等含模型的处理器。
+`outputTemplate` 仍保留在 Extension 和 API 数据中，用于兼容已有路由及 AI 创建草稿；Console 编辑页不提供该字段的输入控件，只透传已有值。当前的结构化卡片输出不读取它，也不会因为配置该字段而增加一次回答生成调用。真正会产生 `intent_pipeline` 用量的是 `TOPIC_MATCH`、`LLM_TITLE_FILTER` 等含模型的处理器。
 
 ## 数据模型
 

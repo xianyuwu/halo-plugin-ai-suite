@@ -46,6 +46,8 @@ export default defineConfig({
   title: "AI 智能套件",
   description: "Halo AI 智能套件完整文档",
   base: siteBase,
+  // 本地保留的旧 UI 分析稿未纳入版本控制，也不应进入当前在线文档。
+  srcExclude: ["ui-analysis-and-optimization.md"],
   cleanUrls: true,
   lastUpdated: process.env.DOCS_LAST_UPDATED !== "false",
   ignoreDeadLinks: false,
