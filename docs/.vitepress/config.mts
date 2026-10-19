@@ -14,21 +14,14 @@ const historicalVersion = process.env.DOCS_HISTORICAL_VERSION || "";
 const documentationSeries = projectVersion.replace(/\.\d+(?:[-+].*)?$/, ".x");
 const registeredVersions: string[] = JSON.parse(readFileSync(new URL("../versions.json", import.meta.url), "utf8"));
 const previousSeriesVersion = registeredVersions.find(version => version.replace(/\.\d+(?:[-+].*)?$/, ".x") !== documentationSeries);
-const currentSnapshotVersion = registeredVersions.includes(projectVersion) ? projectVersion : null;
-const versionItems = [
-  { text: `${documentationSeries}（当前）`, link: "/reference/current-version" },
-  ...(currentSnapshotVersion
-    ? [{ text: `${currentSnapshotVersion}（发布快照）`, link: `${siteOrigin}/versions/${currentSnapshotVersion}/` }]
-    : []),
-  ...(previousSeriesVersion
-    ? [{ text: `${previousSeriesVersion.replace(/\.\d+(?:[-+].*)?$/, ".x")}（历史）`, link: `${siteOrigin}/versions/${previousSeriesVersion}/` }]
-    : []),
-];
-const versionNav = historicalVersion || versionItems.length === 1
+const versionNav = historicalVersion || !previousSeriesVersion
   ? { text: `版本 ${documentationSeries}`, link: "/reference/current-version" }
   : {
       text: `版本 ${documentationSeries}`,
-      items: versionItems,
+      items: [
+        { text: `${documentationSeries}（当前）`, link: "/reference/current-version" },
+        { text: `${previousSeriesVersion.replace(/\.\d+(?:[-+].*)?$/, ".x")}（历史）`, link: `${siteOrigin}/versions/${previousSeriesVersion}/` },
+      ],
     };
 const userGuide = [
   { text: "模型、切片与检索", link: "/user-guide/models-and-retrieval" },
