@@ -26,6 +26,8 @@ ConfigMap 的每个 `data.<group>` 是一段 JSON 字符串。AI 智能套件不
 | `queryRewriteEnabled` | `false` | 是否启用 Query Rewrite 模型能力 |
 | `aiFoundationQueryRewriteModelName` | 空 | AI Foundation 查询改写模型资源名；为空复用语言模型 |
 
+0.4.4 没有新增配置字段。后台模型测试请求可以省略 `dimensions`；它不改变已保存的 `embeddingDimensions`。
+
 模型能力开关表示服务是否可用；检索增强页中的管线开关决定一次 RAG 请求是否实际调用它。
 
 内容创作模型的回退顺序为“功能单独指定 → 内容创作默认模型 → 对话模型 → AI Foundation 默认语言模型”。写作辅助的独立模型字段位于 `writing.writingModel`；AI 摘要和 AI 标签的独立模型字段位于 `models`。更改这些语言模型不会要求重建文章索引。

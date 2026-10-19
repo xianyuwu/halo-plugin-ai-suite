@@ -10,7 +10,7 @@
 [![Java](https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
 [![Lucene](https://img.shields.io/badge/Lucene-10.5.0-0a6f3a)](https://lucene.apache.org/)
-[![Version](https://img.shields.io/badge/version-0.4.3-blue)](src/main/resources/plugin.yaml)
+[![Version](https://img.shields.io/badge/version-0.4.4-blue)](src/main/resources/plugin.yaml)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 
 [快速开始](#快速开始) · [功能全景](#功能全景) · [完整文档](https://ai-suite-docs.rainwu.cn) · [工作原理](#工作原理) · [开发指南](#开发指南)
@@ -26,7 +26,7 @@
 - 在线文档：[AI 智能套件文档中心](https://ai-suite-docs.rainwu.cn)
 - 文档源码：[docs/](docs/)
 
-> 当前版本为 0.4.3，智能搜索新增明确提交、流中断提示，并在综合回答下方优先展示 Halo 核心搜索结果。使用旧版安装包的站点请核对插件版本与[更新日志](CHANGELOG.md)。
+> 当前版本为 0.4.4，修复了部分模型“测试连通性”请求缺少维度字段时返回 HTTP 400 的问题。使用旧版安装包的站点请核对插件版本与[更新日志](CHANGELOG.md)。
 
 ## 它解决什么问题
 
@@ -69,7 +69,7 @@
 
 ## 实际界面
 
-内容创作相关截图来自当前本地开发环境，其余部分截图来自较早版本的 `dev.rainwu.cn` 测试环境。站点内容、统计数字和界面细节会随数据与版本变化；AI 标签的操作步骤以[用户手册](docs/user-guide/ai-tags.md)为准。
+以下功能截图均按本地 Halo 2.26.1 与插件 0.4.3 的实际界面重拍。0.4.4 只调整后台模型连通性测试，不改变这些界面；站点内容和统计数字会随数据变化。AI 标签的操作步骤以[用户手册](docs/user-guide/ai-tags.md)为准。
 
 ### 访客端
 

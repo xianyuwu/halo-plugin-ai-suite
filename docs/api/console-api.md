@@ -31,15 +31,14 @@
 {
   "requestId": "b8ecf6a3-475f-4e7f-9ccd-890a11c8af60",
   "kind": "image",
-  "model": "",
-  "dimensions": 0
+  "model": ""
 }
 ```
 
 - `requestId`：客户端生成的 UUID，同时作为任务编号。当前管理员使用同一编号及相同参数重复提交时，在任务记录保留期间返回原任务；参数不同返回 HTTP 409。
 - `kind`：`chat`、`queryRewrite`、`embedding`、`rerank` 或 `image`。
 - `model`：AI Foundation 模型资源名；空值使用现有配置及默认槽逻辑。
-- `dimensions`：Embedding 请求维度；未指定或为 0 时使用已保存的维度。
+- `dimensions`：仅 Embedding 测试需要的可选请求维度；未指定或为 0 时使用已保存的维度。Chat、Query Rewrite、Rerank 与图像测试可以省略该字段。
 
 提交成功返回 HTTP 202，包含 `jobId` 和 `job`。前端每 2 秒查询一次，状态为 `pending`、`done` 或 `failed`。成功时 `job.result` 保留对应测试的 `model`、`reply`、`dimensions`、`requestedDimensions`、`relevanceScore` 或 `imageCount`；失败时返回 `job.error`。
 
