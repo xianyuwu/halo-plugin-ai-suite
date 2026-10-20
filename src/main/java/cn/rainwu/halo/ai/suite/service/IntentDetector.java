@@ -132,7 +132,7 @@ public class IntentDetector {
             );
 
             return llmClient.chat(
-                    modelConfig.getEffectiveChatModel(),
+                    modelConfig.getEffectiveIntentModel(),
                     messages,
                     0.0f,
                     32,

@@ -109,7 +109,7 @@ public class LlmTitleFilterProcessor implements PipelineProcessor {
             responseFormat.put("type", "json_object");
 
             return llmClient.chat(
-                    modelConfig.getEffectiveChatModel(),
+                    modelConfig.getEffectiveIntentModel(),
                     messages,
                     0.0f,
                     512,

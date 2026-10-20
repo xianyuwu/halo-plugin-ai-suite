@@ -155,6 +155,7 @@ public class AIProperties {
         c.setAiFoundationChatModelName(textVal(aiFoundation, "chatModelName",
             textVal(node, "aiFoundationChatModelName", "")));
         c.setAiFoundationContentModelName(textVal(node, "aiFoundationContentModelName", ""));
+        c.setAiFoundationIntentModelName(textVal(node, "aiFoundationIntentModelName", ""));
         c.setAiFoundationExcerptModelName(textVal(node, "aiFoundationExcerptModelName", ""));
         c.setAiFoundationTagModelName(textVal(node, "aiFoundationTagModelName", ""));
         c.setAiFoundationEmbeddingModelName(textVal(aiFoundation, "embeddingModelName",
@@ -401,6 +402,8 @@ public class AIProperties {
         private boolean rerankEnabled;
         private boolean queryRewriteEnabled;
         private String aiFoundationChatModelName;
+        /** 意图识别和文章主题判断专用语言模型；留空时复用对话模型。 */
+        private String aiFoundationIntentModelName;
         /** 内容创作默认语言模型；留空时复用对话模型。 */
         private String aiFoundationContentModelName;
         /** AI 摘要专用模型；留空时复用内容创作默认模型。 */
@@ -416,6 +419,12 @@ public class AIProperties {
         @JsonIgnore
         public String getEffectiveChatModel() {
             return aiFoundationChatModelName;
+        }
+
+        @JsonIgnore
+        public String getEffectiveIntentModel() {
+            return aiFoundationIntentModelName == null || aiFoundationIntentModelName.isBlank()
+                ? getEffectiveChatModel() : aiFoundationIntentModelName;
         }
 
         @JsonIgnore

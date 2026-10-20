@@ -16,6 +16,7 @@ ConfigMap 的每个 `data.<group>` 是一段 JSON 字符串。AI 智能套件不
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
 | `aiFoundationChatModelName` | 空 | AI Foundation 语言模型资源名；为空使用默认语言模型 |
+| `aiFoundationIntentModelName` | 空 | 意图兜底识别、主题综合匹配及标题筛选专用语言模型；为空复用对话模型 |
 | `aiFoundationContentModelName` | 空 | 内容创作默认语言模型资源名；为空复用对话模型 |
 | `aiFoundationExcerptModelName` | 空 | AI 摘要专用语言模型资源名；为空复用内容创作默认模型 |
 | `aiFoundationTagModelName` | 空 | AI 标签专用语言模型资源名；为空复用内容创作默认模型 |
@@ -31,6 +32,8 @@ ConfigMap 的每个 `data.<group>` 是一段 JSON 字符串。AI 智能套件不
 模型能力开关表示服务是否可用；检索增强页中的管线开关决定一次 RAG 请求是否实际调用它。
 
 内容创作模型的回退顺序为“功能单独指定 → 内容创作默认模型 → 对话模型 → AI Foundation 默认语言模型”。写作辅助的独立模型字段位于 `writing.writingModel`；AI 摘要和 AI 标签的独立模型字段位于 `models`。更改这些语言模型不会要求重建文章索引。
+
+意图路由模型只影响需要模型的分类步骤。正则直接命中、标签/分类/排序等确定性步骤无需调用该模型；普通问答、智能搜索和索引仍使用原有模型配置。选择 AI Foundation 已提供的语言模型资源，留空时沿用对话模型。
 
 [![内容创作模型回退关系](../diagrams/exported/content-model-routing.svg)](/diagrams/exported/content-model-routing.svg)
 

@@ -120,6 +120,44 @@
 
       <div class="ai-section-block">
         <div class="ai-section-heading">
+          <h2>意图路由模型</h2>
+          <span class="ai-section-tag ai-tag-optional">可选</span>
+        </div>
+        <div class="ai-model-grid">
+          <article class="ai-model-card">
+            <div class="ai-model-card-header">
+              <div class="ai-model-title-wrap">
+                <div class="ai-model-icon"><RiChatSmileLine /></div>
+                <div>
+                  <div class="ai-model-title">意图判断模型</div>
+                  <div class="ai-model-subtitle">用于规则未命中时的意图识别，以及文章主题判断</div>
+                </div>
+              </div>
+            </div>
+            <div class="ai-model-card-body">
+              <div class="ai-form-field">
+                <label class="ai-field-label">语言模型 <span class="ai-label-hint">来自 AI Foundation</span></label>
+                <select class="ai-input ai-select" v-model="form.aiFoundationIntentModelName" :disabled="modelOptionsLoading">
+                  <option value="">复用对话模型：{{ chatModelLabel }}</option>
+                  <option v-for="option in languageOptions" :key="option.name" :value="option.name">
+                    {{ modelOptionLabel(option) }}
+                  </option>
+                  <option v-if="unknownSelectedOption('language', form.aiFoundationIntentModelName)" :value="form.aiFoundationIntentModelName">
+                    当前配置：{{ form.aiFoundationIntentModelName }}
+                  </option>
+                </select>
+                <span class="ai-helper-text">{{ intentModelHint }}</span>
+              </div>
+              <div class="ai-card-actions" style="justify-content: flex-end;">
+                <VButton type="primary" @click="saveModel('intent')" :disabled="saving.intent">{{ saving.intent ? '保存中...' : '保存配置' }}</VButton>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <div class="ai-section-block">
+        <div class="ai-section-heading">
           <h2>内容创作模型</h2>
           <span class="ai-section-tag ai-tag-optional">可选</span>
         </div>
@@ -364,6 +402,7 @@ interface DefaultModelSlots {
 
 const MODEL_FIELDS: Record<string, string[]> = {
   chat: ["aiFoundationChatModelName"],
+  intent: ["aiFoundationIntentModelName"],
   content: ["aiFoundationContentModelName"],
   embedding: ["aiFoundationEmbeddingModelName", "embeddingDimensions"],
   rerank: ["rerankEnabled", "aiFoundationRerankModelName"],
@@ -373,6 +412,7 @@ const MODEL_FIELDS: Record<string, string[]> = {
 
 const form = reactive({
   aiFoundationChatModelName: "",
+  aiFoundationIntentModelName: "",
   aiFoundationContentModelName: "",
   aiFoundationEmbeddingModelName: "",
   aiFoundationRerankModelName: "",
@@ -383,7 +423,7 @@ const form = reactive({
   queryRewriteEnabled: false,
 });
 
-const saving = reactive<Record<string, boolean>>({ chat: false, content: false, embedding: false, rerank: false, queryRewrite: false, image: false });
+const saving = reactive<Record<string, boolean>>({ chat: false, intent: false, content: false, embedding: false, rerank: false, queryRewrite: false, image: false });
 const testing = reactive<Record<string, boolean>>({ chat: false, embedding: false, rerank: false, queryRewrite: false, image: false });
 const modelOptionsLoading = ref(false);
 const modelOptionsError = ref("");
@@ -408,6 +448,11 @@ const chatModelLabel = computed(() => {
   const name = form.aiFoundationChatModelName || defaultSlots.languageModelName || "";
   const option = findModelOption("language", name);
   return option?.displayName || option?.modelId || name || "AI Foundation 默认";
+});
+const intentModelHint = computed(() => {
+  if (!form.aiFoundationIntentModelName) return `保存后使用：${chatModelLabel.value}（复用对话模型）`;
+  const option = findModelOption("language", form.aiFoundationIntentModelName);
+  return `保存后使用：${option ? modelOptionLabel(option) : form.aiFoundationIntentModelName}（意图路由专用模型）`;
 });
 const contentModelHint = computed(() => {
   if (!form.aiFoundationContentModelName) return `保存后使用：${chatModelLabel.value}（复用对话模型）`;
