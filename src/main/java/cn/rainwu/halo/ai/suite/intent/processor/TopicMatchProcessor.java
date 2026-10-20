@@ -128,7 +128,7 @@ public class TopicMatchProcessor implements PipelineProcessor {
                 Map<String, Object> responseFormat = new LinkedHashMap<>();
                 responseFormat.put("type", "json_object");
                 return llmClient.chat(
-                        modelConfig.getEffectiveChatModel(),
+                        modelConfig.getEffectiveIntentModel(),
                         List.of(
                             Map.of("role", "system", "content", systemPrompt),
                             Map.of("role", "user", "content", prompt)),

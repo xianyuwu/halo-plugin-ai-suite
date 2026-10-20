@@ -2,11 +2,13 @@
 
 > 适用读者：Halo 管理员、内容运营人员<br>
 > 适用版本：AI 智能套件 0.4.x<br>
-> 前置条件：插件已启用；使用 AI 创建、LLM 兜底或含 LLM 的处理器时，Chat 模型需可用
+> 前置条件：插件已启用；使用 AI 创建时需对话模型可用，LLM 兜底或含 LLM 的处理器需意图判断模型（未单独指定时为对话模型）可用
 
 ## 进入意图路由
 
 打开 `Console → AI 智能套件 → 意图路由`。列表会显示路由名称、触发词、Pipeline、优先级、启用状态和更新时间。
+
+如需让意图分类使用更轻量的语言模型，可到 `Console → AI 智能套件 → 模型配置 → 意图路由模型` 手动选择 AI Foundation 中的语言模型。留空时继续复用对话模型。该选择同时用于触发规则未命中时的 LLM 兜底、`TOPIC_MATCH` 和 `LLM_TITLE_FILTER`，不会改变普通问答与智能搜索的模型。
 
 ![意图路由管理页面](../../assets/readme/screenshots/console-intent-routes.jpg)
 
