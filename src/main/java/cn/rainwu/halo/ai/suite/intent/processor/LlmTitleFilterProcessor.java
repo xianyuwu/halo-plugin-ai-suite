@@ -112,10 +112,11 @@ public class LlmTitleFilterProcessor implements PipelineProcessor {
                     modelConfig.getEffectiveChatModel(),
                     messages,
                     0.0f,
-                    512,
+                    2048,
                     responseFormat,
                     null,
-                    UsageScenario.INTENT_PIPELINE
+                    UsageScenario.INTENT_PIPELINE,
+                    "disabled"
                 )
                 .timeout(TIMEOUT)
                 .map(answer -> {

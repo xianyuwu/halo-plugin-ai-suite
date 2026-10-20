@@ -36,6 +36,7 @@ public class TopicMatchProcessor implements PipelineProcessor {
 
     public static final String TYPE = "TOPIC_MATCH";
     private static final int DEFAULT_MAX_CANDIDATES = 200;
+    private static final int MAX_RESPONSE_TOKENS = 2048;
     private static final Duration TIMEOUT = Duration.ofSeconds(18);
 
     private final ReactiveExtensionClient client;
@@ -132,8 +133,11 @@ public class TopicMatchProcessor implements PipelineProcessor {
                         List.of(
                             Map.of("role", "system", "content", systemPrompt),
                             Map.of("role", "user", "content", prompt)),
-                        0.0f, 768, responseFormat, null, UsageScenario.INTENT_PIPELINE)
+                        0.0f, MAX_RESPONSE_TOKENS, responseFormat, null,
+                        UsageScenario.INTENT_PIPELINE, "disabled")
                     .timeout(TIMEOUT)
+                    .filter(answer -> !answer.isBlank())
+                    .switchIfEmpty(Mono.error(new IllegalStateException("主题分类模型返回空内容")))
                     .map(answer -> {
                         Set<Integer> union = new LinkedHashSet<>(metadataMatches);
                         union.addAll(LlmTitleFilterProcessor.parseRelatedIndices(answer));

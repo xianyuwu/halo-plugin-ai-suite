@@ -19,6 +19,7 @@ import run.halo.aifoundation.chat.GenerateTextRequest;
 import run.halo.aifoundation.chat.GenerateTextResult;
 import run.halo.aifoundation.chat.FinishReason;
 import run.halo.aifoundation.chat.LanguageModel;
+import run.halo.aifoundation.chat.ReasoningOptions;
 import run.halo.aifoundation.embedding.EmbeddingModel;
 import run.halo.aifoundation.embedding.EmbeddingRequest;
 import run.halo.aifoundation.embedding.EmbeddingResponse;
@@ -217,6 +218,24 @@ class AiFoundationClientTest {
         var captor = ArgumentCaptor.forClass(GenerateTextRequest.class);
         verify(model).generateText(captor.capture());
         assertThat(captor.getValue().getOutput().getType()).isEqualTo(run.halo.aifoundation.schema.OutputType.JSON);
+    }
+
+    @Test
+    void structuredJsonPassesExplicitlyDisabledReasoningToFoundation() {
+        LanguageModel model = streamingLanguageModel();
+        when(model.generateText(any(GenerateTextRequest.class)))
+            .thenReturn(Mono.just(GenerateTextResult.builder().text("{\"related\":[1]}").build()));
+
+        assertThat(client.chat("", List.of(Map.of("role", "user", "content", "topic")),
+            0.0f, 2048, Map.of("type", "json_object"), UsageScenario.INTENT_PIPELINE,
+            "disabled").block()).isEqualTo("{\"related\":[1]}");
+
+        var request = ArgumentCaptor.forClass(GenerateTextRequest.class);
+        verify(model).generateText(request.capture());
+        assertThat(request.getValue().getReasoning()).isEqualTo(ReasoningOptions.disabled());
+        assertThat(request.getValue().getMaxOutputTokens()).isEqualTo(2048);
+        assertThat(request.getValue().getOutput().getType())
+            .isEqualTo(run.halo.aifoundation.schema.OutputType.JSON);
     }
 
     @Test

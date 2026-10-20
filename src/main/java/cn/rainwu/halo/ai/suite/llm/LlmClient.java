@@ -44,11 +44,21 @@ public class LlmClient {
                              Map<String, Object> responseFormat,
                              String clientIp,
                              String scenario) {
+        return reasoningMode().flatMap(reasoningMode -> chat(model, messages, temperature,
+            maxTokens, responseFormat, clientIp, scenario, reasoningMode));
+    }
+
+    public Mono<String> chat(String model,
+                             List<Map<String, String>> messages,
+                             float temperature, int maxTokens,
+                             Map<String, Object> responseFormat,
+                             String clientIp,
+                             String scenario,
+                             String reasoningMode) {
         return aiFoundationClient.chatUsageModelName(model)
             .flatMap(usageModel -> enforceLimit(usageModel, "chat", clientIp)
-                .flatMap(reserved -> reasoningMode()
-                    .flatMap(reasoningMode -> aiFoundationClient.chat(model, messages, temperature, maxTokens,
-                        responseFormat, scenario, reasoningMode))
+                .flatMap(reserved -> aiFoundationClient.chat(model, messages, temperature,
+                        maxTokens, responseFormat, scenario, reasoningMode)
                     .doFinally(signal -> usageTracker.settle(usageModel, reserved))));
     }
 
