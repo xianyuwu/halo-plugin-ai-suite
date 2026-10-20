@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -27,7 +28,7 @@ import run.halo.app.extension.ReactiveExtensionClient;
 class TopicMatchProcessorTest {
 
     @Test
-    void topicClassificationDisablesReasoningAndKeepsMetadataFallback() {
+    void topicClassificationDisablesReasoningAndKeepsMetadataOnFailureOrEmptyReply() {
         ReactiveExtensionClient extensionClient = mock(ReactiveExtensionClient.class);
         LlmClient llm = mock(LlmClient.class);
         AIProperties properties = mock(AIProperties.class);
@@ -47,7 +48,8 @@ class TopicMatchProcessorTest {
         when(llm.chat(eq("chat-model"), anyList(), eq(0.0f), eq(2048),
             eq(Map.of("type", "json_object")), isNull(),
             eq(UsageScenario.INTENT_PIPELINE), eq("disabled")))
-            .thenReturn(Mono.error(new IllegalStateException("model returned no JSON")));
+            .thenReturn(Mono.error(new IllegalStateException("model returned no JSON")),
+                Mono.just("   "), Mono.empty(), Mono.just("{\"related\":[]}"));
         Post post = mock(Post.class);
         Post.PostSpec spec = new Post.PostSpec();
         spec.setTitle("Halo 文章");
@@ -56,10 +58,13 @@ class TopicMatchProcessorTest {
         PipelineStep step = new PipelineStep();
         step.setParams(Map.of());
 
-        List<Post> result = processor.process(List.of(post), step, "Halo", List.of()).block();
-
-        assertThat(result).containsExactly(post);
-        verify(llm).chat(eq("chat-model"), anyList(), eq(0.0f), eq(2048),
+        for (int i = 0; i < 3; i++) {
+            List<Post> result = processor.process(List.of(post), step, "Halo", List.of()).block();
+            assertThat(result).containsExactly(post);
+        }
+        assertThat(processor.process(List.of(post), step, "unrelated", List.of()).block())
+            .isEmpty();
+        verify(llm, times(4)).chat(eq("chat-model"), anyList(), eq(0.0f), eq(2048),
             eq(Map.of("type", "json_object")), isNull(),
             eq(UsageScenario.INTENT_PIPELINE), eq("disabled"));
     }

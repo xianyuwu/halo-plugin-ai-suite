@@ -136,6 +136,8 @@ public class TopicMatchProcessor implements PipelineProcessor {
                         0.0f, MAX_RESPONSE_TOKENS, responseFormat, null,
                         UsageScenario.INTENT_PIPELINE, "disabled")
                     .timeout(TIMEOUT)
+                    .filter(answer -> !answer.isBlank())
+                    .switchIfEmpty(Mono.error(new IllegalStateException("主题分类模型返回空内容")))
                     .map(answer -> {
                         Set<Integer> union = new LinkedHashSet<>(metadataMatches);
                         union.addAll(LlmTitleFilterProcessor.parseRelatedIndices(answer));
